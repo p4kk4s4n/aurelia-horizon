@@ -7,6 +7,7 @@ import { CameraRig } from './player/cameraRig.js';
 import { ShipRepairSystem } from './ship/repair.js';
 import { Ship } from './ship/ship.js';
 import { HUD } from './ui/hud.js';
+import { SettingsManager } from './ui/settings.js';
 
 const canvas = document.getElementById('game-canvas');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -36,6 +37,7 @@ const repairSystem = new ShipRepairSystem(scene, planet);
 const cameraRig = new CameraRig(camera);
 const input = new InputManager(canvas);
 const hud = new HUD();
+const settings = new SettingsManager((msg) => hud.showNotice(msg));
 
 let gameMode = 'EXPLORING'; // 'EXPLORING' | 'PILOTING'
 let elapsedTime = 0;
@@ -98,8 +100,13 @@ export const gameAPI = {
     speed: Math.round(gameMode === 'PILOTING' ? ship.speed : explorer.velocity.length()),
     orbitAssist: ship.orbitAssist,
     visitedMoons: Array.from(ship.visitedMoons),
-    targetsDestroyed: ship.targetsDestroyed
+    targetsDestroyed: ship.targetsDestroyed,
+    theme: settings.currentThemeId,
+    settingsOpen: settings.isOpen
   }),
+  openSettings: (open = true) => settings.toggleModal(open),
+  setTheme: (themeId) => settings.applyTheme(themeId),
+  checkGitHubUpdate: (force = false) => settings.checkGitHubAndRecache(force),
   repairAndBoard: () => {
     repairSystem.giveAndInstallAll();
     ship.setRepairedVisual(true);
@@ -145,13 +152,16 @@ document.getElementById('btn-moon-1')?.addEventListener('click', () => gameAPI.l
 document.getElementById('btn-moon-2')?.addEventListener('click', () => gameAPI.landOnMoon(1));
 document.getElementById('btn-moon-3')?.addEventListener('click', () => gameAPI.landOnMoon(2));
 
-// Support URL query parameter ?phase=orbit|moon1|moon2|moon3|board for instant phase entry
-const urlPhase = new URLSearchParams(window.location.search).get('phase');
+// Support URL query parameter ?phase=orbit|moon1|moon2|moon3|board|settings for instant phase entry
+const params = new URLSearchParams(window.location.search);
+const urlPhase = params.get('phase');
 if (urlPhase === 'board') gameAPI.repairAndBoard();
 else if (urlPhase === 'orbit') gameAPI.enterPlanetOrbit();
 else if (urlPhase === 'moon1') gameAPI.landOnMoon(0);
 else if (urlPhase === 'moon2') gameAPI.landOnMoon(1);
 else if (urlPhase === 'moon3') gameAPI.landOnMoon(2);
+else if (urlPhase === 'settings') settings.toggleModal(true);
+if (params.get('theme')) settings.applyTheme(params.get('theme'));
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
@@ -177,6 +187,12 @@ function animate(now) {
   ship.updateProjectilesAndTargets(dt, spaceTargets);
 
   let promptText = '';
+
+  if (settings.isOpen) {
+    input.consumeFrame();
+    renderer.render(scene, camera);
+    return;
+  }
 
   // Keyboard shortcuts for quick testing (1: Repair+Board, 2: Planet Orbit, 3/4/5: Moons)
   if (input.wasPressed('Digit1')) gameAPI.repairAndBoard();

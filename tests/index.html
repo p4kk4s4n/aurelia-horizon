@@ -25,6 +25,7 @@
     import { cubeToSphere, buildCubeSphereData } from '../src/world/cubeSphere.js';
     import { evaluateGravity } from '../src/world/gravity.js';
     import { ShipRepairSystem, SHIP_PART_DEFS } from '../src/ship/repair.js';
+    import { UI_COLOR_SCHEMES } from '../src/ui/settings.js';
 
     const logs = [];
     let passed = 0;
@@ -112,6 +113,12 @@
     const manifest = await manifestResp.json();
     assert(manifest.id === 'p4kk4s4n-aurelia-horizon', 'WebAPK manifest id is uniquely set to p4kk4s4n-aurelia-horizon');
     assert(manifest.scope === './' && manifest.start_url === './', 'WebAPK manifest scope and start_url are scoped to repo path');
+
+    // 6. Settings UI Color Schemes & version.json check
+    assert(Object.keys(UI_COLOR_SCHEMES).length >= 5, 'UI_COLOR_SCHEMES provides at least 5 color palettes');
+    const verResp = await fetch('../version.json');
+    const verJson = await verResp.json();
+    assert(verJson.repo === 'p4kk4s4n/aurelia-horizon' && Boolean(verJson.version), 'version.json tracks p4kk4s4n/aurelia-horizon version');
 
     const summary = `SUMMARY: ${passed} passed, ${failed} failed`;
     logs.push('', summary);

@@ -132,11 +132,12 @@ export class HUD {
     ctx.clearRect(0, 0, w, h);
 
     // Radar background
+    const primaryColor = getComputedStyle(document.documentElement).getPropertyValue('--hud-primary').trim() || '#00f5d4';
     ctx.fillStyle = 'rgba(8, 16, 32, 0.78)';
     ctx.beginPath();
     ctx.arc(cx, cy, w * 0.48, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = 'rgba(0, 245, 212, 0.35)';
+    ctx.strokeStyle = primaryColor;
     ctx.lineWidth = 1.5;
     ctx.stroke();
 
