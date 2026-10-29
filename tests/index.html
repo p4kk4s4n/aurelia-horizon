@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Aurelia Horizon — Automated Unit Tests</title>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "../vendor/three/three.module.js"
+      }
+    }
+  </script>
+  <style>
+    body { background: #0b132b; color: #e0fbfc; font-family: monospace; padding: 24px; }
+    .pass { color: #00f5d4; }
+    .fail { color: #ff595e; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h2>Aurelia Horizon — Core Mechanics Test Suite</h2>
+  <pre id="test-output">Running tests...</pre>
+
+  <script type="module">
+    import { SeededNoise } from '../src/world/noise.js';
+    import { cubeToSphere, buildCubeSphereData } from '../src/world/cubeSphere.js';
+    import { evaluateGravity } from '../src/world/gravity.js';
+    import { ShipRepairSystem, SHIP_PART_DEFS } from '../src/ship/repair.js';
+
+    const logs = [];
+    let passed = 0;
+    let failed = 0;
+
+    function assert(condition, name) {
+      if (condition) {
+        passed++;
+        logs.push(`PASS: ${name}`);
+      } else {
+        failed++;
+        logs.push(`FAIL: ${name}`);
+      }
+    }
+
+    // 1. SeededNoise determinism & range
+    const n1 = new SeededNoise(1042);
+    const n2 = new SeededNoise(1042);
+    const v1 = n1.fbm(0.4, 0.7, -0.2, 4);
+    const v2 = n2.fbm(0.4, 0.7, -0.2, 4);
+    assert(Math.abs(v1 - v2) < 1e-9, 'SeededNoise fBm is deterministic for identical seeds');
+    assert(v1 >= -1 && v1 <= 1, 'SeededNoise fBm output is within [-1, 1]');
+
+    // 2. Cube-sphere projection & geometry data
+    const [sx, sy, sz] = cubeToSphere(1, 1, 1);
+    const unitLen = Math.hypot(sx, sy, sz);
+    assert(Math.abs(unitLen - 1.0) < 1e-6, 'cubeToSphere projects cube corners onto unit sphere');
+
+    const seg = 8;
+    const sphereData = buildCubeSphereData({
+      segments: seg,
+      heightSampler: () => 360,
+      colorSampler: () => [0.2, 0.8, 0.5]
+    });
+    assert(sphereData.totalVerts === 6 * (seg + 1) * (seg + 1), 'buildCubeSphereData produces 6*(N+1)^2 vertices');
+    assert(sphereData.totalIndices === 6 * seg * seg * 6, 'buildCubeSphereData produces 36*N^2 triangle indices');
+
+    // 3. Spherical gravity & dominant body switching (Planet + 3 Moons of varying size)
+    const mockBodies = [
+      {
+        id: 'aurelia',
+        radius: 360,
+        surfaceGravity: 26,
+        soiRadius: 1150,
+        isMoon: false,
+        getWorldPosition: () => ({ x: 0, y: 0, z: 0 }),
+        getSurfaceRadiusAtDir: () => 360
+      },
+      {
+        id: 'lumen',
+        radius: 65,
+        surfaceGravity: 9.5,
+        soiRadius: 230,
+        isMoon: true,
+        getWorldPosition: () => ({ x: 980, y: 0, z: 0 }),
+        getSurfaceRadiusAtDir: () => 65
+      }
+    ];
+
+    const gPlanet = evaluateGravity({ x: 0, y: 370, z: 0 }, mockBodies);
+    assert(gPlanet.body.id === 'aurelia', 'Dominant body near planet surface is Aurelia Prime');
+    assert(Math.abs(gPlanet.altitude - 10) < 1e-3, 'Altitude above planet surface is accurate');
+    assert(gPlanet.up.y > 0.99 && gPlanet.acceleration.y < 0, 'Spherical gravity pulls toward planet center');
+
+    const gMoon = evaluateGravity({ x: 980, y: 75, z: 0 }, mockBodies);
+    assert(gMoon.body.id === 'lumen', 'Dominant body switches to Moon I (Lumen) inside moon SOI');
+    assert(Math.abs(gMoon.altitude - 10) < 1e-3, 'Altitude above moon surface is accurate');
+
+    // 4. Ship repair & part installation loop
+    const repair = new ShipRepairSystem(null, null);
+    repair.parts = SHIP_PART_DEFS.map((d) => ({ ...d, collected: false, installed: false }));
+    assert(!repair.isShipRepaired(), 'Ship starts damaged (0/5 parts installed)');
+
+    repair.tryPickupPart(repair.parts[0]);
+    assert(repair.getStatus().carried === 1 && repair.getStatus().collected === 1, 'Picking up a part increments carried & collected count');
+
+    repair.installCarriedParts();
+    assert(repair.getStatus().installed === 1 && repair.getStatus().carried === 0, 'Installing carried parts transfers them to installed');
+
+    repair.giveAndInstallAll();
+    assert(repair.isShipRepaired() && repair.getStatus().installed === 5, 'Ship becomes repaired when all 5 parts are installed');
+
+    const summary = `SUMMARY: ${passed} passed, ${failed} failed`;
+    logs.push('', summary);
+    document.getElementById('test-output').textContent = logs.join('\n');
+    document.title = failed === 0 ? `TESTS_PASSED (${passed})` : `TESTS_FAILED (${failed})`;
+  </script>
+</body>
+</html>

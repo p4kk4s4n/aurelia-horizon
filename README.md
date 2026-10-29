@@ -1,0 +1,90 @@
+# Aurelia Horizon — 3D Tropical Alien Planet & Moon Explorer
+
+A zero-build, web-based 3D space exploration prototype built with **Three.js (ES Modules)** for instant deployment on **GitHub Pages**.
+
+## Gameplay Overview
+
+1. **Explore the Tropical Alien Planet (`Aurelia Prime`) in 3rd Person**
+   - Built on a **6-face procedural cube-sphere mesh** with seeded fractal simplex/ridged hills, coral beaches, a translucent turquoise ocean, glowing bioluminescent mushroom trees, alien spiral palm fronds, floating spore orbs, and crystalline mineral spires.
+   - Walk, sprint, jump, and jetpack-boost across the entire spherical world with pole-safe spherical gravity.
+2. **Find & Install 5 Ship Components**
+   - Follow the glowing vertical sky beacons and the top compass bar to collect all 5 scattered components (`Quantum Fusion Core`, `Plasma Thruster Manifold`, `Astronavigation Matrix`, `Graviton Hull Stabilizer`, `Pulse Cannon Capacitor`).
+   - Return to your crashed Starfighter and press **`E`** to install the parts and bring the ship online.
+3. **Board, Take Off, Orbit, Boost & Fire Weapons**
+   - Press **`E`** to board the Starfighter, hold **`Space` + `W`** to lift off through the tropical atmosphere into space, and press **`O`** to engage **Arcade Orbit-Assist** for a smooth circular orbit viewing the planet below.
+   - Hold **`Shift`** for high-speed **Plasma Afterburner Boost** and click **`Left Mouse`** (or hold **`F`**) to fire **Twin Pulse Cannons** at orbital asteroids and rogue sentinel drones.
+4. **Land on 3 Moons of Varying Size**
+   - **Moon I — `Lumen` (Small, R=65)**: Low-gravity cyan-quartz & ice satellite.
+   - **Moon II — `Pyra` (Medium, R=105)**: Amber-basalt volcanic ridges and craters.
+   - **Moon III — `Goliath` (Large, R=155)**: Massive violet-ringed outer titan moon.
+   - Touch down gently (`< 95 m/s`) on any moon and press **`E`** to disembark and walk around in low gravity!
+
+---
+
+## Controls
+
+| Mode | Action | Keys / Mouse |
+| :--- | :--- | :--- |
+| **On Foot (3rd Person)** | Move / Strafe | `W` `A` `S` `D` or Arrow Keys |
+| | Sprint | Hold `Shift` |
+| | Jump / Jetpack Boost | Tap `Space` to Jump, Hold `Space` in mid-air for Jetpack |
+| | Look / Zoom Camera | `Mouse` (click canvas to lock pointer, `Esc` to unlock) / `Scroll Wheel` |
+| | Collect Part / Install / Board Ship | `E` |
+| **Starfighter (Flight & Orbit)** | Forward / Reverse Thrust | `W` / `S` |
+| | Ascend (Takeoff) / Descend (Land) | `Space` / `Left Ctrl` or `C` |
+| | Strafe Left / Right | `A` / `D` |
+| | Pitch & Yaw / Roll | `Mouse` (or Arrow Keys) / `Q` & `R` |
+| | **Afterburner Boost** | Hold `Shift` + `W` |
+| | **Arcade Orbit-Assist Toggle** | `O` |
+| | **Fire Twin Plasma Cannons** | `Left Click` or `F` |
+| | Disembark onto Planet or Moon | `E` (when landed or hovering low) |
+| **Quick Test Shortcuts** | Instant Repair + Board / Orbit / Moons | Keys `1`, `2`, `3`, `4`, `5` (or click left HUD buttons) |
+
+---
+
+## Running Locally (Zero Dependencies)
+
+Browsers require an HTTP server to load ES modules (`type="module"`). Because this project uses zero external build tools, a built-in PowerShell server is included:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\serve.ps1
+```
+
+Then open **`http://localhost:8080/`** in Microsoft Edge or Chrome.
+- To run the automated unit tests, open **`http://localhost:8080/tests/index.html`**.
+
+---
+
+## Step-by-Step Guide: Deploying to GitHub Pages
+
+You haven't created a remote GitHub repository yet. Follow these steps to publish and play the game online via GitHub Pages:
+
+### 1. Stage and Commit Your Files Locally
+Open PowerShell or Git Bash in this project folder and run:
+
+```powershell
+git add .
+git commit -m "Add Aurelia Horizon 3D planet, ship repair, orbit, and 3 moons prototype"
+```
+
+### 2. Create a New Repository on GitHub
+1. Go to [https://github.com/new](https://github.com/new).
+2. Enter a repository name (for example, `aurelia-horizon`).
+3. Choose **Public** (required for free GitHub Pages on personal accounts).
+4. **Do NOT** check "Add a README file" or ".gitignore" (we already have them here).
+5. Click **Create repository**.
+
+### 3. Push This Repository to GitHub
+Copy the commands shown under **"…or push an existing repository from the command line"** on your new GitHub page, which look like this (replace `<YOUR-USERNAME>` and `<YOUR-REPO>`):
+
+```powershell
+git branch -M main
+git remote add origin https://github.com/<YOUR-USERNAME>/<YOUR-REPO>.git
+git push -u origin main
+```
+
+### 4. Enable GitHub Pages
+1. On your GitHub repository page, click **Settings** (top tab bar).
+2. In the left sidebar, click **Pages**.
+3. Under **Build and deployment → Source**, select **GitHub Actions** (this repo includes [`.github/workflows/pages.yml`](.github/workflows/pages.yml)) — *or* select **Deploy from a branch** → branch `main` / `/ (root)` and click **Save**.
+4. Wait ~30–60 seconds, refresh the **Pages** settings page, and click your live game link (`https://<YOUR-USERNAME>.github.io/<YOUR-REPO>/`)!

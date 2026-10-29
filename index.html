@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aurelia Horizon — 3D Tropical Alien Planet & Moon Explorer</title>
+  <link rel="stylesheet" href="./style.css" />
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "./vendor/three/three.module.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <canvas id="game-canvas"></canvas>
+
+  <!-- Center Crosshair (Active in Starfighter mode) -->
+  <div id="hud-crosshair">
+    <div class="reticle-ring"></div>
+    <div class="reticle-dot"></div>
+  </div>
+
+  <!-- Top Mission & Compass Bar -->
+  <header id="hud-top">
+    <div class="mission-banner">
+      <span class="badge">MISSION</span>
+      <span id="hud-objective-text">Explore Aurelia Prime &amp; collect 5 ship components.</span>
+    </div>
+    <div id="hud-compass" class="compass-bar">Locating beacons...</div>
+  </header>
+
+  <!-- Left Telemetry & Ship Status Panel -->
+  <aside id="hud-left">
+    <div class="panel-title">AURELIA TELEMETRY</div>
+    <div class="stat-row"><span>Mode</span><strong id="hud-mode">ON FOOT</strong></div>
+    <div class="stat-row"><span>Dominant Body</span><strong id="hud-body">Aurelia Prime</strong></div>
+    <div class="stat-row"><span>Phase</span><strong id="hud-phase">SURFACE</strong></div>
+    <div class="stat-row"><span>Altitude</span><strong id="hud-altitude">0 m</strong></div>
+    <div class="stat-row"><span>Velocity</span><strong id="hud-speed">0 m/s</strong></div>
+    <div class="stat-row"><span>Ship Repair</span><strong id="hud-parts">0/5 Installed</strong></div>
+    <div class="stat-row"><span>Moons Landed</span><strong id="hud-moons">0 / 3 Moons Landed</strong></div>
+    <div class="stat-row"><span>Targets Blasted</span><strong id="hud-targets">0 Destroyed</strong></div>
+
+    <div class="gauge-block">
+      <div class="gauge-label">BOOST / JETPACK ENERGY</div>
+      <div class="gauge-track"><div id="hud-boost-bar" class="gauge-fill"></div></div>
+    </div>
+
+    <div class="quick-actions">
+      <div class="panel-subtitle">QUICK PHASE JUMP (OR KEYS 1-5)</div>
+      <button id="btn-quick-repair" type="button">[1] Repair &amp; Board Ship</button>
+      <button id="btn-quick-orbit" type="button">[2] Planet Orbit View</button>
+      <div class="moon-btn-row">
+        <button id="btn-moon-1" type="button">[3] Moon I</button>
+        <button id="btn-moon-2" type="button">[4] Moon II</button>
+        <button id="btn-moon-3" type="button">[5] Moon III</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Right Orbital Radar Map -->
+  <aside id="hud-right">
+    <div class="panel-title">ORBITAL SYSTEM RADAR</div>
+    <canvas id="radar-canvas" width="176" height="176"></canvas>
+    <div class="radar-legend">
+      <span><i class="dot planet"></i> Aurelia</span>
+      <span><i class="dot m1"></i> Lumen (S)</span>
+      <span><i class="dot m2"></i> Pyra (M)</span>
+      <span><i class="dot m3"></i> Goliath (L)</span>
+    </div>
+  </aside>
+
+  <!-- Center Notifications & Interaction Prompt -->
+  <div id="hud-notice"></div>
+  <div id="hud-prompt"></div>
+
+  <!-- Bottom Controls Guide -->
+  <footer id="hud-controls">
+    <div><strong>ON FOOT:</strong> [WASD] Move • [Shift] Sprint • [Space] Jump / Hold Jetpack • [Mouse] Look • [E] Collect / Install / Board</div>
+    <div><strong>STARFIGHTER:</strong> [W/S] Thrust • [Space/Ctrl] Ascend/Descend • [Shift] Boost • [O] Orbit Assist • [Click/F] Plasma Cannons • [E] Disembark</div>
+  </footer>
+
+  <script type="module" src="./src/main.js"></script>
+</body>
+</html>
