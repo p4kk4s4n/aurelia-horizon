@@ -39,6 +39,7 @@ A zero-build, web-based 3D space exploration prototype built with **Three.js (ES
 | | **Fire Twin Plasma Cannons** | `Left Click` or `F` |
 | | Disembark onto Planet or Moon | `E` (when landed or hovering low) |
 | **Quick Test Shortcuts** | Instant Repair + Board / Orbit / Moons | Keys `1`, `2`, `3`, `4`, `5` (or click left HUD buttons) |
+| **Settings & Updates** | Open UI Color Schemes & GitHub Updater | Key `P` (or click `⚙ Settings & Updates [P]` on HUD) |
 
 ---
 
