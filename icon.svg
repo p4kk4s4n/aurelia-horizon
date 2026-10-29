@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="50%" r="70%">
+      <stop offset="0%" stop-color="#0b192c" />
+      <stop offset="100%" stop-color="#040711" />
+    </radialGradient>
+    <radialGradient id="planet" cx="38%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#00f5d4" />
+      <stop offset="55%" stop-color="#2ec4b6" />
+      <stop offset="100%" stop-color="#0b525b" />
+    </radialGradient>
+  </defs>
+
+  <!-- Space background -->
+  <rect width="512" height="512" rx="96" fill="url(#bg)" />
+
+  <!-- Orbit ring -->
+  <ellipse cx="256" cy="264" rx="205" ry="78" fill="none" stroke="#3a86ff" stroke-width="6" stroke-dasharray="14 10" opacity="0.65" transform="rotate(-18 256 264)" />
+
+  <!-- Tropical Alien Planet (Aurelia Prime) -->
+  <circle cx="256" cy="264" r="118" fill="url(#planet)" />
+
+  <!-- Planet tropical islands highlight -->
+  <path d="M180 235 Q215 200 265 225 T335 250 Q310 295 250 285 T180 235Z" fill="#9ef01a" opacity="0.55" />
+  <path d="M205 315 Q255 300 305 330 Q265 360 215 345Z" fill="#fee440" opacity="0.45" />
+
+  <!-- 3 Moons of varying size -->
+  <!-- Moon I: Lumen (Small) -->
+  <circle cx="96" cy="196" r="18" fill="#00f5d4" />
+  <!-- Moon II: Pyra (Medium) -->
+  <circle cx="406" cy="154" r="28" fill="#ff9f1c" />
+  <!-- Moon III: Goliath (Large ringed) -->
+  <ellipse cx="402" cy="368" rx="56" ry="16" fill="none" stroke="#c77dff" stroke-width="5" transform="rotate(-22 402 368)" />
+  <circle cx="402" cy="368" r="36" fill="#9b5de5" />
+</svg>

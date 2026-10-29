@@ -3,7 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Aurelia Horizon — 3D Tropical Alien Planet & Moon Explorer</title>
+  <meta name="theme-color" content="#00f5d4" />
+  <meta name="application-name" content="Aurelia Horizon" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Aurelia Horizon" />
+  <title>Aurelia Horizon — 3D Tropical Alien Planet &amp; Moon Explorer</title>
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" type="image/svg+xml" href="./icon.svg" />
   <link rel="stylesheet" href="./style.css" />
   <script type="importmap">
     {
@@ -83,5 +89,12 @@
   </footer>
 
   <script type="module" src="./src/main.js"></script>
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js', { scope: './' }).catch(() => {});
+      });
+    }
+  </script>
 </body>
 </html>

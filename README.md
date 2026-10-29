@@ -67,24 +67,36 @@ git add .
 git commit -m "Add Aurelia Horizon 3D planet, ship repair, orbit, and 3 moons prototype"
 ```
 
-### 2. Create a New Repository on GitHub
+### 2. Create a New Repository on GitHub (`p4kk4s4n/aurelia-horizon`)
 1. Go to [https://github.com/new](https://github.com/new).
-2. Enter a repository name (for example, `aurelia-horizon`).
+2. Enter the repository name: **`aurelia-horizon`**.
 3. Choose **Public** (required for free GitHub Pages on personal accounts).
 4. **Do NOT** check "Add a README file" or ".gitignore" (we already have them here).
 5. Click **Create repository**.
 
 ### 3. Push This Repository to GitHub
-Copy the commands shown under **"…or push an existing repository from the command line"** on your new GitHub page, which look like this (replace `<YOUR-USERNAME>` and `<YOUR-REPO>`):
+Run these commands in PowerShell or Git Bash from this project folder:
 
 ```powershell
 git branch -M main
-git remote add origin https://github.com/<YOUR-USERNAME>/<YOUR-REPO>.git
+git remote add origin https://github.com/p4kk4s4n/aurelia-horizon.git
 git push -u origin main
 ```
 
 ### 4. Enable GitHub Pages
-1. On your GitHub repository page, click **Settings** (top tab bar).
+1. On your GitHub repository page (`https://github.com/p4kk4s4n/aurelia-horizon`), click **Settings** (top tab bar).
 2. In the left sidebar, click **Pages**.
 3. Under **Build and deployment → Source**, select **GitHub Actions** (this repo includes [`.github/workflows/pages.yml`](.github/workflows/pages.yml)) — *or* select **Deploy from a branch** → branch `main` / `/ (root)` and click **Save**.
-4. Wait ~30–60 seconds, refresh the **Pages** settings page, and click your live game link (`https://<YOUR-USERNAME>.github.io/<YOUR-REPO>/`)!
+4. Wait ~30–60 seconds, refresh the **Pages** settings page, and open your live game link:
+   **`https://p4kk4s4n.github.io/aurelia-horizon/`**
+
+---
+
+## Unique WebAPK / PWA Identity (`p4kk4s4n-aurelia-horizon`)
+
+Because all project sites on a GitHub account share the same root origin (`https://p4kk4s4n.github.io`), this project includes a dedicated Web App Manifest ([`manifest.webmanifest`](manifest.webmanifest)) and Service Worker ([`sw.js`](sw.js)) configured with:
+- **`"id": "p4kk4s4n-aurelia-horizon"`** (resolves to `https://p4kk4s4n.github.io/aurelia-horizon/p4kk4s4n-aurelia-horizon`)
+- **`"scope": "./"`** and **`"start_url": "./"`** (scoped strictly to `/aurelia-horizon/`)
+- **`CACHE_NAME = "p4kk4s4n-aurelia-horizon-v1"`**
+
+This guarantees that Android Chrome/Edge and desktop PWA installers generate a standalone **WebAPK** uniquely bound to `p4kk4s4n` and `aurelia-horizon`, without colliding with any other repositories hosted under `p4kk4s4n.github.io`.

@@ -107,6 +107,12 @@
     repair.giveAndInstallAll();
     assert(repair.isShipRepaired() && repair.getStatus().installed === 5, 'Ship becomes repaired when all 5 parts are installed');
 
+    // 5. WebAPK / PWA Manifest unique identity check
+    const manifestResp = await fetch('../manifest.webmanifest');
+    const manifest = await manifestResp.json();
+    assert(manifest.id === 'p4kk4s4n-aurelia-horizon', 'WebAPK manifest id is uniquely set to p4kk4s4n-aurelia-horizon');
+    assert(manifest.scope === './' && manifest.start_url === './', 'WebAPK manifest scope and start_url are scoped to repo path');
+
     const summary = `SUMMARY: ${passed} passed, ${failed} failed`;
     logs.push('', summary);
     document.getElementById('test-output').textContent = logs.join('\n');
