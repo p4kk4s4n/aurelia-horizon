@@ -64,6 +64,11 @@
         <div class="gauge-track"><div id="hud-boost-bar" class="gauge-fill"></div></div>
       </div>
 
+      <div id="hud-oxygen-block" class="gauge-block" style="display: none;">
+        <div class="gauge-label">SUIT OXYGEN SUPPLY</div>
+        <div class="gauge-track"><div id="hud-oxygen-bar" class="gauge-fill" style="background: #00f5d4; width: 100%;"></div></div>
+      </div>
+
       <div class="quick-actions">
         <div class="panel-subtitle">QUICK PHASE JUMP (OR KEYS 1-5)</div>
         <button id="btn-quick-repair" type="button">[1] Repair &amp; Board Ship</button>
@@ -126,6 +131,7 @@
     <div id="touch-foot-actions" class="touch-actions-cluster">
       <button id="btn-touch-sprint" class="touch-btn action-sprint" type="button">RUN</button>
       <button id="btn-touch-jump" class="touch-btn action-jump" type="button">JUMP<br><small>JET</small></button>
+      <button id="btn-touch-dive" class="touch-btn action-dive" type="button" style="display: none;">DIVE<br><small>SWIM</small></button>
       <button id="btn-touch-interact" class="touch-btn action-interact" type="button">ACT<br><small>INTERACT</small></button>
     </div>
 
@@ -237,6 +243,20 @@
             <strong id="touch-sens-val">1.0x</strong>
           </div>
           <input id="touch-sens-slider" type="range" min="0.4" max="2.6" step="0.1" value="1.0" class="hud-slider" />
+        </div>
+      </section>
+
+      <section class="settings-section">
+        <h3>GRAPHICS &amp; PERFORMANCE</h3>
+        <p class="section-desc">Adjust rendering fidelity, flora density and mesh resolution:</p>
+        <div class="settings-subsection">
+          <span class="setting-label">Fidelity Preset</span>
+          <div id="graphics-quality-options" class="pill-group">
+            <button type="button" class="pill-btn" data-quality="low">Low (Fast)</button>
+            <button type="button" class="pill-btn" data-quality="medium">Medium</button>
+            <button type="button" class="pill-btn" data-quality="high">High (Default)</button>
+            <button type="button" class="pill-btn" data-quality="ultra">Ultra</button>
+          </div>
         </div>
       </section>
 

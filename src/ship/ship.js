@@ -34,8 +34,10 @@ export class Ship {
     this.flightPhase = 'SURFACE (DOCKED)';
 
     // Full Newtonian SAS flight computer modes:
-    // 'STABILITY' | 'PROGRADE' | 'RETROGRADE' | 'CIRCULARIZE' | 'OFF'
+    // 'STABILITY' | 'PROGRADE' | 'RETROGRADE' | 'TARGET' | 'CIRCULARIZE' | 'OFF'
     this.sasMode = 'STABILITY';
+    this.targetBody = null;
+    this.angularVelocity = new THREE.Vector3(0, 0, 0);
     this.orbitAssist = false;
     this.orbitalData = null;
 
@@ -371,7 +373,7 @@ export class Ship {
   }
 
   cycleSASMode(onNotice) {
-    const modes = ['STABILITY', 'PROGRADE', 'RETROGRADE', 'CIRCULARIZE', 'OFF'];
+    const modes = ['STABILITY', 'PROGRADE', 'RETROGRADE', 'TARGET', 'CIRCULARIZE', 'OFF'];
     const idx = modes.indexOf(this.sasMode);
     this.sasMode = modes[(idx + 1) % modes.length];
     this.orbitAssist = (this.sasMode === 'CIRCULARIZE');
@@ -381,10 +383,20 @@ export class Ship {
         'STABILITY': 'SAS: STABILITY ASSIST (Angular Damping)',
         'PROGRADE': 'SAS: PROGRADE HOLD (Nose Aligned with Velocity)',
         'RETROGRADE': 'SAS: RETROGRADE HOLD (Nose Aligned Opposite Velocity)',
+        'TARGET': 'SAS: TARGET LOCK (Homing Nose on Target Body)',
         'CIRCULARIZE': 'SAS: ORBIT CIRCULARIZE (Auto-burn engaged)',
         'OFF': 'SAS: OFF (Full Newtonian Coast)'
       };
       onNotice(labels[this.sasMode] || `SAS: ${this.sasMode}`);
+    }
+  }
+
+  cycleTargetBody(bodies, onNotice) {
+    if (!bodies || bodies.length === 0) return;
+    const curIdx = bodies.indexOf(this.targetBody);
+    this.targetBody = bodies[(curIdx + 1) % bodies.length];
+    if (onNotice) {
+      onNotice(`Nav Target: ${this.targetBody.name}`);
     }
   }
 
@@ -604,11 +616,17 @@ export class Ship {
       this.fireCannons();
     }
 
-    // Rotation controls: Pitch, Yaw, and 6DoF Axial Roll
-    const stickPitch = (input.lookVelY || 0) * 1.8 * dt;
-    const stickYaw = (input.lookVelX || 0) * 2.2 * dt;
-    const pitchInput = -mouseFrame.dy * 0.0028 - stickPitch + ((input.isDown('ArrowDown') ? 1 : 0) - (input.isDown('ArrowUp') ? 1 : 0)) * 1.4 * dt;
-    const yawInput = -mouseFrame.dx * 0.0028 - stickYaw + ((input.isDown('ArrowLeft') ? 1 : 0) - (input.isDown('ArrowRight') ? 1 : 0)) * 1.4 * dt;
+    // Rotation controls: Pitch, Yaw, and 6DoF Axial Roll (Smoothed & Rate-Limited)
+    const mousePitchRate = THREE.MathUtils.clamp(-mouseFrame.dy * 0.16, -1.6, 1.6);
+    const mouseYawRate = THREE.MathUtils.clamp(-mouseFrame.dx * 0.16, -1.6, 1.6);
+    const targetPitch = THREE.MathUtils.clamp(
+      mousePitchRate - (input.lookVelY || 0) * 1.8 + ((input.isDown('ArrowDown') ? 1 : 0) - (input.isDown('ArrowUp') ? 1 : 0)) * 1.4,
+      -1.85, 1.85
+    );
+    const targetYaw = THREE.MathUtils.clamp(
+      mouseYawRate - (input.lookVelX || 0) * 2.2 + ((input.isDown('ArrowLeft') ? 1 : 0) - (input.isDown('ArrowRight') ? 1 : 0)) * 1.4,
+      -1.85, 1.85
+    );
 
     let rollDir = 0;
     const isRollL = (input.isActionDown ? input.isActionDown('flightRollLeft') : false) || input.isDown('KeyQ');
@@ -617,15 +635,20 @@ export class Ship {
     if (!this.landed && (this.altitude >= 16 || !this.currentBody) && isRollR) rollDir -= 1;
     if (input.rollRate) rollDir -= input.rollRate;
 
-    const rollSpeed = 2.5;
-    const rollDelta = rollDir * rollSpeed * dt;
+    const targetRoll = rollDir * 2.5;
 
-    const pilotActive = Math.abs(rollDir) > 0.05 || Math.abs(yawInput) > 0.02 || Math.abs(pitchInput) > 0.02;
+    // Exponential smoothing on angular rates
+    const rotDamp = 1 - Math.exp(-18.0 * dt);
+    this.angularVelocity.x += (targetPitch - this.angularVelocity.x) * rotDamp;
+    this.angularVelocity.y += (targetYaw - this.angularVelocity.y) * rotDamp;
+    this.angularVelocity.z += (targetRoll - this.angularVelocity.z) * rotDamp;
+
+    const pilotActive = Math.abs(rollDir) > 0.05 || Math.abs(this.angularVelocity.x) > 0.05 || Math.abs(this.angularVelocity.y) > 0.05;
 
     if (!this.landed) {
       // 1. Manual pilot angular rotation
       const rotDelta = new THREE.Quaternion().setFromEuler(
-        new THREE.Euler(pitchInput, yawInput, rollDelta, 'YXZ')
+        new THREE.Euler(this.angularVelocity.x * dt, this.angularVelocity.y * dt, this.angularVelocity.z * dt, 'YXZ')
       );
       this.group.quaternion.multiply(rotDelta);
 
@@ -646,7 +669,17 @@ export class Ship {
         const alignQuat = new THREE.Quaternion().setFromUnitVectors(shipForward, retrogradeDir);
         const targetQuat = this.group.quaternion.clone().premultiply(alignQuat);
         this.group.quaternion.slerp(targetQuat, Math.min(1, 4.0 * dt));
-      } else if (this.sasMode === 'STABILITY' && !pilotActive && this.altitude < 160) {
+      } else if (this.sasMode === 'TARGET' && !pilotActive) {
+        // Homing: smoothly lock starfighter nose toward selected celestial body
+        const targetObj = this.targetBody || (bodies && bodies[0]);
+        if (targetObj) {
+          const toTarget = targetObj.getWorldPosition().clone().sub(this.group.position).normalize();
+          const shipForward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.group.quaternion).normalize();
+          const alignQuat = new THREE.Quaternion().setFromUnitVectors(shipForward, toTarget);
+          const targetQuat = this.group.quaternion.clone().premultiply(alignQuat);
+          this.group.quaternion.slerp(targetQuat, Math.min(1, 3.8 * dt));
+        }
+      } else if (this.sasMode === 'STABILITY' && !pilotActive && this.altitude < (body ? (body.atmosphereHeight || 220) : 220)) {
         // Gentle surface leveling only near ground when hands off controls
         const shipUp = new THREE.Vector3(0, 1, 0).applyQuaternion(this.group.quaternion).normalize();
         const levelQuat = new THREE.Quaternion().setFromUnitVectors(shipUp, newUp);
@@ -698,7 +731,7 @@ export class Ship {
     }
 
     // Coordinated dynamic aerodynamic visual banking into strafe & yaw turns
-    const targetBank = THREE.MathUtils.clamp(-thrustRight * 0.45 - yawInput * 6.5, -0.65, 0.65);
+    const targetBank = THREE.MathUtils.clamp(-thrustRight * 0.45 - (this.angularVelocity.y || 0) * 0.25, -0.65, 0.65);
     this.visualBank = THREE.MathUtils.lerp(this.visualBank, targetBank, Math.min(1, 10 * dt));
     this.visualRoot.rotation.z = this.visualBank;
 

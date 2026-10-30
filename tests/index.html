@@ -20,6 +20,15 @@
   <h2>Aurelia Horizon — Core Mechanics Test Suite</h2>
   <pre id="test-output">Running tests...</pre>
 
+  <script>
+    window.onerror = function(msg, url, line, col, err) {
+      document.getElementById('test-output').textContent += '\n\nGLOBAL ERROR: ' + msg + ' at ' + url + ':' + line + ':' + col + '\n' + (err ? err.stack : '');
+    };
+    window.onunhandledrejection = function(e) {
+      document.getElementById('test-output').textContent += '\n\nPROMISE REJECTION: ' + (e.reason ? (e.reason.stack || e.reason) : e);
+    };
+  </script>
+
   <script type="module">
     import { SeededNoise } from '../src/world/noise.js';
     import { cubeToSphere, buildCubeSphereData } from '../src/world/cubeSphere.js';
@@ -30,6 +39,10 @@
     import { TouchControlsManager } from '../src/ui/touchControls.js';
     import { Explorer } from '../src/player/explorer.js';
     import { Ship } from '../src/ship/ship.js';
+    import { mulberry32, bezierSpine, tubeAlongSpine, shardGeometry } from '../src/world/procGeo.js';
+    import { createSolarSystem } from '../src/world/body.js';
+    import { createDeepOceanMesh } from '../src/world/ocean.js';
+    import { NavMarkerSystem } from '../src/ui/navMarkers.js';
     import * as THREE from 'three';
 
     const logs = [];
@@ -236,12 +249,14 @@
     assert(testBoostShip.isBoosting, 'ShiftLeft immediately activates afterburner boost');
     assert(testBoostShip.velocity.length() > 5.0, 'Boost immediately accelerates ship forward without requiring W key');
 
-    // D) SAS Flight Computer Modes
+    // D) SAS Flight Computer Modes (with new TARGET mode)
     assert(testShip.sasMode === 'STABILITY', 'Ship initializes in STABILITY assist mode');
     testShip.cycleSASMode();
     assert(testShip.sasMode === 'PROGRADE', 'cycleSASMode switches to PROGRADE hold');
     testShip.cycleSASMode();
     assert(testShip.sasMode === 'RETROGRADE', 'cycleSASMode switches to RETROGRADE hold');
+    testShip.cycleSASMode();
+    assert(testShip.sasMode === 'TARGET', 'cycleSASMode switches to TARGET lock (homing nose on target body)');
     testShip.cycleSASMode();
     assert(testShip.sasMode === 'CIRCULARIZE', 'cycleSASMode switches to CIRCULARIZE assist');
     testShip.cycleSASMode();
@@ -338,6 +353,118 @@
     // Reset back to standard 1.0
     settingsMgr.applyUIScale(1.0, false);
     assert(document.documentElement.style.getPropertyValue('--ui-scale') === '1.00', 'applyUIScale can reset to 1.00');
+
+    // 13. Procedural Geometry & Branching Curves (procGeo.js)
+    const rng = mulberry32(777);
+    const rVal1 = rng();
+    const rVal2 = rng();
+    assert(rVal1 >= 0 && rVal1 <= 1 && rVal2 >= 0 && rVal2 <= 1, 'mulberry32 returns valid normalized floats [0, 1]');
+
+    const spine = bezierSpine(rng, 10, 0.35, 6);
+    assert(spine.points.length === 7, 'bezierSpine creates correct sample count');
+    assert(Math.abs(spine.tip.y - 10) < 1e-3, 'bezierSpine reaches designated height');
+    assert(Math.abs(spine.points[0].x) < 1e-4 && Math.abs(spine.points[0].z) < 1e-4, 'bezierSpine starts at base origin');
+
+    const tubeGeo = tubeAlongSpine(spine, (t) => 1.0 - t * 0.5, 6);
+    assert(Boolean(tubeGeo.getAttribute('position') && tubeGeo.getAttribute('normal') && tubeGeo.getAttribute('uv')), 'tubeAlongSpine builds valid BufferGeometry with normals and UVs');
+
+    const shardGeo = shardGeometry(1.5, 4.0, 5, 0.4);
+    assert(Boolean(shardGeo.getAttribute('position') && shardGeo.getIndex()), 'shardGeometry builds indexed faceted crystal shard');
+
+    // 14. 2x Planetary & Lunar System Scale (body.js)
+    const system = createSolarSystem(mockScene);
+    assert(system.planet.radius === 720, 'Aurelia Prime radius doubled to 720m');
+    assert(system.planet.seaLevelRadius === 718, 'Aurelia Prime seaLevelRadius set to 718m');
+    assert(system.moons.length === 3, 'Solar system contains 3 moons');
+    assert(system.moons[0].radius === 130 && system.moons[0].orbitRadius === 1960, 'Moon I (Lumen) radius doubled to 130m, orbit scaled to 1960m');
+    assert(system.moons[1].radius === 210 && system.moons[1].orbitRadius === 3120, 'Moon II (Pyra) radius doubled to 210m, orbit scaled to 3120m');
+    assert(system.moons[2].radius === 310 && system.moons[2].orbitRadius === 4560, 'Moon III (Goliath) radius doubled to 310m, orbit scaled to 4560m');
+    assert(system.planet.surfaceGravity === 26, 'Surface gravity on Aurelia Prime preserved at 26 m/s^2');
+
+    // 15. Deep Ocean Mesh & Per-Vertex Depth Shading (ocean.js)
+    const oceanController = createDeepOceanMesh(system.planet, 32);
+    assert(Boolean(oceanController && oceanController.mesh), 'createDeepOceanMesh constructs ocean mesh');
+    const aDepth = oceanController.mesh.geometry.getAttribute('aDepth');
+    assert(Boolean(aDepth && aDepth.count > 0), 'Deep ocean mesh geometry has aDepth per-vertex attribute');
+    let maxFoundDepth = 0;
+    for (let i = 0; i < aDepth.count; i++) {
+      if (aDepth.getX(i) > maxFoundDepth) maxFoundDepth = aDepth.getX(i);
+    }
+    assert(maxFoundDepth > 30, 'Deep ocean basins drop over 30m below sea level for deep diving');
+
+    // 16. Full Swimming, Underwater Diving, and Oxygen Meter (explorer.js)
+    const swimmer = new Explorer(mockScene);
+    swimmer.spawnOnBody(system.planet, new THREE.Vector3(0, 1, 0));
+    assert(swimmer.oxygen === 100 && swimmer.maxOxygen === 100, 'Explorer initializes with 100% full oxygen');
+    assert(!swimmer.isSwimming, 'Explorer on high land plateau is not swimming');
+
+    // Find an equatorial deep ocean basin trench
+    let minR = Infinity;
+    let oceanDir = new THREE.Vector3(1, 0, 0);
+    for (let u = -1; u <= 1; u += 0.25) {
+      for (let v = -1; v <= 1; v += 0.25) {
+        for (let w = -1; w <= 1; w += 0.25) {
+          const d = new THREE.Vector3(u, v, w);
+          if (d.lengthSq() < 0.1) continue;
+          d.normalize();
+          const r = system.planet.getSurfaceRadiusAtDir(d.x, d.y, d.z);
+          if (r < minR) {
+            minR = r;
+            oceanDir = d;
+          }
+        }
+      }
+    }
+
+    // Move explorer down into deep ocean basin below sea level (radius 718)
+    swimmer.spawnOnBody(system.planet, oceanDir);
+    swimmer.group.position.copy(oceanDir).multiplyScalar(system.planet.seaLevelRadius - 8); // 8m underwater
+    swimmer.grounded = false;
+    swimmer.update(0.1, testInput, { dx: 0, dy: 0, wheel: 0 }, system.allBodies);
+    assert(swimmer.isSwimming, 'Explorer submerged below sea level enters isSwimming state');
+    assert(swimmer.oxygen < 100, 'Submerged explorer consumes oxygen over time');
+
+    // Test Dive command (KeyC / dive action)
+    const preDiveSpeed = swimmer.velocity.dot(swimmer.localUp);
+    testInput.setVirtualKey('KeyC', true);
+    swimmer.update(0.1, testInput, { dx: 0, dy: 0, wheel: 0 }, system.allBodies);
+    testInput.setVirtualKey('KeyC', false);
+    const postDiveSpeed = swimmer.velocity.dot(swimmer.localUp);
+    assert(postDiveSpeed < preDiveSpeed, 'Dive action applies downward swimming propulsion');
+
+    // Test Jump (Swim Upward) command
+    const preJumpSpeed = swimmer.velocity.dot(swimmer.localUp);
+    testInput.setVirtualKey('Space', true);
+    swimmer.update(0.1, testInput, { dx: 0, dy: 0, wheel: 0 }, system.allBodies);
+    testInput.setVirtualKey('Space', false);
+    const postJumpSpeed = swimmer.velocity.dot(swimmer.localUp);
+    assert(postJumpSpeed > preJumpSpeed, 'Space key applies upward swimming propulsion');
+
+    // Test oxygen replenishment above water
+    swimmer.group.position.copy(oceanDir).multiplyScalar(system.planet.seaLevelRadius + 5); // Above sea level
+    swimmer.update(0.5, testInput, { dx: 0, dy: 0, wheel: 0 }, system.allBodies);
+    assert(swimmer.oxygen > 98, 'Surfacing explorer rapidly replenishes oxygen reserves');
+
+    // 17. Manual Graphics Quality Settings (settings.js)
+    assert(typeof settingsMgr.applyGraphicsQuality === 'function', 'SettingsManager provides applyGraphicsQuality method');
+    settingsMgr.applyGraphicsQuality('low');
+    assert(settingsMgr.currentQuality === 'low', 'applyGraphicsQuality sets quality to low');
+    assert(localStorage.getItem('aurelia_graphics_quality') === 'low', 'applyGraphicsQuality persists choice to localStorage');
+    settingsMgr.applyGraphicsQuality('ultra');
+    assert(settingsMgr.currentQuality === 'ultra', 'applyGraphicsQuality sets quality to ultra');
+    settingsMgr.applyGraphicsQuality('high'); // reset to default
+
+    // 18. Screen-Space Planetary Navigation Markers & Reticles (navMarkers.js)
+    const testCamera = new THREE.PerspectiveCamera(65, 1, 0.5, 10000);
+    const navSys = new NavMarkerSystem(testCamera, document.body);
+    navSys.setBodies(system.allBodies);
+    assert(navSys.markers.size === 4, 'NavMarkerSystem creates markers for planet and all 3 moons');
+    assert(Boolean(document.getElementById('hud-nav-markers')), 'NavMarkerSystem attaches hud-nav-markers layer');
+    let targetSelected = null;
+    navSys.onSelectTarget = (b) => { targetSelected = b; };
+    navSys.selectTarget(system.moons[0]);
+    assert(Boolean(targetSelected && targetSelected.id === 'lumen'), 'NavMarkerSystem selecting marker triggers onSelectTarget');
+    assert(Boolean(navSys.activeTarget && navSys.activeTarget.id === 'lumen'), 'NavMarkerSystem marks activeTarget');
 
     const summary = `SUMMARY: ${passed} passed, ${failed} failed`;
     logs.push('', summary);

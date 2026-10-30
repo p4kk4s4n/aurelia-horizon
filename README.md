@@ -5,27 +5,32 @@ A zero-build, web-based 3D space exploration prototype built with **Three.js (ES
 ## Gameplay Overview
 
 1. **Explore the Tropical Alien Planet (`Aurelia Prime`) in 3rd Person**
-   - Built on a **6-face procedural cube-sphere mesh** with seeded fractal simplex/ridged hills, coral beaches, a translucent turquoise ocean, glowing bioluminescent mushroom trees, alien spiral palm fronds, floating spore orbs, and crystalline mineral spires.
-   - Walk, sprint, jump, and jetpack-boost across the entire spherical world with pole-safe spherical gravity.
+   - Built on a **doubled 720m radius 6-face procedural cube-sphere mesh** with seeded fractal simplex/ridged hills, coral beaches, and deep ocean basins dropping 50-65m below sea level.
+   - **Organic Procedural Flora & Minerals**: Features continuous curved Bezier stalk lofting for giant mushroom trees, sweeping curved alien palms, and recursive branching pink crystalline mineral spires with secondary crystal twigs.
+   - **Full Swimming & Underwater Diving**: Wade into the ocean to transition smoothly into swimming. Tap **`Space`** to stroke upwards, or press **`C`** (or tap **`DIVE`** on touch) to dive deep into ocean trenches. Monitor your live **Oxygen Meter** (~30s dive time), explore seabed kelp ribbons, and surface to rapidly catch your breath.
 2. **Find & Install 5 Ship Components**
    - Follow the glowing vertical sky beacons and the top compass bar to collect all 5 scattered components (`Quantum Fusion Core`, `Plasma Thruster Manifold`, `Astronavigation Matrix`, `Graviton Hull Stabilizer`, `Pulse Cannon Capacitor`).
    - Return to your crashed Starfighter and press **`E`** to install the parts and bring the ship online.
 3. **Board, Take Off, Full Newtonian Orbit, Boost & Fire Weapons**
    - Press **`E`** (or tap **`ACT`** on touch) to board the Starfighter, hold **`Space` + `W`** to punch through the dense atmosphere into the vacuum of space ($h > 140\text{ m}$).
    - **Full Newtonian Orbital Mechanics**: Gravity scales with pure inverse-square spherical physics ($g = \mu / r^2$), and space vacuum has zero artificial drag ($C_d = 0$). Momentum is fully conserved in orbit.
-   - **SAS Flight Computer Modes**: Press **`O`** (or tap **`SAS`** on touch) to cycle 5 SAS autopilot modes:
+   - **Rigid Locked Chase Camera**: Incorporates an angular lag clamp ($\le 26^\circ$) ensuring the ship always stays locked firmly in your viewport, even through extreme maneuvers and afterburner boosts.
+   - **6-Mode SAS Flight Computer & Autopilot**: Press **`O`** (or tap **`SAS`** on touch) to cycle 6 SAS flight assist modes:
      - `STABILITY`: Dampens angular rotational rates while preserving orbital velocity vector.
      - `PROGRADE`: Automatically aligns starfighter nose along velocity vector ($\mathbf{v}$).
      - `RETROGRADE`: Aligns engine nozzle along velocity vector ($-\mathbf{v}$) for de-orbit burns.
+     - `TARGET`: Automatically points and tracks the nose directly toward your selected destination celestial body.
      - `CIRCULARIZE`: Uses orbital telemetry ($Ap, Pe, v_{circ}$) to calculate and steer toward instantaneous circular velocity.
      - `OFF`: Pure unassisted Newtonian drift.
+   - **Celestial Navigation Reticles & Off-Screen Edge Markers**: On-screen diamond targeting reticles display live distances to the planet and all moons; off-screen perimeter arrows indicate target directions. Press **`T`** or tap any reticle to lock target and engage `TARGET` SAS autopilot.
+   - **Animated Radiant Sun**: Churning plasma surface shader with limb darkening, multi-layer pulsing coronas, and 14 rotating solar flare ray spikes.
    - **Real-Time Keplerian Orbit Telemetry**: Live readouts of Apoapsis ($Ap$), Periapsis ($Pe$), Eccentricity ($e$), and Target Circular Velocity ($v_{circ}$) on the HUD.
    - **Instant Afterburner Boost**: Hold **`Shift`** (or touch **`BOOST`**) to immediately unleash $180\text{ m/s}^2$ plasma afterburners without needing forward stick/W key.
    - Click **`Left Mouse`** (or hold **`F`** / tap **`FIRE`**) to fire **Twin Under-Nose Pulse Cannons** at orbital asteroids and rogue sentinel drones.
-4. **Land on 3 Moons of Varying Size**
-   - **Moon I — `Lumen` (Small, R=65)**: Low-gravity cyan-quartz & ice satellite.
-   - **Moon II — `Pyra` (Medium, R=105)**: Amber-basalt volcanic ridges and craters.
-   - **Moon III — `Goliath` (Large, R=155)**: Massive violet-ringed outer titan moon.
+4. **Land on 3 Moons of Doubled System Scale**
+   - **Moon I — `Lumen` (R=130, Orbit 1960m)**: Low-gravity cyan-quartz & ice satellite.
+   - **Moon II — `Pyra` (R=210, Orbit 3120m)**: Amber-basalt volcanic ridges and craters.
+   - **Moon III — `Goliath` (R=310, Orbit 4560m)**: Massive violet-ringed outer titan moon.
    - Touch down gently (`< 95 m/s`) on any moon and press **`E`** to disembark and walk around in low gravity!
 
 ---
@@ -36,7 +41,8 @@ A zero-build, web-based 3D space exploration prototype built with **Three.js (ES
 | :--- | :--- | :--- | :--- |
 | **On Foot (3rd Person)** | Move / Strafe | `W` `A` `S` `D` or Arrow Keys | Left Virtual Thumbstick / D-Pad |
 | | Sprint | Hold `Shift` | `RUN` Toggle Button |
-| | Jump / Jetpack Boost | Tap `Space` to Jump, Hold `Space` for Jetpack | `JUMP / JET` Button |
+| | Jump / Jetpack Boost / Swim Up | Tap `Space` to Jump/Swim Up, Hold for Jetpack | `JUMP / JET` Button |
+| | Dive / Swim Down | Hold `C` | `DIVE` Button (swimming) |
 | | Look / Zoom Camera | `Mouse` / `Scroll Wheel` | Right Thumbstick / Look Touchpad |
 | | Collect Part / Install / Board Ship | `E` | `ACT` Button |
 | **Starfighter (Flight & Orbit)** | Forward / Reverse Thrust | `W` / `S` | Left Virtual Thumbstick (Y-axis) |
@@ -45,11 +51,12 @@ A zero-build, web-based 3D space exploration prototype built with **Three.js (ES
 | | Pitch & Yaw Steering | `Mouse` (or Arrow Keys) | Right Thumbstick / Look Touchpad |
 | | **6DoF Axial Roll** | `Q` (Roll Left) / `E` (Roll Right in flight) | `ROLL ⟲` / `ROLL ⟳` Buttons |
 | | **Instant Afterburner Boost** | Hold `Shift` | `BOOST` Button (fires forward immediately) |
-| | **SAS Flight Computer Toggle** | `O` | `SAS` Button (cycles Stability, Prograde, Retrograde, Circularize, Off) |
+| | **SAS Flight Computer Toggle** | `O` | `SAS` Button (cycles 6 modes: Stability, Prograde, Retrograde, Target, Circularize, Off) |
+| | **Cycle Nav Target** | `T` / Click Target Reticle | Screen-space reticle / edge arrow tap |
 | | **Fire Chin Pulse Cannons** | `Left Click` or `F` | `FIRE` Button |
 | | Disembark onto Planet or Moon | `E` (when landed or hovering low < 16 m) | `EXIT` Button |
 | **Quick Test Shortcuts** | Instant Repair + Board / Orbit / Moons | Keys `1`, `2`, `3`, `4`, `5` | Top-Left Quick Orbit & Moon Buttons |
-| **Settings & Updates** | Open UI Color Schemes, Touch Controls & GitHub Updater | Key `P` | `⚙ Settings & Updates` HUD Button |
+| **Settings & Updates** | Graphics Quality, UI Theme, UI Scale, Controls & Recacher | Key `P` | `⚙ Settings & Updates` HUD Button |
 
 ### Dynamic Keybindings & Custom Controls (Configurable in Settings `[P]`)
 

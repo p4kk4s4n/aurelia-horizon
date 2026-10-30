@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { SeededNoise } from './noise.js';
 import { createCubeSphereMesh } from './cubeSphere.js';
 import { populatePlanetDecor } from './decor.js';
+import { createDeepOceanMesh } from './ocean.js';
 
 export class CelestialBody {
   constructor(config) {
@@ -17,7 +18,7 @@ export class CelestialBody {
     this.heightAmplitude = config.heightAmplitude || 18;
     this.noiseFrequency = config.noiseFrequency || 2.2;
     this.hasOcean = Boolean(config.hasOcean);
-    this.seaLevelRadius = this.hasOcean ? this.radius - 1.5 : 0;
+    this.seaLevelRadius = this.hasOcean ? this.radius - 2.0 : 0;
     this.orbitRadius = config.orbitRadius || 0;
     this.orbitSpeed = config.orbitSpeed || 0;
     this.orbitAngle = config.orbitAngle || 0;
@@ -28,6 +29,7 @@ export class CelestialBody {
     this.noise = new SeededNoise(this.seed);
     this.group = new THREE.Group();
     this.group.name = this.name;
+    this.oceanController = null;
 
     this._buildMesh();
     this.updateOrbit(0);
@@ -37,16 +39,22 @@ export class CelestialBody {
   getSurfaceRadiusAtDir(nx, ny, nz) {
     const f = this.noiseFrequency;
     if (!this.isMoon) {
-      // Tropical planet: continents, lagoons, noisy hills, dramatic ridges
+      // Tropical planet: continents, deep ocean trenches, lagoons, noisy hills, dramatic ridges
       const continent = this.noise.fbm(nx * f * 0.75, ny * f * 0.75, nz * f * 0.75, 4);
       const hills = this.noise.fbm(nx * f * 2.1, ny * f * 2.1, nz * f * 2.1, 4);
       const ridges = this.noise.ridged(nx * f * 1.4, ny * f * 1.4, nz * f * 1.4, 3);
 
       // Keep spawn zone near (0, 1, 0) guaranteed dry tropical island plateau
       const spawnDot = Math.max(0, ny);
-      const spawnBias = spawnDot > 0.92 ? (spawnDot - 0.92) * 85 : 0;
+      const spawnBias = spawnDot > 0.90 ? (spawnDot - 0.90) * 110 : 0;
 
-      const elevation = (continent * 0.65 + hills * 0.35 + Math.max(0, ridges) * 0.25) * this.heightAmplitude + spawnBias;
+      let rawElev = continent * 0.65 + hills * 0.35 + Math.max(0, ridges) * 0.25;
+      if (rawElev < -0.04) {
+        // Drop deep ocean basins down to 50-65m below sea level
+        rawElev = -0.04 + (rawElev + 0.04) * 2.75;
+      }
+
+      const elevation = rawElev * this.heightAmplitude + spawnBias;
       return this.radius + elevation;
     } else {
       // Moon: craters + ridged highlands
@@ -59,12 +67,14 @@ export class CelestialBody {
   sampleBiomeColor(nx, ny, nz, r) {
     if (!this.isMoon) {
       const h = r - this.seaLevelRadius;
-      if (h < -2.5) return [0.04, 0.22, 0.38]; // Deep lagoon
-      if (h < 1.3) return [0.95, 0.84, 0.56];  // Tropical golden coral sand
-      if (h < 6.5) return [0.11, 0.72, 0.48];  // Lush alien teal-emerald jungle
-      if (h < 12.5) return [0.06, 0.52, 0.44]; // Deep bioluminescent canopy
-      if (h < 17.0) return [0.36, 0.32, 0.46]; // Purple alien highland rock
-      return [0.78, 0.92, 0.96];               // Mineral-capped peak
+      if (h < -35.0) return [0.01, 0.06, 0.18]; // Deep ocean abyss
+      if (h < -14.0) return [0.03, 0.16, 0.32]; // Mid ocean seabed
+      if (h < -3.0)  return [0.06, 0.34, 0.44]; // Turquoise shelf lagoon
+      if (h < 2.5)   return [0.95, 0.84, 0.56]; // Tropical golden coral sand
+      if (h < 14.0)  return [0.11, 0.72, 0.48]; // Lush alien teal-emerald jungle
+      if (h < 26.0)  return [0.06, 0.52, 0.44]; // Deep canopy
+      if (h < 38.0)  return [0.36, 0.32, 0.46]; // Purple highland rock
+      return [0.78, 0.92, 0.96];                // Mineral-capped peak
     }
 
     const theme = this.moonTheme;
@@ -82,25 +92,18 @@ export class CelestialBody {
     });
     this.group.add(this.terrainMesh);
 
-    // Tropical ocean sphere
+    // Procedural deep ocean sphere with depth shading and animated waves
     if (this.hasOcean) {
-      const seaGeo = new THREE.SphereGeometry(this.seaLevelRadius, 48, 36);
-      const seaMat = new THREE.MeshStandardMaterial({
-        color: 0x00bbf9,
-        emissive: 0x003554,
-        emissiveIntensity: 0.35,
-        transparent: true,
-        opacity: 0.78,
-        roughness: 0.18,
-        metalness: 0.1
-      });
-      this.oceanMesh = new THREE.Mesh(seaGeo, seaMat);
-      this.group.add(this.oceanMesh);
+      this.oceanController = createDeepOceanMesh(this, 72);
+      if (this.oceanController) {
+        this.oceanMesh = this.oceanController.mesh;
+        this.group.add(this.oceanMesh);
+      }
     }
 
     // Atmosphere halo shell
     if (this.atmosphereHeight > 0) {
-      const atmoGeo = new THREE.SphereGeometry(this.radius + this.atmosphereHeight, 40, 30);
+      const atmoGeo = new THREE.SphereGeometry(this.radius + this.atmosphereHeight, 44, 32);
       const atmoMat = new THREE.MeshBasicMaterial({
         color: this.isMoon ? 0x90e0ef : 0x48bfe3,
         transparent: true,
@@ -131,6 +134,12 @@ export class CelestialBody {
     this.group.add(this.decor.group);
   }
 
+  updateOcean(time) {
+    if (this.oceanController) {
+      this.oceanController.update(time);
+    }
+  }
+
   updateOrbit(dt) {
     this.prevPosition = this.group.position.clone();
     if (this.orbitRadius > 0) {
@@ -149,39 +158,41 @@ export class CelestialBody {
 }
 
 export function createSolarSystem(scene) {
+  // 1. Aurelia Prime (2x scale: radius 720, atmosphere 220, SOI 2300)
   const planet = new CelestialBody({
     id: 'aurelia',
     name: 'Aurelia Prime (Tropical Planet)',
-    description: 'Lush bioluminescent archipelago world',
-    radius: 360,
+    description: 'Lush bioluminescent archipelago world with deep ocean trenches',
+    radius: 720,
     surfaceGravity: 26,
-    soiRadius: 1150,
-    atmosphereHeight: 110,
+    soiRadius: 2300,
+    atmosphereHeight: 220,
     isMoon: false,
     seed: 1042,
-    segments: 56,
-    heightAmplitude: 18,
+    segments: 88,
+    heightAmplitude: 38,
     noiseFrequency: 2.3,
     hasOcean: true
   });
   scene.add(planet.group);
 
+  // 2. Three Moons (2x radius and proportional orbits)
   const moons = [
     new CelestialBody({
       id: 'lumen',
       name: 'Moon I: Lumen (Small Crystal Moon)',
       description: 'Compact low-gravity ice & cyan-quartz satellite',
-      radius: 65,
+      radius: 130,
       surfaceGravity: 9.5,
-      soiRadius: 230,
+      soiRadius: 460,
       atmosphereHeight: 0,
       isMoon: true,
       seed: 2088,
-      segments: 30,
-      heightAmplitude: 5.5,
+      segments: 40,
+      heightAmplitude: 11.0,
       noiseFrequency: 2.6,
-      orbitRadius: 980,
-      orbitSpeed: 0.018,
+      orbitRadius: 1960,
+      orbitSpeed: 0.009,
       orbitAngle: 0.4,
       orbitInclination: 0.15,
       moonTheme: {
@@ -196,17 +207,17 @@ export function createSolarSystem(scene) {
       id: 'pyra',
       name: 'Moon II: Pyra (Medium Amber-Basalt Moon)',
       description: 'Medium volcanic sulfur ridges and obsidian craters',
-      radius: 105,
+      radius: 210,
       surfaceGravity: 14.5,
-      soiRadius: 340,
-      atmosphereHeight: 22,
+      soiRadius: 680,
+      atmosphereHeight: 44,
       isMoon: true,
       seed: 3099,
-      segments: 36,
-      heightAmplitude: 8.5,
+      segments: 44,
+      heightAmplitude: 17.0,
       noiseFrequency: 2.3,
-      orbitRadius: 1560,
-      orbitSpeed: 0.011,
+      orbitRadius: 3120,
+      orbitSpeed: 0.0055,
       orbitAngle: 2.35,
       orbitInclination: -0.2,
       moonTheme: {
@@ -221,17 +232,17 @@ export function createSolarSystem(scene) {
       id: 'goliath',
       name: 'Moon III: Goliath (Large Ringed Titan)',
       description: 'Massive violet-ringed outer moon with deep basins',
-      radius: 155,
+      radius: 310,
       surfaceGravity: 19.5,
-      soiRadius: 480,
-      atmosphereHeight: 38,
+      soiRadius: 960,
+      atmosphereHeight: 76,
       isMoon: true,
       seed: 4177,
-      segments: 40,
-      heightAmplitude: 11.5,
+      segments: 48,
+      heightAmplitude: 23.0,
       noiseFrequency: 2.1,
-      orbitRadius: 2280,
-      orbitSpeed: 0.007,
+      orbitRadius: 4560,
+      orbitSpeed: 0.0035,
       orbitAngle: 4.4,
       orbitInclination: 0.28,
       moonTheme: {
@@ -247,9 +258,9 @@ export function createSolarSystem(scene) {
 
   for (const moon of moons) {
     scene.add(moon.group);
-    // Add visible orbital path line around planet
+    // Visible orbital path line around planet
     const pts = [];
-    const steps = 128;
+    const steps = 140;
     for (let i = 0; i <= steps; i++) {
       const a = (i / steps) * Math.PI * 2;
       const x = Math.cos(a) * moon.orbitRadius;

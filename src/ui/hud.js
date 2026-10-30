@@ -23,6 +23,8 @@ export class HUD {
     this.elPe = document.getElementById('hud-pe');
     this.elEcc = document.getElementById('hud-ecc');
     this.elSasMode = document.getElementById('hud-sas-mode');
+    this.elOxygenBlock = document.getElementById('hud-oxygen-block');
+    this.elOxygenBar = document.getElementById('hud-oxygen-bar');
     this.radarCanvas = document.getElementById('radar-canvas');
     this.radarCtx = this.radarCanvas ? this.radarCanvas.getContext('2d') : null;
 
@@ -68,7 +70,15 @@ export class HUD {
       this.elBody.textContent = activeBody ? activeBody.name : 'Deep Space';
     }
     if (this.elPhase) {
-      this.elPhase.textContent = mode === 'PILOTING' ? ship.flightPhase : (explorer.grounded ? 'SURFACE EXPLORATION' : 'JETPACK / AIRBORNE');
+      if (mode === 'PILOTING') {
+        this.elPhase.textContent = ship.flightPhase;
+      } else if (explorer.isSubmerged) {
+        this.elPhase.textContent = `UNDERWATER DIVE (-${Math.round(explorer.waterDepth)}m)`;
+      } else if (explorer.isSwimming) {
+        this.elPhase.textContent = 'SWIMMING (OCEAN SURFACE)';
+      } else {
+        this.elPhase.textContent = explorer.grounded ? 'SURFACE EXPLORATION' : 'JETPACK / AIRBORNE';
+      }
     }
     if (this.elAltitude) {
       this.elAltitude.textContent = `${Math.round(alt)} m`;
@@ -88,6 +98,15 @@ export class HUD {
     if (this.elBoostBar) {
       const pct = mode === 'PILOTING' ? ship.boostEnergy : explorer.jetpackFuel;
       this.elBoostBar.style.width = `${Math.round(pct)}%`;
+    }
+    if (this.elOxygenBlock && this.elOxygenBar) {
+      const showOxygen = (mode !== 'PILOTING' && (explorer.isSwimming || explorer.oxygen < 99.5));
+      this.elOxygenBlock.style.display = showOxygen ? 'block' : 'none';
+      if (showOxygen) {
+        const ox = Math.round(explorer.oxygen);
+        this.elOxygenBar.style.width = `${ox}%`;
+        this.elOxygenBar.style.background = ox < 25 ? '#ff4d6d' : '#00f5d4';
+      }
     }
     if (this.elCrosshair) {
       this.elCrosshair.style.display = mode === 'PILOTING' ? 'block' : 'none';
@@ -158,7 +177,8 @@ export class HUD {
     const h = this.radarCanvas.height;
     const cx = w / 2;
     const cy = h / 2;
-    const scale = (w * 0.44) / 2500; // Fits outer moon orbit
+    const maxOrbit = Math.max(5000, ...moons.map(m => (m.orbitRadius || 0) * 1.15));
+    const scale = (w * 0.44) / maxOrbit; // Dynamically fits outermost moon orbit
 
     ctx.clearRect(0, 0, w, h);
 

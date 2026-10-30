@@ -34,6 +34,7 @@ export class TouchControlsManager {
 
     this.btnSprint = document.getElementById('btn-touch-sprint');
     this.btnJump = document.getElementById('btn-touch-jump');
+    this.btnDive = document.getElementById('btn-touch-dive');
     this.btnInteract = document.getElementById('btn-touch-interact');
 
     this.btnFire = document.getElementById('btn-touch-fire');
@@ -425,6 +426,7 @@ export class TouchControlsManager {
 
     // On-Foot actions
     bindHold(this.btnJump, 'Space', 'jump');
+    bindHold(this.btnDive, 'KeyC', 'dive');
     bindTap(this.btnInteract, 'KeyE', 'interact');
 
     // Sprint toggle button
@@ -498,6 +500,9 @@ export class TouchControlsManager {
 
     if (this.footActions) {
       this.footActions.style.display = isPiloting ? 'none' : 'flex';
+      if (this.btnDive) {
+        this.btnDive.style.display = (!isPiloting && state.explorer?.isSwimming) ? 'flex' : 'none';
+      }
     }
     if (this.shipActions) {
       this.shipActions.style.display = isPiloting ? 'grid' : 'none';

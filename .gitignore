@@ -3,3 +3,7 @@ Thumbs.db
 *.log
 node_modules/
 dist/
+scratch/
+test_*.txt
+test_*.html
+test_*.png

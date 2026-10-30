@@ -28,6 +28,11 @@ export class Explorer {
     this.pitch = 0.22; // Camera pitch relative to character frame
     this.cameraDistance = 14;
     this.jetpackFuel = 100;
+    this.oxygen = 100;
+    this.maxOxygen = 100;
+    this.isSwimming = false;
+    this.isSubmerged = false;
+    this.waterDepth = 0;
     this.scannerPulseTimer = 0;
   }
 
@@ -500,42 +505,120 @@ export class Explorer {
     const speedScale = stickMag > 0 ? Math.min(1.0, Math.max(0.4, stickMag)) : 1.0;
     const moveSpeed = baseSpeed * speedScale;
 
+    // Detect water depth on bodies with an ocean
+    let inWater = false;
+    let distFromCenter = 0;
+    let seaR = 0;
+    let terrainHeight = 0;
+
+    if (body) {
+      const bPos = body.getWorldPosition();
+      distFromCenter = this.group.position.distanceTo(bPos);
+      const rel = this.group.position.clone().sub(bPos);
+      const dirNorm = rel.clone().normalize();
+      terrainHeight = body.getSurfaceRadiusAtDir(dirNorm.x, dirNorm.y, dirNorm.z);
+      seaR = body.seaLevelRadius || 0;
+
+      if (body.hasOcean && seaR > 0) {
+        this.waterDepth = Math.max(0, seaR - distFromCenter);
+        inWater = (distFromCenter <= seaR + 0.35 && terrainHeight < seaR);
+        this.isSwimming = inWater && (this.waterDepth > 0.4 || (distFromCenter < seaR - 0.2));
+        this.isSubmerged = inWater && (this.waterDepth > 1.65);
+      } else {
+        this.waterDepth = 0;
+        this.isSwimming = false;
+        this.isSubmerged = false;
+      }
+    }
+
+    // Oxygen consumption and replenishment
+    if (this.isSubmerged) {
+      // Deplete oxygen while head is underwater (~30s of air capacity)
+      this.oxygen = Math.max(0, this.oxygen - 3.34 * dt);
+    } else {
+      // Replenish oxygen rapidly when breathing surface air (~3s to full)
+      this.oxygen = Math.min(this.maxOxygen, this.oxygen + 38.0 * dt);
+    }
+
+    // Move direction in tangent plane
     const moveDir = new THREE.Vector3()
       .addScaledVector(forward, moveF)
       .addScaledVector(right, moveR);
     if (moveDir.lengthSq() > 0) moveDir.normalize();
 
+    // In water, swimming forward can pitch down if looking downwards
+    if (this.isSwimming && moveF > 0 && this.pitch < 0) {
+      const divePitchStrength = -this.pitch * 0.75;
+      moveDir.addScaledVector(newUp, -divePitchStrength).normalize();
+    }
+
     // Separate velocity into vertical (along localUp) and tangential components
     const vertSpeed = this.velocity.dot(newUp);
     const vertVel = newUp.clone().multiplyScalar(vertSpeed);
-    const tangentVel = moveDir.multiplyScalar(moveSpeed);
+    const swimSpeedMult = this.isSwimming ? 0.65 : 1.0;
+    const tangentVel = moveDir.multiplyScalar(moveSpeed * swimSpeedMult);
 
     this.velocity.copy(tangentVel).add(vertVel);
 
-    // 5. Gravity & Jump / Jetpack Boost
-    this.velocity.x += grav.acceleration.x * dt;
-    this.velocity.y += grav.acceleration.y * dt;
-    this.velocity.z += grav.acceleration.z * dt;
-
+    // 5. Gravity, Buoyancy & Jump / Dive / Jetpack
     let isBoosting = false;
     const wantsJump = (input.wasActionPressed ? input.wasActionPressed('jump') : false) || input.wasPressed('Space');
     const holdingJump = (input.isActionDown ? input.isActionDown('jump') : false) || input.isDown('Space');
+    const wantsDive = (input.isActionDown ? input.isActionDown('dive') : false) || input.isDown('KeyC');
 
     if (this.jumpCooldown === undefined) this.jumpCooldown = 0;
     if (this.jumpCooldown > 0) this.jumpCooldown -= dt;
 
-    if (this.grounded && (wantsJump || (holdingJump && this.jumpCooldown <= 0))) {
-      this.velocity.addScaledVector(newUp, 15.5);
-      this.grounded = false;
-      this.jumpCooldown = 0.25;
-    } else if (!this.grounded && holdingJump && this.jetpackFuel > 0) {
-      // Sci-fi jetpack boost while holding space in mid-air
-      this.velocity.addScaledVector(newUp, 38 * dt);
-      this.jetpackFuel = Math.max(0, this.jetpackFuel - 34 * dt);
-      isBoosting = true;
+    if (this.isSwimming) {
+      // Natural buoyancy towards surface
+      const targetSurfaceR = seaR - 0.45;
+      const buoyancyDelta = targetSurfaceR - distFromCenter;
+      if (buoyancyDelta > 0) {
+        this.velocity.addScaledVector(newUp, Math.min(22.0, buoyancyDelta * 14.0) * dt);
+      }
+
+      // Water drag
+      this.velocity.multiplyScalar(Math.exp(-3.2 * dt));
+
+      // Swim controls: Space = swim upward, Dive key (C) = swim downward
+      if (holdingJump) {
+        this.velocity.addScaledVector(newUp, 22.0 * dt);
+        // If at the surface, leaping out of the water
+        if (distFromCenter >= targetSurfaceR - 0.25 && wantsJump) {
+          this.velocity.addScaledVector(newUp, 14.5);
+          this.jumpCooldown = 0.35;
+        }
+      } else if (wantsDive) {
+        this.velocity.addScaledVector(newUp, -24.0 * dt);
+      }
+
+      // Emergency auto-surface thrust if oxygen reaches zero
+      if (this.oxygen <= 0.01) {
+        this.velocity.addScaledVector(newUp, 42.0 * dt);
+      }
+
+      // Reduced gravity while immersed
+      this.velocity.x += grav.acceleration.x * 0.25 * dt;
+      this.velocity.y += grav.acceleration.y * 0.25 * dt;
+      this.velocity.z += grav.acceleration.z * 0.25 * dt;
     } else {
-      if (this.grounded) {
-        this.jetpackFuel = Math.min(100, this.jetpackFuel + 45 * dt);
+      // Standard dry land gravity & jumping / jetpack
+      this.velocity.x += grav.acceleration.x * dt;
+      this.velocity.y += grav.acceleration.y * dt;
+      this.velocity.z += grav.acceleration.z * dt;
+
+      if (this.grounded && (wantsJump || (holdingJump && this.jumpCooldown <= 0))) {
+        this.velocity.addScaledVector(newUp, 15.5);
+        this.grounded = false;
+        this.jumpCooldown = 0.25;
+      } else if (!this.grounded && holdingJump && this.jetpackFuel > 0) {
+        this.velocity.addScaledVector(newUp, 38 * dt);
+        this.jetpackFuel = Math.max(0, this.jetpackFuel - 34 * dt);
+        isBoosting = true;
+      } else {
+        if (this.grounded) {
+          this.jetpackFuel = Math.min(100, this.jetpackFuel + 45 * dt);
+        }
       }
     }
 
@@ -553,7 +636,7 @@ export class Explorer {
       }
     }
 
-    // 6. Integrate position & snap to procedural terrain surface
+    // 6. Integrate position & snap to procedural terrain surface / seabed
     this.group.position.addScaledVector(this.velocity, dt);
 
     if (body) {
@@ -562,10 +645,12 @@ export class Explorer {
       const dist = rel.length() || 1;
       const dir = rel.divideScalar(dist);
       const terrainR = body.getSurfaceRadiusAtDir(dir.x, dir.y, dir.z);
-      const minR = Math.max(terrainR, body.seaLevelRadius ? body.seaLevelRadius - 0.6 : terrainR);
 
-      if (dist <= minR + 0.05) {
-        this.group.position.copy(bPos).addScaledVector(dir, minR);
+      // Floor limit is seabed (terrainR + 0.15), not artificial sea level barrier
+      const floorLimit = terrainR + 0.15;
+
+      if (dist <= floorLimit + 0.05) {
+        this.group.position.copy(bPos).addScaledVector(dir, floorLimit);
         const vDot = this.velocity.dot(dir);
         if (vDot < 0) {
           this.velocity.addScaledVector(dir, -vDot);
@@ -576,25 +661,35 @@ export class Explorer {
       }
     }
 
-    // 7. Animate walking limbs & companion drone
+    // 7. Animate limbs for walking, swimming or jetpack poses
     const horizSpeed = tangentVel.length();
-    if (horizSpeed > 0.5 && this.grounded) {
+    if (this.isSwimming) {
+      // Swimming stroke animation
+      this.walkCycle += dt * (isSprinting ? 12 : 7);
+      const stroke = Math.sin(this.walkCycle);
+      this.leftArm.rotation.x = 0.6 + stroke * 0.65;
+      this.rightArm.rotation.x = 0.6 - stroke * 0.65;
+      this.leftLeg.rotation.x = -0.4 + stroke * 0.35;
+      this.rightLeg.rotation.x = -0.4 - stroke * 0.35;
+      this.torso.rotation.x = 0.35; // horizontal swim tilt
+    } else if (horizSpeed > 0.5 && this.grounded) {
+      this.torso.rotation.x = 0;
       this.walkCycle += dt * (isSprinting ? 14 : 9);
       const swing = Math.sin(this.walkCycle) * 0.62;
       this.leftLeg.rotation.x = swing;
       this.rightLeg.rotation.x = -swing;
-      // Arms counter-swing opposite to legs
       this.leftArm.rotation.x = -swing * 0.65;
       this.rightArm.rotation.x = swing * 0.65;
       this.torso.rotation.y = swing * 0.08;
     } else if (isBoosting) {
-      // In-flight jetpack pose: legs angle slightly back, arms back
+      this.torso.rotation.x = 0;
       this.leftLeg.rotation.x = -0.35;
       this.rightLeg.rotation.x = -0.32;
       this.leftArm.rotation.x = 0.35;
       this.rightArm.rotation.x = 0.35;
       this.torso.rotation.y *= 0.85;
     } else {
+      this.torso.rotation.x = 0;
       this.leftLeg.rotation.x *= 0.82;
       this.rightLeg.rotation.x *= 0.82;
       this.leftArm.rotation.x *= 0.82;

@@ -321,6 +321,76 @@ html, body {
   transform: translate(-50%, -50%);
 }
 
+/* Navigation Markers & Off-Screen Edge Indicators */
+.nav-markers-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9;
+}
+
+.nav-marker {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: translate3d(-1000px, -1000px, 0);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  cursor: pointer;
+  user-select: none;
+  transition: opacity 0.15s ease;
+}
+
+.nav-reticle {
+  width: calc(18px * var(--ui-scale, 1.0));
+  height: calc(18px * var(--ui-scale, 1.0));
+  border: 1.5px solid var(--hud-primary);
+  transform: rotate(45deg);
+  box-shadow: 0 0 8px var(--hud-primary);
+  border-radius: 2px;
+}
+
+.nav-arrow {
+  width: 0;
+  height: 0;
+  border-left: calc(8px * var(--ui-scale, 1.0)) solid var(--hud-secondary);
+  border-top: calc(5px * var(--ui-scale, 1.0)) solid transparent;
+  border-bottom: calc(5px * var(--ui-scale, 1.0)) solid transparent;
+  filter: drop-shadow(0 0 6px var(--hud-secondary));
+  margin-bottom: 3px;
+}
+
+.nav-label {
+  font-size: calc(9.5px * var(--ui-scale, 1.0));
+  font-weight: 700;
+  color: var(--hud-text);
+  background: rgba(4, 12, 24, 0.78);
+  border: 1px solid var(--hud-border);
+  border-radius: 4px;
+  padding: 1px 6px;
+  white-space: nowrap;
+  margin-top: 3px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+.nav-marker.active-target .nav-reticle {
+  border-color: #ff007f;
+  box-shadow: 0 0 12px #ff007f;
+}
+
+.nav-marker.active-target .nav-arrow {
+  border-left-color: #ff007f;
+  filter: drop-shadow(0 0 8px #ff007f);
+}
+
+.nav-marker.active-target .nav-label {
+  border-color: #ff007f;
+  color: #ffffff;
+}
+
 /* Center Notifications & Prompt */
 #hud-notice {
   position: fixed;
@@ -572,6 +642,16 @@ html, body {
 .action-interact {
   border-color: #9ef01a;
   color: #9ef01a;
+}
+
+.action-dive {
+  border-color: #00bbf9;
+  color: #00f5d4;
+}
+
+.action-dive.active {
+  background: #00bbf9 !important;
+  color: #04101e !important;
 }
 
 .action-interact.pulse {

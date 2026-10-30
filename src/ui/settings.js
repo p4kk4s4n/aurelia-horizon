@@ -94,6 +94,7 @@ export class SettingsManager {
     this.touchSchemeContainer = document.getElementById('touch-scheme-options');
     this.touchSensSlider = document.getElementById('touch-sens-slider');
     this.touchSensVal = document.getElementById('touch-sens-val');
+    this.graphicsContainer = document.getElementById('graphics-quality-options');
     this.elInstalledVer = document.getElementById('settings-installed-version');
     this.elLatestVer = document.getElementById('settings-latest-version');
     this.elUpdateStatus = document.getElementById('settings-update-status');
@@ -105,8 +106,10 @@ export class SettingsManager {
     this.uiScale = !isNaN(savedScale) ? savedScale : this.calculateOptimalScale();
     this.applyUIScale(this.uiScale, false);
 
+    this.currentQuality = localStorage.getItem('aurelia_graphics_quality') || 'high';
     this._renderThemeButtons();
     this._renderTouchSettings();
+    this._renderGraphicsSettings();
     this._renderKeybindings();
     this.applyTheme(this.currentThemeId);
     this._bindEvents();
@@ -281,6 +284,42 @@ export class SettingsManager {
         if (this.touchSensVal) this.touchSensVal.textContent = `${val.toFixed(1)}x`;
       };
     }
+  }
+
+  setRenderer(renderer) {
+    this.renderer = renderer;
+    this.applyGraphicsQuality(this.currentQuality, false);
+  }
+
+  _renderGraphicsSettings() {
+    if (!this.graphicsContainer) return;
+    this.graphicsContainer.querySelectorAll('button').forEach((btn) => {
+      const q = btn.dataset.quality;
+      btn.classList.toggle('active', q === this.currentQuality);
+      btn.onclick = () => {
+        this.applyGraphicsQuality(q, true);
+        if (this.onNotice) {
+          this.onNotice(`Graphics Quality set to ${q.toUpperCase()}.`);
+        }
+      };
+    });
+  }
+
+  applyGraphicsQuality(quality, save = true) {
+    this.currentQuality = quality || 'high';
+    if (save) {
+      localStorage.setItem('aurelia_graphics_quality', this.currentQuality);
+    }
+    if (this.renderer) {
+      let maxPr = 2.0;
+      if (this.currentQuality === 'low') maxPr = 1.0;
+      else if (this.currentQuality === 'medium') maxPr = 1.25;
+      else if (this.currentQuality === 'high') maxPr = 1.75;
+      else if (this.currentQuality === 'ultra') maxPr = 2.5;
+      this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, maxPr));
+      this.renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+    this._renderGraphicsSettings();
   }
 
   _renderThemeButtons() {

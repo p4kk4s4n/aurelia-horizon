@@ -32,6 +32,7 @@ export const DEFAULT_KEYBINDINGS = {
   strafeRight: { label: 'Strafe Right', category: 'on_foot', primary: 'KeyD', secondary: 'ArrowRight' },
   sprint: { label: 'Sprint / Run', category: 'on_foot', primary: 'ShiftLeft', secondary: 'ShiftRight' },
   jump: { label: 'Jump / Jetpack Boost', category: 'on_foot', primary: 'Space', secondary: '' },
+  dive: { label: 'Dive / Swim Down', category: 'on_foot', primary: 'KeyC', secondary: '' },
   interact: { label: 'Interact / Collect / Board', category: 'on_foot', primary: 'KeyE', secondary: '' },
 
   // Flight Controls
@@ -45,6 +46,7 @@ export const DEFAULT_KEYBINDINGS = {
   flightRollRight: { label: '6DoF Roll Right', category: 'flight', primary: 'KeyE', secondary: '' },
   flightBoost: { label: 'Afterburner Boost', category: 'flight', primary: 'ShiftLeft', secondary: 'ShiftRight' },
   flightSAS: { label: 'Cycle SAS Flight Assist', category: 'flight', primary: 'KeyO', secondary: '' },
+  flightCycleTarget: { label: 'Cycle Nav Target', category: 'flight', primary: 'KeyT', secondary: '' },
   flightFire: { label: 'Fire Pulse Cannons', category: 'flight', primary: 'KeyF', secondary: '' },
   flightDisembark: { label: 'Disembark (Landed)', category: 'flight', primary: 'KeyE', secondary: '' },
 

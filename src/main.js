@@ -9,6 +9,7 @@ import { Ship } from './ship/ship.js';
 import { HUD } from './ui/hud.js';
 import { SettingsManager } from './ui/settings.js';
 import { TouchControlsManager } from './ui/touchControls.js';
+import { NavMarkerSystem } from './ui/navMarkers.js';
 
 const canvas = document.getElementById('game-canvas');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -19,13 +20,16 @@ renderer.toneMappingExposure = 1.1;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x050814);
-scene.fog = new THREE.FogExp2(0x0b192c, 0.00018);
+const spaceFogColor = new THREE.Color(0x0b192c);
+const underwaterFogColor = new THREE.Color(0x003554);
+scene.fog = new THREE.FogExp2(spaceFogColor, 0.00010);
 
-const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.5, 16000);
+const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.5, 35000);
 
 // Build Solar System (Tropical Planet + 3 Moons of varying size)
 const { planet, moons, allBodies } = createSolarSystem(scene);
-const { targets: spaceTargets } = createSkyAndSpaceTargets(scene);
+const skyTargets = createSkyAndSpaceTargets(scene);
+const spaceTargets = skyTargets.targets;
 
 // Spawn Explorer & Ship on Aurelia Prime's tropical island plateau near north pole
 const explorer = new Explorer(scene);
@@ -40,6 +44,15 @@ const input = new InputManager(canvas);
 const hud = new HUD();
 const touchControls = new TouchControlsManager(input, (msg, dur) => hud.showNotice(msg, dur));
 const settings = new SettingsManager((msg) => hud.showNotice(msg), touchControls, input);
+settings.setRenderer(renderer);
+
+const navMarkers = new NavMarkerSystem(camera);
+navMarkers.setBodies(allBodies);
+navMarkers.onSelectTarget = (targetBody) => {
+  ship.targetBody = targetBody;
+  ship.sasMode = 'TARGET';
+  hud.showNotice(`Nav Target Locked: ${targetBody.name.split(' (')[0]} (SAS: TARGET)`);
+};
 
 let gameMode = 'EXPLORING'; // 'EXPLORING' | 'PILOTING'
 let elapsedTime = 0;
@@ -105,18 +118,23 @@ export const gameAPI = {
     currentBody: (gameMode === 'PILOTING' ? ship.currentBody : explorer.currentBody)?.id,
     altitude: Math.round(gameMode === 'PILOTING' ? ship.altitude : explorer.altitude),
     speed: Math.round(gameMode === 'PILOTING' ? ship.speed : explorer.velocity.length()),
+    sasMode: ship.sasMode,
+    targetBody: ship.targetBody?.id,
     orbitAssist: ship.orbitAssist,
     visitedMoons: Array.from(ship.visitedMoons),
     targetsDestroyed: ship.targetsDestroyed,
     theme: settings.currentThemeId,
+    graphicsQuality: settings.currentQuality,
     settingsOpen: settings.isOpen,
     touchScheme: touchControls.scheme,
     touchVisibility: touchControls.visibility
   }),
   openSettings: (open = true) => settings.toggleModal(open),
   setTheme: (themeId) => settings.applyTheme(themeId),
+  setGraphicsQuality: (q) => settings.applyGraphicsQuality(q),
   setTouchScheme: (scheme) => touchControls.applyScheme(scheme),
   setTouchVisibility: (vis) => touchControls.applyVisibility(vis),
+  cycleTarget: () => ship.cycleTargetBody(allBodies, (msg) => hud.showNotice(msg)),
   checkGitHubUpdate: (force = false) => settings.checkGitHubAndRecache(force),
   repairAndBoard: () => {
     repairSystem.giveAndInstallAll();
@@ -129,7 +147,7 @@ export const gameAPI = {
     gameMode = 'PILOTING';
     explorer.group.visible = false;
     ship.landed = false;
-    ship.group.position.set(0, planet.radius + 180, 220);
+    ship.group.position.set(0, planet.radius + 260, 320);
     ship.group.quaternion.setFromEuler(new THREE.Euler(-0.28, 0, 0));
     ship.sasMode = 'STABILITY';
     ship.orbitAssist = false;
@@ -137,8 +155,8 @@ export const gameAPI = {
     const r = ship.group.position.length();
     const mu = planet.surfaceGravity * planet.radius * planet.radius;
     const vCirc = Math.sqrt(mu / r);
-    // Tangent vector in YZ plane perpendicular to r = (0, 540, 220)
-    ship.velocity.set(0, -vCirc * (220 / r), -vCirc * ((planet.radius + 180) / r));
+    // Tangent vector in YZ plane perpendicular to r = (0, planet.radius + 260, 320)
+    ship.velocity.set(0, -vCirc * (320 / r), -vCirc * ((planet.radius + 260) / r));
     cameraRig.initialized = false;
     hud.showNotice('Entered Stable Newtonian Orbit above Aurelia Prime! SAS: STABILITY ASSIST.');
   },
@@ -285,6 +303,40 @@ if (urlView === 'char_back') {
   ship.engineFlames.forEach(f => f.visible = true);
   ship.fireCooldown = 0;
   ship.fireCannons();
+} else if (urlView === 'dive') {
+  let minR = Infinity;
+  let oceanDir = new THREE.Vector3(1, 0, 0);
+  for (let u = -1; u <= 1; u += 0.25) {
+    for (let v = -1; v <= 1; v += 0.25) {
+      for (let w = -1; w <= 1; w += 0.25) {
+        const d = new THREE.Vector3(u, v, w);
+        if (d.lengthSq() < 0.1) continue;
+        d.normalize();
+        const r = planet.getSurfaceRadiusAtDir(d.x, d.y, d.z);
+        if (r < minR) {
+          minR = r;
+          oceanDir = d;
+        }
+      }
+    }
+  }
+  explorer.spawnOnBody(planet, oceanDir);
+  explorer.group.position.copy(oceanDir).multiplyScalar(planet.seaLevelRadius - 12);
+  explorer.cameraDistance = 7.5;
+  explorer.pitch = 0.15;
+  explorer.oxygen = 68;
+} else if (urlView === 'sun') {
+  repairSystem.giveAndInstallAll();
+  ship.setRepairedVisual(true);
+  gameMode = 'PILOTING';
+  explorer.group.visible = false;
+  ship.landed = false;
+  ship.group.position.set(0, planet.radius + 700, 1000);
+  const sunPos = new THREE.Vector3(6000, 4000, 9500);
+  ship.group.lookAt(sunPos);
+  ship.sasMode = 'STABILITY';
+  ship.velocity.set(0, 0, 0);
+  cameraRig.initialized = false;
 }
 
 // Collapsible HUD panels on small screens
@@ -318,8 +370,13 @@ window.addEventListener('resize', () => {
 });
 
 let lastTime = performance.now();
+let snapshotFrames = 0;
 
 function animate(now) {
+  if (params.has('snapshot') && snapshotFrames >= 4) {
+    return;
+  }
+  snapshotFrames++;
   requestAnimationFrame(animate);
   const dt = Math.min(0.05, (now - lastTime) / 1000);
   lastTime = now;
@@ -330,18 +387,24 @@ function animate(now) {
     moon.updateOrbit(dt);
   }
 
-  // 2. Update rotating repair parts & projectiles
+  // 2. Update ocean wave displacement, animated sun plasma, and solar flares
+  planet.updateOcean(elapsedTime);
+  skyTargets.update(elapsedTime, camera);
+
+  // 3. Update rotating repair parts & projectiles
   repairSystem.update(dt, elapsedTime);
   ship.updateProjectilesAndTargets(dt, spaceTargets);
 
   let promptText = '';
 
   if (settings.isOpen) {
+    navMarkers.navLayer.style.display = 'none';
     input.consumeFrame();
     renderer.render(scene, camera);
     input.endFrame();
     return;
   }
+  navMarkers.navLayer.style.display = 'block';
 
   // Dynamic Keyboard shortcuts for quick testing (1: Repair+Board, 2: Planet Orbit, 3/4/5: Moons)
   if (input.wasActionPressed('quickRepair') || input.wasPressed('Digit1')) gameAPI.repairAndBoard();
@@ -421,9 +484,16 @@ function animate(now) {
       const boostKey = input.getActionKeyLabel('flightBoost');
       const rollLKey = input.getActionKeyLabel('flightRollLeft');
       const rollRKey = input.getActionKeyLabel('flightRollRight');
+      const targetKey = input.getActionKeyLabel('flightCycleTarget');
       promptText = isTouch
         ? `Tap SAS to cycle Flight Computer (${ship.sasMode}) • BOOST for afterburners`
-        : `Press [${sasKey}] to cycle SAS Flight Computer (${ship.sasMode}) • [${boostKey}] Boost • [${rollLKey}/${rollRKey}] 6DoF Roll`;
+        : `Press [${sasKey}] to cycle SAS (${ship.sasMode}) • [${targetKey}] Target • [${boostKey}] Boost • [${rollLKey}/${rollRKey}] Roll`;
+    }
+
+    // Cycle Nav Target (Key T or dynamic key)
+    const wantsCycleTarget = (input.wasActionPressed ? input.wasActionPressed('flightCycleTarget') : false) || input.wasPressed('KeyT');
+    if (wantsCycleTarget) {
+      ship.cycleTargetBody(allBodies, (msg) => hud.showNotice(msg));
     }
   }
 
@@ -434,6 +504,20 @@ function animate(now) {
   const spaceColor = new THREE.Color(0x040711);
   const tropicalSkyColor = new THREE.Color(0x16425b);
   scene.background.copy(spaceColor).lerp(tropicalSkyColor, atmoFactor * 0.65);
+
+  // Dynamic fog adjustment: turquoise underwater fog vs space fog
+  const camDistToPlanetCenter = camera.position.distanceTo(planet.getWorldPosition());
+  const isCamUnderwater = camDistToPlanetCenter < (planet.seaLevelRadius || planet.radius);
+  if (isCamUnderwater) {
+    scene.fog.color.copy(underwaterFogColor);
+    scene.fog.density = 0.0035;
+  } else {
+    scene.fog.color.copy(spaceFogColor);
+    scene.fog.density = 0.00010;
+  }
+
+  // Update planetary nav reticles and off-screen edge arrows
+  navMarkers.update(activePos, gameMode, ship.targetBody);
 
   hud.update(dt, {
     mode: gameMode,
