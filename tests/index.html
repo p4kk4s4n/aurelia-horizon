@@ -28,6 +28,8 @@
     import { UI_COLOR_SCHEMES } from '../src/ui/settings.js';
     import { InputManager } from '../src/input.js';
     import { TouchControlsManager } from '../src/ui/touchControls.js';
+    import { Explorer } from '../src/player/explorer.js';
+    import * as THREE from 'three';
 
     const logs = [];
     let passed = 0;
@@ -157,6 +159,17 @@
     assert(touchOverlay.classList.contains('visible'), 'applyVisibility always shows touch overlay');
     touchMgr.applyVisibility('hidden');
     assert(!touchOverlay.classList.contains('visible'), 'applyVisibility hidden hides touch overlay');
+
+    // 8. Low-Poly Character Sheet Model Structure
+    const mockScene = new THREE.Scene();
+    const testExplorer = new Explorer(mockScene);
+    assert(Boolean(testExplorer.torso), 'Explorer has sculpted torso');
+    assert(Boolean(testExplorer.head), 'Explorer has helmet and crown crest');
+    assert(Boolean(testExplorer.crystalCore), 'Explorer has hexagonal crystal power core');
+    assert(Boolean(testExplorer.companionDrone), 'Explorer has floating companion drone');
+    assert(Boolean(testExplorer.leftArm && testExplorer.rightArm), 'Explorer has articulated left and right arms');
+    assert(Boolean(testExplorer.leftLeg && testExplorer.rightLeg), 'Explorer has articulated left and right legs');
+    assert(Boolean(testExplorer.jetFlameLeft && testExplorer.jetFlameRight), 'Explorer has dual jetpack boost thrusters');
 
     const summary = `SUMMARY: ${passed} passed, ${failed} failed`;
     logs.push('', summary);

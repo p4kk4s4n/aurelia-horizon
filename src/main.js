@@ -171,6 +171,25 @@ if (params.get('theme')) settings.applyTheme(params.get('theme'));
 if (params.get('touch')) touchControls.applyVisibility(params.get('touch'));
 if (params.get('scheme')) touchControls.applyScheme(params.get('scheme'));
 
+const urlView = params.get('view');
+if (urlView === 'char_back') {
+  explorer.cameraDistance = 5.0;
+  explorer.pitch = 0.08;
+  explorer.visualRoot.rotation.y = 0;
+} else if (urlView === 'char_front') {
+  explorer.cameraDistance = 5.0;
+  explorer.pitch = 0.08;
+  explorer.visualRoot.rotation.y = Math.PI * 0.92;
+} else if (urlView === 'char_boost') {
+  explorer.cameraDistance = 5.6;
+  explorer.pitch = 0.12;
+  explorer.grounded = false;
+  explorer.visualRoot.rotation.y = 0;
+  explorer.velocity.set(0, 8, -5);
+  explorer.jetFlameLeft.visible = true;
+  explorer.jetFlameRight.visible = true;
+}
+
 // Collapsible HUD panels on small screens
 const panelLeft = document.getElementById('hud-left');
 const panelRight = document.getElementById('hud-right');
