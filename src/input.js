@@ -4,6 +4,7 @@ export function formatKeyCode(code) {
   if (!code) return 'NONE';
   if (code.startsWith('Key')) return code.slice(3).toUpperCase();
   if (code.startsWith('Digit')) return code.slice(5);
+  if (code.startsWith('Numpad')) return 'NUM-' + code.slice(6);
   switch (code) {
     case 'Space': return 'SPACE';
     case 'ShiftLeft': return 'L-SHIFT';
@@ -50,13 +51,13 @@ export const DEFAULT_KEYBINDINGS = {
   flightFire: { label: 'Fire Pulse Cannons', category: 'flight', primary: 'KeyF', secondary: '' },
   flightDisembark: { label: 'Disembark (Landed)', category: 'flight', primary: 'KeyE', secondary: '' },
 
-  // System & Quick Shortcuts
+  // System & Fast Travel Shortcuts
   toggleSettings: { label: 'Settings & Updates', category: 'system', primary: 'KeyP', secondary: '' },
-  quickRepair: { label: 'Quick Repair & Board', category: 'shortcuts', primary: 'Digit1', secondary: '' },
-  quickOrbit: { label: 'Quick Planet Orbit View', category: 'shortcuts', primary: 'Digit2', secondary: '' },
-  quickMoon1: { label: 'Quick Moon I', category: 'shortcuts', primary: 'Digit3', secondary: '' },
-  quickMoon2: { label: 'Quick Moon II', category: 'shortcuts', primary: 'Digit4', secondary: '' },
-  quickMoon3: { label: 'Quick Moon III', category: 'shortcuts', primary: 'Digit5', secondary: '' }
+  quickRepair: { label: 'Fast Travel: Aurelia Base Camp', category: 'shortcuts', primary: 'Digit1', secondary: 'Numpad1' },
+  quickOrbit: { label: 'Fast Travel: Planet Orbit View', category: 'shortcuts', primary: 'Digit2', secondary: 'Numpad2' },
+  quickMoon1: { label: 'Fast Travel: Moon I (Lumen)', category: 'shortcuts', primary: 'Digit3', secondary: 'Numpad3' },
+  quickMoon2: { label: 'Fast Travel: Moon II (Pyra)', category: 'shortcuts', primary: 'Digit4', secondary: 'Numpad4' },
+  quickMoon3: { label: 'Fast Travel: Moon III (Goliath)', category: 'shortcuts', primary: 'Digit5', secondary: 'Numpad5' }
 };
 
 const STORAGE_KEYBINDINGS = 'aurelia_keybindings';

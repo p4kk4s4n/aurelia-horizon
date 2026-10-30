@@ -296,6 +296,14 @@ export class SettingsManager {
     this.applyGraphicsQuality(this.currentQuality, false);
   }
 
+  setExplorer(explorer) {
+    this.explorer = explorer;
+    if (this.explorer && typeof this.explorer.setPolygonDensity === 'function') {
+      this.explorer.setPolygonDensity(this.currentQuality);
+    }
+    this._renderGraphicsSettings();
+  }
+
   _renderGraphicsSettings() {
     if (!this.graphicsContainer) return;
     this.graphicsContainer.querySelectorAll('button').forEach((btn) => {
@@ -304,10 +312,24 @@ export class SettingsManager {
       btn.onclick = () => {
         this.applyGraphicsQuality(q, true);
         if (this.onNotice) {
-          this.onNotice(`Graphics Quality set to ${q.toUpperCase()}.`);
+          const desc = q === 'high' ? 'HIGH (3X TRIPLE DENSITY)' : q.toUpperCase();
+          this.onNotice(`Graphics Fidelity set to ${desc}.`);
         }
       };
     });
+
+    const densityNote = document.getElementById('settings-poly-density');
+    if (densityNote) {
+      const polyInfo = this.explorer?.getPolygonCount ? this.explorer.getPolygonCount() : null;
+      const countStr = polyInfo ? ` (~${polyInfo.triangles.toLocaleString()} Polygons)` : '';
+      const labels = {
+        low: `Character Mesh: Low (1x Baseline${countStr})`,
+        medium: `Character Mesh: Medium (2x Density${countStr})`,
+        high: `Character Mesh: High (3x Triple Density • Sculpted${countStr})`,
+        ultra: `Character Mesh: Ultra (4x Cinematic Density${countStr})`
+      };
+      densityNote.textContent = labels[this.currentQuality] || `Character Mesh: ${this.currentQuality.toUpperCase()}`;
+    }
   }
 
   applyGraphicsQuality(quality, save = true) {
@@ -323,6 +345,9 @@ export class SettingsManager {
       else if (this.currentQuality === 'ultra') maxPr = 2.5;
       this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, maxPr));
       this.renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+    if (this.explorer && typeof this.explorer.setPolygonDensity === 'function') {
+      this.explorer.setPolygonDensity(this.currentQuality);
     }
     this._renderGraphicsSettings();
   }

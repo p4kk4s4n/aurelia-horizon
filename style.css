@@ -225,6 +225,21 @@ html, body {
   color: var(--hud-primary) !important;
 }
 
+.fast-travel-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 3px;
+  margin-top: 2px;
+}
+
+.fast-travel-grid button {
+  padding: calc(4px * var(--ui-scale, 1.0)) calc(2px * var(--ui-scale, 1.0));
+  font-size: calc(9.5px * var(--ui-scale, 1.0));
+  font-weight: 700;
+  text-align: center;
+  white-space: nowrap;
+}
+
 .moon-btn-row {
   display: flex;
   gap: 4px;

@@ -2,12 +2,65 @@ import * as THREE from 'three';
 import { evaluateGravity } from '../world/gravity.js';
 
 /**
- * Third-person Explorer character with faithfully modeled low-poly sci-fi spacesuit:
+ * Density presets for character polygon scaling:
+ * - low: 1x baseline (retro/ultra-fast)
+ * - medium: 2x density (balanced)
+ * - high: 3x density (Default — Triple Density sculpted high-fidelity meshes)
+ * - ultra: 4x density (max cinematic fidelity)
+ */
+export const DENSITY_PRESETS = {
+  low: {
+    mult: 1,
+    cylSegs: 7,
+    sphereW: 9,
+    sphereH: 7,
+    torusRadial: 6,
+    torusTubular: 12,
+    tubeRadial: 5,
+    tubeTubular: 8
+  },
+  medium: {
+    mult: 2,
+    cylSegs: 14,
+    sphereW: 18,
+    sphereH: 14,
+    torusRadial: 8,
+    torusTubular: 18,
+    tubeRadial: 8,
+    tubeTubular: 14
+  },
+  high: {
+    mult: 3,
+    cylSegs: 22,
+    sphereW: 28,
+    sphereH: 20,
+    torusRadial: 12,
+    torusTubular: 26,
+    tubeRadial: 10,
+    tubeTubular: 22
+  },
+  ultra: {
+    mult: 4,
+    cylSegs: 30,
+    sphereW: 36,
+    sphereH: 26,
+    torusRadial: 16,
+    torusTubular: 32,
+    tubeRadial: 12,
+    tubeTubular: 28
+  }
+};
+
+/**
+ * Third-person Explorer character with faithfully modeled sci-fi spacesuit:
+ * - Scalable polygon count density (Triple Density by default, scalable in settings)
+ * - True 2-bone hierarchical articulated limbs with bending knees and elbows
+ * - Athletic sprinting kinematics with 20° torso lean, high knee drive, deep back-flex, and 90° arm pumps
+ * - Multi-phase dynamic jump (takeoff crouch, aerial knee tuck with balance arms, and springy landing shock absorption)
  * - Helmet with sagittal crown crest, dark faceted visor, temple pods & collar seal
- * - Armored torso with off-white breastplate, dark harness & groin armor
+ * - Armored torso with off-white breastplate, dark harness, groin plate & belt
  * - Crystalline Jetpack Power Core: vertical hexagonal bipyramid crystal, dark bracket & 4 cyan conduit cables
  * - Floating companion drone / crystal familiar hovering beside shoulder
- * - Articulated arms (with wrist console on left gauntlet) & legs with knee pads and boots
  */
 export class Explorer {
   constructor(scene) {
@@ -15,6 +68,8 @@ export class Explorer {
     this.group = new THREE.Group();
     this.group.name = 'Explorer';
 
+    this.currentDensity = 'high'; // Default: Triple Density (3x)
+    this._initMaterials();
     this._buildCharacterFromSheet();
     scene.add(this.group);
 
@@ -25,7 +80,7 @@ export class Explorer {
     this.altitude = 0;
     this.walkCycle = 0;
     this.animTime = 0;
-    this.pitch = 0.22; // Camera pitch relative to character frame
+    this.pitch = 0.22;
     this.cameraDistance = 14;
     this.jetpackFuel = 100;
     this.oxygen = 100;
@@ -34,84 +89,136 @@ export class Explorer {
     this.isSubmerged = false;
     this.waterDepth = 0;
     this.scannerPulseTimer = 0;
+
+    // Jump & landing kinematics tracking
+    this.jumpPhase = 'idle'; // 'idle' | 'crouch' | 'ascent' | 'descent' | 'land'
+    this.jumpCooldown = 0;
+    this.landingCompression = 0;
+    this.wasGroundedLastFrame = true;
+    this.prevVertSpeed = 0;
   }
 
-  _buildCharacterFromSheet() {
-    this.visualRoot = new THREE.Group();
-    this.group.add(this.visualRoot);
-
-    // 1. Materials Palette matching concept character sheet
-    // Bone / Off-White Primary Armor
-    const armorMat = new THREE.MeshStandardMaterial({
+  _initMaterials() {
+    this.armorMat = new THREE.MeshStandardMaterial({
       color: 0xd8dad3,
       roughness: 0.58,
       metalness: 0.12,
-      flatShading: true
+      flatShading: false
     });
 
-    // Dark Slate / Charcoal Harness, Joints & Undersuit
-    const darkMat = new THREE.MeshStandardMaterial({
+    this.darkMat = new THREE.MeshStandardMaterial({
       color: 0x2c353b,
       roughness: 0.68,
       metalness: 0.22,
-      flatShading: true
+      flatShading: false
     });
 
-    // Faceted Dark Teal-Slate Visor Plate
-    const visorMat = new THREE.MeshStandardMaterial({
+    this.visorMat = new THREE.MeshStandardMaterial({
       color: 0x16242c,
       emissive: 0x08151c,
       roughness: 0.22,
       metalness: 0.82,
-      flatShading: true
+      flatShading: false
     });
 
-    // Glowing Cyan Crystal Power Core
     this.crystalMat = new THREE.MeshStandardMaterial({
       color: 0x00f5d4,
       emissive: 0x00bbf9,
       emissiveIntensity: 0.92,
       roughness: 0.18,
       metalness: 0.35,
-      flatShading: true
+      flatShading: false
     });
 
-    // Glowing Neon Conduit Cable Material
-    const conduitMat = new THREE.MeshBasicMaterial({
+    this.conduitMat = new THREE.MeshBasicMaterial({
       color: 0x00f5d4
     });
 
-    // Wrist Communicator Screen / Status Accent
-    const accentMat = new THREE.MeshStandardMaterial({
+    this.accentMat = new THREE.MeshStandardMaterial({
       color: 0x48cae4,
       emissive: 0x0096c7,
       emissiveIntensity: 0.6,
       roughness: 0.3,
-      flatShading: true
+      flatShading: false
     });
 
-    // Boot Soles
-    const soleMat = new THREE.MeshStandardMaterial({
+    this.soleMat = new THREE.MeshStandardMaterial({
       color: 0x1c2227,
       roughness: 0.88,
-      flatShading: true
+      flatShading: false
     });
 
-    // Crest Material (slight warm tint matching the crown ridge)
-    const crestMat = new THREE.MeshStandardMaterial({
+    this.crestMat = new THREE.MeshStandardMaterial({
       color: 0xc4c8bf,
       roughness: 0.6,
-      flatShading: true
+      flatShading: false
     });
+  }
 
-    // 2. Torso & Abdomen
+  setPolygonDensity(densityKey = 'high') {
+    if (!DENSITY_PRESETS[densityKey]) densityKey = 'high';
+    if (this.currentDensity === densityKey && this.visualRoot) return;
+    this.currentDensity = densityKey;
+    this._rebuildCharacterMeshes();
+  }
+
+  _rebuildCharacterMeshes() {
+    if (this.visualRoot) {
+      // Dispose old geometries
+      this.visualRoot.traverse((obj) => {
+        if (obj.isMesh && obj.geometry) {
+          obj.geometry.dispose();
+        }
+      });
+      this.group.remove(this.visualRoot);
+      this.visualRoot = null;
+    }
+    this._buildCharacterFromSheet();
+  }
+
+  getPolygonCount() {
+    let triangles = 0;
+    let vertices = 0;
+    if (this.visualRoot) {
+      this.visualRoot.traverse((obj) => {
+        if (obj.isMesh && obj.geometry) {
+          if (obj.geometry.index) {
+            triangles += obj.geometry.index.count / 3;
+          } else if (obj.geometry.attributes.position) {
+            triangles += obj.geometry.attributes.position.count / 3;
+          }
+          if (obj.geometry.attributes.position) {
+            vertices += obj.geometry.attributes.position.count;
+          }
+        }
+      });
+    }
+    return { triangles: Math.round(triangles), vertices };
+  }
+
+  _buildCharacterFromSheet() {
+    const preset = DENSITY_PRESETS[this.currentDensity] || DENSITY_PRESETS.high;
+    const { cylSegs, sphereW, sphereH, torusRadial, torusTubular, tubeRadial, tubeTubular } = preset;
+
+    this.visualRoot = new THREE.Group();
+    this.group.add(this.visualRoot);
+
+    const armorMat = this.armorMat;
+    const darkMat = this.darkMat;
+    const visorMat = this.visorMat;
+    const conduitMat = this.conduitMat;
+    const accentMat = this.accentMat;
+    const soleMat = this.soleMat;
+    const crestMat = this.crestMat;
+
+    // 1. Torso & Abdomen
     this.torso = new THREE.Group();
     this.torso.position.y = 1.55;
     this.visualRoot.add(this.torso);
 
-    // Chest Breastplate (faceted upper torso)
-    const chestGeo = new THREE.CylinderGeometry(0.44, 0.36, 0.62, 7);
-    chestGeo.rotateY(Math.PI / 7);
+    // Chest Breastplate (high density contoured upper torso)
+    const chestGeo = new THREE.CylinderGeometry(0.44, 0.36, 0.62, cylSegs);
+    chestGeo.rotateY(Math.PI / cylSegs);
     const chestMesh = new THREE.Mesh(chestGeo, armorMat);
     chestMesh.position.y = 0.28;
     this.torso.add(chestMesh);
@@ -122,56 +229,56 @@ export class Explorer {
     strapMesh.position.set(0, 0.54, 0);
     this.torso.add(strapMesh);
 
-    // Abdomen & Spine Flex Joint (dark midsection)
-    const midriffGeo = new THREE.CylinderGeometry(0.32, 0.34, 0.36, 6);
+    // Abdomen & Spine Flex Joint (dark contoured midsection)
+    const midriffGeo = new THREE.CylinderGeometry(0.32, 0.34, 0.36, cylSegs);
     const midriffMesh = new THREE.Mesh(midriffGeo, darkMat);
     midriffMesh.position.y = -0.15;
     this.torso.add(midriffMesh);
 
     // Belt Ring with side buckle clips
-    const beltGeo = new THREE.CylinderGeometry(0.36, 0.36, 0.12, 8);
+    const beltGeo = new THREE.CylinderGeometry(0.36, 0.36, 0.12, cylSegs);
     const beltMesh = new THREE.Mesh(beltGeo, darkMat);
     beltMesh.position.y = -0.32;
     this.torso.add(beltMesh);
 
     // Pelvis Armor
-    const pelvisGeo = new THREE.CylinderGeometry(0.35, 0.28, 0.28, 6);
+    const pelvisGeo = new THREE.CylinderGeometry(0.35, 0.28, 0.28, cylSegs);
     const pelvisMesh = new THREE.Mesh(pelvisGeo, armorMat);
     pelvisMesh.position.y = -0.50;
     this.torso.add(pelvisMesh);
 
     // Dark triangular groin armor plate in front
-    const groinGeo = new THREE.ConeGeometry(0.18, 0.28, 3);
+    const groinGeo = new THREE.ConeGeometry(0.18, 0.28, Math.max(4, Math.floor(cylSegs / 4)));
     groinGeo.rotateX(Math.PI);
     const groinMesh = new THREE.Mesh(groinGeo, darkMat);
     groinMesh.position.set(0, -0.48, -0.24);
     this.torso.add(groinMesh);
 
-    // 3. Head & Helmet
+    // 2. Head & Helmet (High density smooth dome)
     this.head = new THREE.Group();
     this.head.position.y = 0.76;
     this.torso.add(this.head);
 
     // Collar seal ring
-    const collarGeo = new THREE.TorusGeometry(0.24, 0.05, 6, 12);
+    const collarGeo = new THREE.TorusGeometry(0.24, 0.05, torusRadial, torusTubular);
     collarGeo.rotateX(Math.PI / 2);
     const collarMesh = new THREE.Mesh(collarGeo, darkMat);
     collarMesh.position.y = -0.12;
     this.head.add(collarMesh);
 
     // Helmet Dome
-    const domeGeo = new THREE.SphereGeometry(0.38, 9, 7);
+    const domeGeo = new THREE.SphereGeometry(0.38, sphereW, sphereH);
     domeGeo.scale(0.95, 1.05, 1.05);
     const domeMesh = new THREE.Mesh(domeGeo, armorMat);
     this.head.add(domeMesh);
 
     // Crown Crest (sagittal crest ridge sweeping over the crown)
     const crestGroup = new THREE.Group();
-    const crestSeg1 = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.35, 4), crestMat);
+    const crestSeg1 = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.35, Math.max(4, Math.floor(cylSegs / 3))), crestMat);
     crestSeg1.rotation.set(Math.PI * 0.35, 0, 0);
     crestSeg1.position.set(0, 0.35, 0.05);
 
-    const crestSeg2 = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.32, 4), crestMat);
+    const crestSeg2 = new THREE.Mesh(new THREE.ConeGeometry(0.08, 0.32, Math.max(4, Math.floor(cylSegs / 3))), crestMat);
     crestSeg2.rotation.set(Math.PI * 0.18, 0, 0);
     crestSeg2.position.set(0, 0.38, -0.12);
 
@@ -195,7 +302,7 @@ export class Explorer {
     this.head.add(chinMesh);
 
     // Temple Sensor Pods (left & right ears)
-    const podGeo = new THREE.OctahedronGeometry(0.09, 0);
+    const podGeo = new THREE.OctahedronGeometry(0.09, Math.max(0, Math.floor(preset.mult - 1)));
     podGeo.scale(0.8, 1.2, 1.0);
     const leftPod = new THREE.Mesh(podGeo, darkMat);
     leftPod.position.set(-0.36, 0.02, 0);
@@ -203,7 +310,7 @@ export class Explorer {
     rightPod.position.set(0.36, 0.02, 0);
     this.head.add(leftPod, rightPod);
 
-    // 4. Backpack Power Core ("Crystalline Jetpack")
+    // 3. Backpack Power Core ("Crystalline Jetpack")
     this.jetpack = new THREE.Group();
     this.jetpack.position.set(0, 0.22, 0.32);
     this.torso.add(this.jetpack);
@@ -213,7 +320,7 @@ export class Explorer {
     const frameMesh = new THREE.Mesh(frameGeo, darkMat);
     this.jetpack.add(frameMesh);
 
-    // Dual vertical glowing cyan power bars on the frame back
+    // Dual vertical glowing cyan power bars on frame back
     const barGeo = new THREE.BoxGeometry(0.035, 0.46, 0.02);
     const leftBar = new THREE.Mesh(barGeo, conduitMat);
     leftBar.position.set(-0.14, 0, 0.115);
@@ -225,14 +332,14 @@ export class Explorer {
     const crystalGroup = new THREE.Group();
     crystalGroup.position.set(0, 0, 0.06);
 
-    const hexShaftGeo = new THREE.CylinderGeometry(0.18, 0.18, 0.65, 6);
+    const hexShaftGeo = new THREE.CylinderGeometry(0.18, 0.18, 0.65, Math.max(6, Math.floor(cylSegs * 0.75)));
     const hexShaft = new THREE.Mesh(hexShaftGeo, this.crystalMat);
 
-    const hexTopGeo = new THREE.ConeGeometry(0.18, 0.38, 6);
+    const hexTopGeo = new THREE.ConeGeometry(0.18, 0.38, Math.max(6, Math.floor(cylSegs * 0.75)));
     const hexTop = new THREE.Mesh(hexTopGeo, this.crystalMat);
     hexTop.position.y = 0.515;
 
-    const hexBottomGeo = new THREE.ConeGeometry(0.18, 0.38, 6);
+    const hexBottomGeo = new THREE.ConeGeometry(0.18, 0.38, Math.max(6, Math.floor(cylSegs * 0.75)));
     hexBottomGeo.rotateX(Math.PI);
     const hexBottom = new THREE.Mesh(hexBottomGeo, this.crystalMat);
     hexBottom.position.y = -0.515;
@@ -241,14 +348,13 @@ export class Explorer {
     this.crystalCore = crystalGroup;
     this.jetpack.add(crystalGroup);
 
-    // 4 Curved Glowing Conduit Cables (looping from crystal casing around to character ribs)
+    // 4 Curved Glowing Conduit Cables
     const buildConduitCurve = (p0, p1, p2) => {
       const curve = new THREE.QuadraticBezierCurve3(p0, p1, p2);
-      const tubeGeo = new THREE.TubeGeometry(curve, 8, 0.022, 5, false);
+      const tubeGeo = new THREE.TubeGeometry(curve, tubeTubular, 0.022, tubeRadial, false);
       return new THREE.Mesh(tubeGeo, conduitMat);
     };
 
-    // Upper left & right cables
     const cableUL = buildConduitCurve(
       new THREE.Vector3(-0.16, 0.18, 0.06),
       new THREE.Vector3(-0.36, 0.12, -0.05),
@@ -259,7 +365,6 @@ export class Explorer {
       new THREE.Vector3(0.36, 0.12, -0.05),
       new THREE.Vector3(0.28, 0.04, -0.22)
     );
-    // Lower left & right cables
     const cableLL = buildConduitCurve(
       new THREE.Vector3(-0.16, -0.16, 0.06),
       new THREE.Vector3(-0.38, -0.22, -0.05),
@@ -273,7 +378,7 @@ export class Explorer {
     this.jetpack.add(cableUL, cableUR, cableLL, cableLR);
 
     // Dual Jetpack Thruster Nozzles & Boost Flames
-    const nozzleGeo = new THREE.CylinderGeometry(0.08, 0.06, 0.18, 6);
+    const nozzleGeo = new THREE.CylinderGeometry(0.08, 0.06, 0.18, cylSegs);
     nozzleGeo.rotateX(Math.PI);
     const leftNozzle = new THREE.Mesh(nozzleGeo, darkMat);
     leftNozzle.position.set(-0.14, -0.42, 0);
@@ -281,7 +386,7 @@ export class Explorer {
     rightNozzle.position.set(0.14, -0.42, 0);
     this.jetpack.add(leftNozzle, rightNozzle);
 
-    const flameGeo = new THREE.ConeGeometry(0.14, 0.85, 8);
+    const flameGeo = new THREE.ConeGeometry(0.14, 0.85, cylSegs);
     flameGeo.rotateX(Math.PI);
     const flameMat = new THREE.MeshBasicMaterial({ color: 0x00f5d4, transparent: true, opacity: 0.9 });
 
@@ -295,118 +400,146 @@ export class Explorer {
 
     this.jetpack.add(this.jetFlameLeft, this.jetFlameRight);
 
-    // 5. Floating Companion Drone ("Hovering Crystal Familiar")
+    // 4. Floating Companion Drone ("Hovering Crystal Familiar")
     this.companionDrone = new THREE.Group();
     this.companionDrone.position.set(0.62, 2.38, -0.18);
     this.visualRoot.add(this.companionDrone);
 
-    const droneCoreGeo = new THREE.OctahedronGeometry(0.13, 0);
+    const droneCoreGeo = new THREE.OctahedronGeometry(0.13, Math.max(0, Math.floor(preset.mult - 1)));
     const droneCore = new THREE.Mesh(droneCoreGeo, this.crystalMat);
-    const droneHaloGeo = new THREE.TorusGeometry(0.20, 0.02, 5, 14);
+    const droneHaloGeo = new THREE.TorusGeometry(0.20, 0.02, torusRadial, torusTubular);
     droneHaloGeo.rotateX(Math.PI * 0.35);
     const droneHalo = new THREE.Mesh(droneHaloGeo, darkMat);
     this.companionDrone.add(droneCore, droneHalo);
 
-    // 6. Articulated Arms
-    // Left Arm (with Wrist Communicator Console)
+    // 5. Articulated 2-Bone Arms with Bending Elbows
+    // Left Arm (Shoulder Joint)
     this.leftArm = new THREE.Group();
     this.leftArm.position.set(-0.46, 0.44, 0);
     this.torso.add(this.leftArm);
 
-    const armUpperGeo = new THREE.CylinderGeometry(0.11, 0.09, 0.42, 6);
-    armUpperGeo.translate(0, -0.21, 0);
+    // Shoulder Pauldron Guard
+    const pauldronGeo = new THREE.SphereGeometry(0.14, sphereW, sphereH);
+    pauldronGeo.scale(1.1, 0.75, 1.0);
+    const leftPauldron = new THREE.Mesh(pauldronGeo, armorMat);
+    leftPauldron.position.set(-0.02, 0.02, 0);
+    this.leftArm.add(leftPauldron);
+
+    // Upper Arm (bicep/tricep)
+    const armUpperGeo = new THREE.CylinderGeometry(0.11, 0.09, 0.38, cylSegs);
+    armUpperGeo.translate(0, -0.19, 0);
     const leftUpperArm = new THREE.Mesh(armUpperGeo, armorMat);
     this.leftArm.add(leftUpperArm);
 
-    // Left Elbow Joint (dark band)
-    const elbowGeo = new THREE.SphereGeometry(0.10, 6, 6);
+    // Left Forearm Group (Elbow Joint Child)
+    this.leftForearmGroup = new THREE.Group();
+    this.leftForearmGroup.position.set(0, -0.38, 0);
+    this.leftArm.add(this.leftForearmGroup);
+
+    // Left Elbow Joint (dark flex sleeve)
+    const elbowGeo = new THREE.SphereGeometry(0.095, sphereW, sphereH);
     const leftElbow = new THREE.Mesh(elbowGeo, darkMat);
-    leftElbow.position.set(0, -0.42, 0);
-    this.leftArm.add(leftElbow);
+    this.leftForearmGroup.add(leftElbow);
 
-    // Left Forearm with Wrist Communicator
-    const armForeGeo = new THREE.CylinderGeometry(0.10, 0.08, 0.44, 6);
-    armForeGeo.translate(0, -0.22, 0);
+    // Left Forearm Gauntlet
+    const armForeGeo = new THREE.CylinderGeometry(0.10, 0.08, 0.40, cylSegs);
+    armForeGeo.translate(0, -0.20, 0);
     const leftForearm = new THREE.Mesh(armForeGeo, armorMat);
-    leftForearm.position.y = -0.42;
-    this.leftArm.add(leftForearm);
+    this.leftForearmGroup.add(leftForearm);
 
-    // Wrist console / communicator pad on left forearm (as in character sheet)
+    // Wrist console / communicator pad on left forearm
     const wristPadGeo = new THREE.BoxGeometry(0.08, 0.16, 0.07);
     const wristPad = new THREE.Mesh(wristPadGeo, accentMat);
-    wristPad.position.set(-0.08, -0.62, 0.02);
-    this.leftArm.add(wristPad);
+    wristPad.position.set(-0.08, -0.20, 0.02);
+    this.leftForearmGroup.add(wristPad);
 
-    // Left Tactical Glove (dark hand)
-    const handGeo = new THREE.BoxGeometry(0.09, 0.15, 0.12);
-    handGeo.translate(0, -0.075, 0);
+    // Left Tactical Glove
+    const handGeo = new THREE.BoxGeometry(0.09, 0.14, 0.12);
+    handGeo.translate(0, -0.07, 0);
     const leftHand = new THREE.Mesh(handGeo, darkMat);
-    leftHand.position.y = -0.86;
-    this.leftArm.add(leftHand);
+    leftHand.position.y = -0.40;
+    this.leftForearmGroup.add(leftHand);
 
-    // Right Arm
+    // Right Arm (Shoulder Joint)
     this.rightArm = new THREE.Group();
     this.rightArm.position.set(0.46, 0.44, 0);
     this.torso.add(this.rightArm);
 
+    const rightPauldron = new THREE.Mesh(pauldronGeo, armorMat);
+    rightPauldron.position.set(0.02, 0.02, 0);
+    this.rightArm.add(rightPauldron);
+
     const rightUpperArm = new THREE.Mesh(armUpperGeo, armorMat);
     this.rightArm.add(rightUpperArm);
 
+    // Right Forearm Group (Elbow Joint Child)
+    this.rightForearmGroup = new THREE.Group();
+    this.rightForearmGroup.position.set(0, -0.38, 0);
+    this.rightArm.add(this.rightForearmGroup);
+
     const rightElbow = new THREE.Mesh(elbowGeo, darkMat);
-    rightElbow.position.set(0, -0.42, 0);
-    this.rightArm.add(rightElbow);
+    this.rightForearmGroup.add(rightElbow);
 
     const rightForearm = new THREE.Mesh(armForeGeo, armorMat);
-    rightForearm.position.y = -0.42;
-    this.rightArm.add(rightForearm);
+    this.rightForearmGroup.add(rightForearm);
 
     const rightHand = new THREE.Mesh(handGeo, darkMat);
-    rightHand.position.y = -0.86;
-    this.rightArm.add(rightHand);
+    rightHand.position.y = -0.40;
+    this.rightForearmGroup.add(rightHand);
 
-    // 7. Articulated Legs
-    // Left Leg
+    // 6. Articulated 2-Bone Legs with Bending Knees
+    // Left Leg (Hip Joint)
     this.leftLeg = new THREE.Group();
     this.leftLeg.position.set(-0.21, 0.95, 0);
     this.visualRoot.add(this.leftLeg);
 
-    const thighGeo = new THREE.CylinderGeometry(0.14, 0.11, 0.48, 6);
-    thighGeo.translate(0, -0.24, 0);
+    // Left Thigh
+    const thighGeo = new THREE.CylinderGeometry(0.14, 0.11, 0.46, cylSegs);
+    thighGeo.translate(0, -0.23, 0);
     const leftThigh = new THREE.Mesh(thighGeo, armorMat);
     this.leftLeg.add(leftThigh);
 
-    // Left Knee Pad (dark hexagonal knee guard in front)
-    const kneeGeo = new THREE.BoxGeometry(0.16, 0.14, 0.08);
-    const leftKnee = new THREE.Mesh(kneeGeo, darkMat);
-    leftKnee.position.set(0, -0.48, -0.08);
-    this.leftLeg.add(leftKnee);
+    // Left Lower Leg Group (Knee Joint Child)
+    this.leftLowerLegGroup = new THREE.Group();
+    this.leftLowerLegGroup.position.set(0, -0.46, 0);
+    this.leftLeg.add(this.leftLowerLegGroup);
 
-    // Left Shin / Calf (armored lower leg)
-    const shinGeo = new THREE.CylinderGeometry(0.11, 0.10, 0.42, 6);
+    // Left Knee Joint Sphere
+    const kneeJointGeo = new THREE.SphereGeometry(0.105, sphereW, sphereH);
+    const leftKneeJoint = new THREE.Mesh(kneeJointGeo, darkMat);
+    this.leftLowerLegGroup.add(leftKneeJoint);
+
+    // Left Knee Pad (armored hexagonal guard in front)
+    const kneePadGeo = new THREE.BoxGeometry(0.16, 0.14, 0.08);
+    const leftKneePad = new THREE.Mesh(kneePadGeo, darkMat);
+    leftKneePad.position.set(0, 0, -0.08);
+    this.leftLowerLegGroup.add(leftKneePad);
+
+    // Left Shin / Calf
+    const shinGeo = new THREE.CylinderGeometry(0.11, 0.098, 0.42, cylSegs);
     shinGeo.translate(0, -0.21, 0);
     const leftShin = new THREE.Mesh(shinGeo, armorMat);
-    leftShin.position.y = -0.48;
-    this.leftLeg.add(leftShin);
+    this.leftLowerLegGroup.add(leftShin);
 
-    // Left Ankle Cuff (dark band)
-    const cuffGeo = new THREE.CylinderGeometry(0.11, 0.11, 0.08, 6);
+    // Left Ankle Cuff
+    const cuffGeo = new THREE.CylinderGeometry(0.11, 0.11, 0.08, cylSegs);
     const leftCuff = new THREE.Mesh(cuffGeo, darkMat);
-    leftCuff.position.set(0, -0.90, 0);
-    this.leftLeg.add(leftCuff);
+    leftCuff.position.set(0, -0.42, 0);
+    this.leftLowerLegGroup.add(leftCuff);
 
-    // Left Boot with dark sole pointing forward (-Z)
+    // Left Boot & Sole
     const bootGeo = new THREE.BoxGeometry(0.17, 0.14, 0.28);
     bootGeo.translate(0, -0.07, -0.05);
     const leftBoot = new THREE.Mesh(bootGeo, armorMat);
-    leftBoot.position.y = -0.92;
+    leftBoot.position.y = -0.44;
 
     const soleGeo = new THREE.BoxGeometry(0.18, 0.04, 0.30);
     soleGeo.translate(0, -0.02, -0.05);
     const leftSole = new THREE.Mesh(soleGeo, soleMat);
-    leftSole.position.y = -1.04;
-    this.leftLeg.add(leftBoot, leftSole);
+    leftSole.position.y = -0.56;
+    this.leftLowerLegGroup.add(leftBoot, leftSole);
 
-    // Right Leg
+    // Right Leg (Hip Joint)
     this.rightLeg = new THREE.Group();
     this.rightLeg.position.set(0.21, 0.95, 0);
     this.visualRoot.add(this.rightLeg);
@@ -414,36 +547,45 @@ export class Explorer {
     const rightThigh = new THREE.Mesh(thighGeo, armorMat);
     this.rightLeg.add(rightThigh);
 
-    const rightKnee = new THREE.Mesh(kneeGeo, darkMat);
-    rightKnee.position.set(0, -0.48, -0.08);
-    this.rightLeg.add(rightKnee);
+    // Right Lower Leg Group (Knee Joint Child)
+    this.rightLowerLegGroup = new THREE.Group();
+    this.rightLowerLegGroup.position.set(0, -0.46, 0);
+    this.rightLeg.add(this.rightLowerLegGroup);
+
+    const rightKneeJoint = new THREE.Mesh(kneeJointGeo, darkMat);
+    this.rightLowerLegGroup.add(rightKneeJoint);
+
+    const rightKneePad = new THREE.Mesh(kneePadGeo, darkMat);
+    rightKneePad.position.set(0, 0, -0.08);
+    this.rightLowerLegGroup.add(rightKneePad);
 
     const rightShin = new THREE.Mesh(shinGeo, armorMat);
-    rightShin.position.y = -0.48;
-    this.rightLeg.add(rightShin);
+    this.rightLowerLegGroup.add(rightShin);
 
     const rightCuff = new THREE.Mesh(cuffGeo, darkMat);
-    rightCuff.position.set(0, -0.90, 0);
-    this.rightLeg.add(rightCuff);
+    rightCuff.position.set(0, -0.42, 0);
+    this.rightLowerLegGroup.add(rightCuff);
 
     const rightBoot = new THREE.Mesh(bootGeo, armorMat);
-    rightBoot.position.y = -0.92;
+    rightBoot.position.y = -0.44;
     const rightSole = new THREE.Mesh(soleGeo, soleMat);
-    rightSole.position.y = -1.04;
-    this.rightLeg.add(rightBoot, rightSole);
+    rightSole.position.y = -0.56;
+    this.rightLowerLegGroup.add(rightBoot, rightSole);
   }
 
   spawnOnBody(body, dirVector = new THREE.Vector3(0, 1, 0)) {
     const dir = dirVector.clone().normalize();
     const surfaceR = body.getSurfaceRadiusAtDir(dir.x, dir.y, dir.z);
     const bodyPos = body.getWorldPosition();
-    this.group.position.copy(bodyPos).addScaledVector(dir, surfaceR + 0.2);
+    this.group.position.copy(bodyPos).addScaledVector(dir, surfaceR + 0.15);
 
     this.localUp.copy(dir);
     const alignQuat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
     this.group.quaternion.copy(alignQuat);
     this.velocity.set(0, 0, 0);
     this.currentBody = body;
+    this.grounded = true;
+    this.jumpPhase = 'idle';
   }
 
   update(dt, input, mouseFrame, bodies) {
@@ -533,10 +675,8 @@ export class Explorer {
 
     // Oxygen consumption and replenishment
     if (this.isSubmerged) {
-      // Deplete oxygen while head is underwater (~30s of air capacity)
       this.oxygen = Math.max(0, this.oxygen - 3.34 * dt);
     } else {
-      // Replenish oxygen rapidly when breathing surface air (~3s to full)
       this.oxygen = Math.min(this.maxOxygen, this.oxygen + 38.0 * dt);
     }
 
@@ -552,7 +692,7 @@ export class Explorer {
       moveDir.addScaledVector(newUp, -divePitchStrength).normalize();
     }
 
-    // Separate velocity into vertical (along localUp) and tangential components
+    // Tangential & vertical velocity components
     const vertSpeed = this.velocity.dot(newUp);
     const vertVel = newUp.clone().multiplyScalar(vertSpeed);
     const swimSpeedMult = this.isSwimming ? 0.65 : 1.0;
@@ -566,38 +706,31 @@ export class Explorer {
     const holdingJump = (input.isActionDown ? input.isActionDown('jump') : false) || input.isDown('Space');
     const wantsDive = (input.isActionDown ? input.isActionDown('dive') : false) || input.isDown('KeyC');
 
-    if (this.jumpCooldown === undefined) this.jumpCooldown = 0;
     if (this.jumpCooldown > 0) this.jumpCooldown -= dt;
 
     if (this.isSwimming) {
-      // Natural buoyancy towards surface
       const targetSurfaceR = seaR - 0.45;
       const buoyancyDelta = targetSurfaceR - distFromCenter;
       if (buoyancyDelta > 0) {
         this.velocity.addScaledVector(newUp, Math.min(22.0, buoyancyDelta * 14.0) * dt);
       }
-
-      // Water drag
       this.velocity.multiplyScalar(Math.exp(-3.2 * dt));
 
-      // Swim controls: Space = swim upward, Dive key (C) = swim downward
       if (holdingJump) {
         this.velocity.addScaledVector(newUp, 22.0 * dt);
-        // If at the surface, leaping out of the water
         if (distFromCenter >= targetSurfaceR - 0.25 && wantsJump) {
           this.velocity.addScaledVector(newUp, 14.5);
           this.jumpCooldown = 0.35;
+          this.jumpPhase = 'ascent';
         }
       } else if (wantsDive) {
         this.velocity.addScaledVector(newUp, -24.0 * dt);
       }
 
-      // Emergency auto-surface thrust if oxygen reaches zero
       if (this.oxygen <= 0.01) {
         this.velocity.addScaledVector(newUp, 42.0 * dt);
       }
 
-      // Reduced gravity while immersed
       this.velocity.x += grav.acceleration.x * 0.25 * dt;
       this.velocity.y += grav.acceleration.y * 0.25 * dt;
       this.velocity.z += grav.acceleration.z * 0.25 * dt;
@@ -611,6 +744,7 @@ export class Explorer {
         this.velocity.addScaledVector(newUp, 15.5);
         this.grounded = false;
         this.jumpCooldown = 0.25;
+        this.jumpPhase = 'ascent';
       } else if (!this.grounded && holdingJump && this.jetpackFuel > 0) {
         this.velocity.addScaledVector(newUp, 38 * dt);
         this.jetpackFuel = Math.max(0, this.jetpackFuel - 34 * dt);
@@ -645,8 +779,6 @@ export class Explorer {
       const dist = rel.length() || 1;
       const dir = rel.divideScalar(dist);
       const terrainR = body.getSurfaceRadiusAtDir(dir.x, dir.y, dir.z);
-
-      // Floor limit is seabed (terrainR + 0.15), not artificial sea level barrier
       const floorLimit = terrainR + 0.15;
 
       if (dist <= floorLimit + 0.05) {
@@ -655,46 +787,194 @@ export class Explorer {
         if (vDot < 0) {
           this.velocity.addScaledVector(dir, -vDot);
         }
+        if (!this.grounded && !this.isSwimming) {
+          // Landing impact detection
+          if (this.prevVertSpeed < -2.0) {
+            this.landingCompression = Math.min(0.28, Math.abs(this.prevVertSpeed) * 0.018);
+            this.jumpPhase = 'land';
+          }
+        }
         this.grounded = true;
       } else {
         this.grounded = false;
       }
     }
 
-    // 7. Animate limbs for walking, swimming or jetpack poses
+    // 7. Motion Kinematics & Procedural Articulation
     const horizSpeed = tangentVel.length();
+    const currentVertSpeed = this.velocity.dot(newUp);
+
+    // Update in-air jump phase
+    if (!this.grounded && !this.isSwimming && !isBoosting) {
+      if (currentVertSpeed > 1.0) {
+        this.jumpPhase = 'ascent';
+      } else {
+        this.jumpPhase = 'descent';
+      }
+    }
+
+    // Smooth landing recovery compression decay
+    if (this.landingCompression > 0) {
+      this.landingCompression = Math.max(0, this.landingCompression - dt * 2.2);
+      if (this.landingCompression <= 0.005) {
+        this.landingCompression = 0;
+        if (this.jumpPhase === 'land') this.jumpPhase = 'idle';
+      }
+    }
+
     if (this.isSwimming) {
-      // Swimming stroke animation
+      // Swimming stroke animation with knee flutter kicks and arm pull-through
       this.walkCycle += dt * (isSprinting ? 12 : 7);
       const stroke = Math.sin(this.walkCycle);
-      this.leftArm.rotation.x = 0.6 + stroke * 0.65;
-      this.rightArm.rotation.x = 0.6 - stroke * 0.65;
-      this.leftLeg.rotation.x = -0.4 + stroke * 0.35;
-      this.rightLeg.rotation.x = -0.4 - stroke * 0.35;
-      this.torso.rotation.x = 0.35; // horizontal swim tilt
-    } else if (horizSpeed > 0.5 && this.grounded) {
-      this.torso.rotation.x = 0;
-      this.walkCycle += dt * (isSprinting ? 14 : 9);
-      const swing = Math.sin(this.walkCycle) * 0.62;
-      this.leftLeg.rotation.x = swing;
-      this.rightLeg.rotation.x = -swing;
-      this.leftArm.rotation.x = -swing * 0.65;
-      this.rightArm.rotation.x = swing * 0.65;
-      this.torso.rotation.y = swing * 0.08;
+      this.torso.rotation.x = 0.58; // Horizontal swimming tilt
+      this.torso.position.y = 1.55;
+
+      // Leg flutter kick with articulated knee flexion
+      this.leftLeg.rotation.x = -0.35 + stroke * 0.32;
+      this.rightLeg.rotation.x = -0.35 - stroke * 0.32;
+      this.leftLowerLegGroup.rotation.x = 0.30 + Math.max(0, -stroke) * 0.55;
+      this.rightLowerLegGroup.rotation.x = 0.30 + Math.max(0, stroke) * 0.55;
+
+      // Arm swimming breaststroke / crawl stroke with elbow pull-through
+      this.leftArm.rotation.x = 0.65 + stroke * 0.65;
+      this.rightArm.rotation.x = 0.65 - stroke * 0.65;
+      this.leftArm.rotation.z = -0.25;
+      this.rightArm.rotation.z = 0.25;
+      this.leftForearmGroup.rotation.x = 0.55 + Math.max(0, stroke) * 0.55;
+      this.rightForearmGroup.rotation.x = 0.55 + Math.max(0, -stroke) * 0.55;
+      this.torso.rotation.y = stroke * 0.10;
     } else if (isBoosting) {
-      this.torso.rotation.x = 0;
-      this.leftLeg.rotation.x = -0.35;
-      this.rightLeg.rotation.x = -0.32;
+      // Jetpack flight attitude: legs trailing back, knees slightly bent, arms forward/down
+      this.torso.rotation.x = 0.08;
+      this.torso.position.y = 1.55;
+      this.leftLeg.rotation.x = -0.38;
+      this.rightLeg.rotation.x = -0.38;
+      this.leftLowerLegGroup.rotation.x = 0.25;
+      this.rightLowerLegGroup.rotation.x = 0.25;
       this.leftArm.rotation.x = 0.35;
       this.rightArm.rotation.x = 0.35;
+      this.leftArm.rotation.z = -0.15;
+      this.rightArm.rotation.z = 0.15;
+      this.leftForearmGroup.rotation.x = 0.50;
+      this.rightForearmGroup.rotation.x = 0.50;
       this.torso.rotation.y *= 0.85;
+    } else if (!this.grounded) {
+      // In-Air Dynamic Jump Motion: ascent tuck vs descent reach
+      this.torso.position.y = 1.55;
+      if (this.jumpPhase === 'ascent') {
+        // High Jump Tuck: knees bent up, thighs forward, arms splayed outward for aerial balance
+        this.torso.rotation.x = 0.16;
+        this.leftLeg.rotation.x = -0.45;
+        this.rightLeg.rotation.x = -0.35;
+        this.leftLowerLegGroup.rotation.x = 0.85; // Bending knees in jump
+        this.rightLowerLegGroup.rotation.x = 0.70;
+        this.leftArm.rotation.x = -0.35;
+        this.rightArm.rotation.x = -0.35;
+        this.leftArm.rotation.z = -0.35;
+        this.rightArm.rotation.z = 0.35;
+        this.leftForearmGroup.rotation.x = 0.65; // Bending elbows in jump
+        this.rightForearmGroup.rotation.x = 0.65;
+      } else {
+        // Descent Reach: legs extend downward reaching for terrain, arms raised for air braking
+        this.torso.rotation.x = 0.06;
+        this.leftLeg.rotation.x = -0.15;
+        this.rightLeg.rotation.x = -0.12;
+        this.leftLowerLegGroup.rotation.x = 0.25;
+        this.rightLowerLegGroup.rotation.x = 0.25;
+        this.leftArm.rotation.x = -0.55;
+        this.rightArm.rotation.x = -0.55;
+        this.leftArm.rotation.z = -0.28;
+        this.rightArm.rotation.z = 0.28;
+        this.leftForearmGroup.rotation.x = 0.45;
+        this.rightForearmGroup.rotation.x = 0.45;
+      }
+      this.torso.rotation.y *= 0.85;
+    } else if (horizSpeed > 0.5 && this.grounded) {
+      // Ground Locomotion: Distinct Sprint vs Walk
+      if (isSprinting) {
+        // High-Fidelity Athletic Sprint
+        this.walkCycle += dt * 13.5;
+        const swing = Math.sin(this.walkCycle);
+
+        // Forward Torso Lean (~20° athletic pitch into the run)
+        this.torso.rotation.x = 0.35;
+        // Dynamic vertical stride spring bounce
+        this.torso.position.y = 1.55 + Math.sin(this.walkCycle * 2) * 0.07;
+        // Torso counter-twist
+        this.torso.rotation.y = -swing * 0.16;
+
+        // High Knee Drive & Thigh Swing
+        this.leftLeg.rotation.x = swing * 0.85;
+        this.rightLeg.rotation.x = -swing * 0.85;
+
+        // Deep Knee Flexion on Backswing (heel kicks toward glutes up to 85° bend!)
+        const leftKneeBend = swing < 0 ? Math.min(1.5, Math.pow(-swing, 1.2) * 1.5) : Math.max(0.1, swing * 0.25);
+        const rightKneeBend = swing > 0 ? Math.min(1.5, Math.pow(swing, 1.2) * 1.5) : Math.max(0.1, -swing * 0.25);
+        this.leftLowerLegGroup.rotation.x = leftKneeBend;
+        this.rightLowerLegGroup.rotation.x = rightKneeBend;
+
+        // 90° Bent Arm Pumping Carriage
+        this.leftForearmGroup.rotation.x = 1.35 + Math.sin(this.walkCycle) * 0.15;
+        this.rightForearmGroup.rotation.x = 1.35 - Math.sin(this.walkCycle) * 0.15;
+        this.leftArm.rotation.x = -swing * 0.85;
+        this.rightArm.rotation.x = swing * 0.85;
+        this.leftArm.rotation.z = -0.15;
+        this.rightArm.rotation.z = 0.15;
+      } else {
+        // Natural Walking Gait
+        this.walkCycle += dt * 8.5;
+        const swing = Math.sin(this.walkCycle);
+
+        // Upright torso with subtle vertical bob
+        this.torso.rotation.x = 0.04;
+        this.torso.position.y = 1.55 + Math.sin(this.walkCycle * 2) * 0.025;
+        this.torso.rotation.y = -swing * 0.06;
+
+        // Moderate Thigh Swing
+        this.leftLeg.rotation.x = swing * 0.45;
+        this.rightLeg.rotation.x = -swing * 0.45;
+
+        // Natural knee flexion on backswing
+        const leftKneeBend = swing < 0 ? Math.min(0.75, -swing * 0.8) : 0.05;
+        const rightKneeBend = swing > 0 ? Math.min(0.75, swing * 0.8) : 0.05;
+        this.leftLowerLegGroup.rotation.x = leftKneeBend;
+        this.rightLowerLegGroup.rotation.x = rightKneeBend;
+
+        // Relaxed ~30° elbow carry with natural swing
+        this.leftForearmGroup.rotation.x = 0.40 + Math.max(0, -swing) * 0.25;
+        this.rightForearmGroup.rotation.x = 0.40 + Math.max(0, swing) * 0.25;
+        this.leftArm.rotation.x = -swing * 0.45;
+        this.rightArm.rotation.x = swing * 0.45;
+        this.leftArm.rotation.z = -0.06;
+        this.rightArm.rotation.z = 0.06;
+      }
     } else {
-      this.torso.rotation.x = 0;
+      // Standing Idle (with springy landing shock absorption)
+      let targetY = 1.55;
+      let extraKnee = 0;
+      let extraPitch = 0;
+
+      if (this.landingCompression > 0) {
+        targetY = 1.55 - this.landingCompression * 0.55;
+        extraPitch = this.landingCompression * 0.45;
+        extraKnee = this.landingCompression * 2.2;
+      }
+
+      this.torso.position.y = THREE.MathUtils.lerp(this.torso.position.y, targetY, 0.25);
+      this.torso.rotation.x = THREE.MathUtils.lerp(this.torso.rotation.x, extraPitch, 0.25);
+      this.torso.rotation.y *= 0.82;
+
       this.leftLeg.rotation.x *= 0.82;
       this.rightLeg.rotation.x *= 0.82;
+      this.leftLowerLegGroup.rotation.x = THREE.MathUtils.lerp(this.leftLowerLegGroup.rotation.x, extraKnee, 0.25);
+      this.rightLowerLegGroup.rotation.x = THREE.MathUtils.lerp(this.rightLowerLegGroup.rotation.x, extraKnee, 0.25);
+
       this.leftArm.rotation.x *= 0.82;
       this.rightArm.rotation.x *= 0.82;
-      this.torso.rotation.y *= 0.85;
+      this.leftArm.rotation.z = THREE.MathUtils.lerp(this.leftArm.rotation.z, -0.04, 0.15);
+      this.rightArm.rotation.z = THREE.MathUtils.lerp(this.rightArm.rotation.z, 0.04, 0.15);
+      this.leftForearmGroup.rotation.x = THREE.MathUtils.lerp(this.leftForearmGroup.rotation.x, 0.25, 0.15);
+      this.rightForearmGroup.rotation.x = THREE.MathUtils.lerp(this.rightForearmGroup.rotation.x, 0.25, 0.15);
     }
 
     // Animate Floating Companion Drone (gentle hover bob & yaw spin)
@@ -707,5 +987,8 @@ export class Explorer {
     if (this.scannerPulseTimer > 0) {
       this.scannerPulseTimer = Math.max(0, this.scannerPulseTimer - dt);
     }
+
+    this.prevVertSpeed = currentVertSpeed;
+    this.wasGroundedLastFrame = this.grounded;
   }
 }

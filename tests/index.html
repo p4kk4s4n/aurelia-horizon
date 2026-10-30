@@ -35,7 +35,7 @@
     import { evaluateGravity } from '../src/world/gravity.js';
     import { ShipRepairSystem, SHIP_PART_DEFS } from '../src/ship/repair.js';
     import { UI_COLOR_SCHEMES, SettingsManager } from '../src/ui/settings.js';
-    import { InputManager } from '../src/input.js';
+    import { InputManager, DEFAULT_KEYBINDINGS } from '../src/input.js';
     import { TouchControlsManager } from '../src/ui/touchControls.js';
     import { Explorer } from '../src/player/explorer.js';
     import { Ship } from '../src/ship/ship.js';
@@ -179,7 +179,7 @@
     touchMgr.applyVisibility('hidden');
     assert(!touchOverlay.classList.contains('visible'), 'applyVisibility hidden hides touch overlay');
 
-    // 8. Low-Poly Character Sheet Model Structure
+    // 8. Character Model Structure, Scalable Polygon Density & Articulated Limbs
     const mockScene = new THREE.Scene();
     const testExplorer = new Explorer(mockScene);
     assert(Boolean(testExplorer.torso), 'Explorer has sculpted torso');
@@ -188,7 +188,20 @@
     assert(Boolean(testExplorer.companionDrone), 'Explorer has floating companion drone');
     assert(Boolean(testExplorer.leftArm && testExplorer.rightArm), 'Explorer has articulated left and right arms');
     assert(Boolean(testExplorer.leftLeg && testExplorer.rightLeg), 'Explorer has articulated left and right legs');
+    assert(Boolean(testExplorer.leftForearmGroup && testExplorer.rightForearmGroup), 'Explorer has articulated elbow joints (left and right forearms)');
+    assert(Boolean(testExplorer.leftLowerLegGroup && testExplorer.rightLowerLegGroup), 'Explorer has articulated knee joints (left and right lower legs)');
     assert(Boolean(testExplorer.jetFlameLeft && testExplorer.jetFlameRight), 'Explorer has dual jetpack boost thrusters');
+
+    // Scalable Polygon Count Density
+    testExplorer.setPolygonDensity('low');
+    const lowPoly = testExplorer.getPolygonCount();
+    testExplorer.setPolygonDensity('high');
+    const highPoly = testExplorer.getPolygonCount();
+    testExplorer.setPolygonDensity('ultra');
+    const ultraPoly = testExplorer.getPolygonCount();
+    assert(highPoly.vertices >= lowPoly.vertices * 2.5, 'High density character model has >= 2.5x the vertex density of baseline low-poly');
+    assert(ultraPoly.vertices > highPoly.vertices, 'Ultra density character model scales vertex count higher than high density');
+    testExplorer.setPolygonDensity('high'); // restore default
 
     // 9. Upgraded Starfighter Model & Firing & Roll
     const testShip = new Ship(mockScene);
@@ -310,7 +323,7 @@
     testInput.resetKeybindings();
     assert(testInput.keybindings.jump.primary === 'Space', 'resetKeybindings restores default Space for jump');
 
-    // C) Explorer Jump & Mid-Air Jetpack Responsiveness
+    // C) Explorer Jump & Mid-Air Jetpack Responsiveness with Motion Kinematics
     const jumpExplorer = new Explorer(mockScene);
     jumpExplorer.spawnOnBody(mockBodies[0], new THREE.Vector3(0, 1, 0));
     jumpExplorer.grounded = true;
@@ -318,8 +331,41 @@
     jumpExplorer.update(0.1, testInput, { dx: 0, dy: 0, wheel: 0 }, mockBodies);
     assert(!jumpExplorer.grounded, 'Pressing jump while grounded launches explorer into air');
     assert(jumpExplorer.velocity.y > 5.0, 'Jump gives upward vertical launch velocity');
+    assert(jumpExplorer.jumpPhase === 'ascent', 'Jumping explorer enters ascent jump phase');
+    assert(jumpExplorer.leftLowerLegGroup.rotation.x > 0.4, 'Jumping explorer flexes knees upward during aerial ascent tuck');
+    assert(jumpExplorer.leftForearmGroup.rotation.x > 0.4, 'Jumping explorer articulates elbows for balance during jump');
+
+    // Walking & Sprinting Kinematics (Articulated knees, elbows, torso lean)
+    const walkExplorer = new Explorer(mockScene);
+    walkExplorer.spawnOnBody(mockBodies[0], new THREE.Vector3(0, 1, 0));
+    testInput.setVirtualKey('Space', false);
+    testInput.endFrame();
+    testInput.setVirtualKey('KeyW', true);
+    walkExplorer.update(0.1, testInput, { dx: 0, dy: 0, wheel: 0 }, mockBodies);
+    walkExplorer.update(0.1, testInput, { dx: 0, dy: 0, wheel: 0 }, mockBodies);
+    assert(walkExplorer.leftLowerLegGroup.rotation.x >= 0, 'Walking explorer articulates knees during gait cycle');
+    assert(walkExplorer.torso.rotation.x < 0.15, 'Walking explorer maintains upright torso posture');
+
+    // Sprint Kinematics (Forward lean, deep knee flex, 90 deg bent arms)
+    testInput.setVirtualKey('ShiftLeft', true);
+    testInput.endFrame();
+    walkExplorer.update(0.1, testInput, { dx: 0, dy: 0, wheel: 0 }, mockBodies);
+    walkExplorer.update(0.1, testInput, { dx: 0, dy: 0, wheel: 0 }, mockBodies);
+    assert(walkExplorer.torso.rotation.x >= 0.25, 'Sprinting explorer pitches torso forward into an athletic lean (~20 deg)');
+    assert(walkExplorer.leftForearmGroup.rotation.x > 1.0, 'Sprinting explorer pumps 90-degree bent arms');
+    testInput.setVirtualKey('KeyW', false);
+    testInput.setVirtualKey('ShiftLeft', false);
+    testInput.endFrame();
+
+    // Fast Travel Keybinding Support (Numpad1-5 secondary keys)
+    assert(DEFAULT_KEYBINDINGS.quickRepair.secondary === 'Numpad1', 'quickRepair keybinding supports Numpad1');
+    assert(DEFAULT_KEYBINDINGS.quickOrbit.secondary === 'Numpad2', 'quickOrbit keybinding supports Numpad2');
+    assert(DEFAULT_KEYBINDINGS.quickMoon1.secondary === 'Numpad3', 'quickMoon1 keybinding supports Numpad3');
+    assert(DEFAULT_KEYBINDINGS.quickMoon2.secondary === 'Numpad4', 'quickMoon2 keybinding supports Numpad4');
+    assert(DEFAULT_KEYBINDINGS.quickMoon3.secondary === 'Numpad5', 'quickMoon3 keybinding supports Numpad5');
 
     // Mid-air jetpack boost
+    testInput.setVirtualKey('Space', true);
     const preBoostFuel = jumpExplorer.jetpackFuel;
     jumpExplorer.update(0.1, testInput, { dx: 0, dy: 0, wheel: 0 }, mockBodies);
     assert(jumpExplorer.jetpackFuel < preBoostFuel, 'Holding jump in mid-air activates jetpack and consumes fuel');
@@ -458,6 +504,12 @@
     settingsMgr.applyGraphicsQuality('ultra');
     assert(settingsMgr.currentQuality === 'ultra', 'applyGraphicsQuality sets quality to ultra');
     settingsMgr.applyGraphicsQuality('high'); // reset to default
+
+    settingsMgr.setExplorer(testExplorer);
+    settingsMgr.applyGraphicsQuality('low');
+    assert(testExplorer.currentDensity === 'low', 'SettingsManager sets Explorer polygon density to low');
+    settingsMgr.applyGraphicsQuality('high');
+    assert(testExplorer.currentDensity === 'high', 'SettingsManager sets Explorer polygon density to high (3x)');
 
     assert(typeof settingsMgr.setInstallPrompt === 'function', 'SettingsManager provides setInstallPrompt method');
     assert(typeof settingsMgr.triggerInstallPrompt === 'function', 'SettingsManager provides triggerInstallPrompt method');

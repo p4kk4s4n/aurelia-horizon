@@ -73,13 +73,13 @@
       </div>
 
       <div class="quick-actions">
-        <div class="panel-subtitle">QUICK PHASE JUMP (OR KEYS 1-5)</div>
-        <button id="btn-quick-repair" type="button">[1] Repair &amp; Board Ship</button>
-        <button id="btn-quick-orbit" type="button">[2] Planet Orbit View</button>
-        <div class="moon-btn-row">
-          <button id="btn-moon-1" type="button">[3] Moon I</button>
-          <button id="btn-moon-2" type="button">[4] Moon II</button>
-          <button id="btn-moon-3" type="button">[5] Moon III</button>
+        <div class="panel-subtitle">FAST TRAVEL &amp; PHASES (KEYS 1-5)</div>
+        <div class="fast-travel-grid">
+          <button id="btn-quick-repair" type="button" title="[1] Aurelia Base Camp (On-Foot)">[1] Base</button>
+          <button id="btn-quick-orbit" type="button" title="[2] Stable Planet Orbit (Flight)">[2] Orbit</button>
+          <button id="btn-moon-1" type="button" title="[3] Moon I — Lumen">[3] M-I</button>
+          <button id="btn-moon-2" type="button" title="[4] Moon II — Pyra">[4] M-II</button>
+          <button id="btn-moon-3" type="button" title="[5] Moon III — Goliath">[5] M-III</button>
         </div>
         <button id="btn-open-settings" class="settings-trigger-btn" type="button">&#9881; Settings &amp; Updates [P]</button>
         <button id="btn-quick-install-webapk" type="button" style="display: none; border-color: var(--hud-primary); color: var(--hud-primary);">⬇ Install WebAPK App</button>
@@ -252,14 +252,17 @@
 
       <section class="settings-section">
         <h3>GRAPHICS &amp; PERFORMANCE</h3>
-        <p class="section-desc">Adjust rendering fidelity, flora density and mesh resolution:</p>
+        <p class="section-desc">Adjust rendering fidelity, flora density and character polygon density:</p>
         <div class="settings-subsection">
-          <span class="setting-label">Fidelity Preset</span>
+          <span class="setting-label">Fidelity &amp; Model Quality Preset</span>
           <div id="graphics-quality-options" class="pill-group">
-            <button type="button" class="pill-btn" data-quality="low">Low (Fast)</button>
-            <button type="button" class="pill-btn" data-quality="medium">Medium</button>
-            <button type="button" class="pill-btn" data-quality="high">High (Default)</button>
-            <button type="button" class="pill-btn" data-quality="ultra">Ultra</button>
+            <button type="button" class="pill-btn" data-quality="low">Low (1x Density)</button>
+            <button type="button" class="pill-btn" data-quality="medium">Medium (2x)</button>
+            <button type="button" class="pill-btn" data-quality="high">High (3x Density • Default)</button>
+            <button type="button" class="pill-btn" data-quality="ultra">Ultra (4x Density)</button>
+          </div>
+          <div id="settings-poly-density" class="setting-detail-note" style="margin-top: 6px; font-size: 0.82em; color: var(--hud-muted);">
+            Character Model: High Density (~2,600+ Polygons, Articulated Knees &amp; Elbows)
           </div>
         </div>
       </section>

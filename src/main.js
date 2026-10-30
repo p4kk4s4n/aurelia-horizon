@@ -45,6 +45,7 @@ const hud = new HUD();
 const touchControls = new TouchControlsManager(input, (msg, dur) => hud.showNotice(msg, dur));
 const settings = new SettingsManager((msg) => hud.showNotice(msg), touchControls, input);
 settings.setRenderer(renderer);
+settings.setExplorer(explorer);
 
 // WebAPK / PWA installation event listener & prompt capture
 window.addEventListener('beforeinstallprompt', (e) => {
@@ -147,46 +148,76 @@ export const gameAPI = {
   setTouchVisibility: (vis) => touchControls.applyVisibility(vis),
   cycleTarget: () => ship.cycleTargetBody(allBodies, (msg) => hud.showNotice(msg)),
   checkGitHubUpdate: (force = false) => settings.checkGitHubAndRecache(force),
-  repairAndBoard: () => {
+  teleportToBase: () => {
     repairSystem.giveAndInstallAll();
     ship.setRepairedVisual(true);
-    boardShip();
+    // Position Starfighter safely on Aurelia Prime base camp
+    ship.placeOnBody(planet, new THREE.Vector3(0.055, 0.997, 0.045));
+    // Position Explorer standing right beside Starfighter on the plateau
+    explorer.spawnOnBody(planet, new THREE.Vector3(0.048, 0.998, 0.055));
+    explorer.group.visible = true;
+    gameMode = 'EXPLORING';
+    cameraRig.initialized = false;
+    hud.showNotice('Fast Traveled to Aurelia Prime Base Camp (On-Foot Explorer)!');
   },
-  enterPlanetOrbit: () => {
+  teleportToOrbit: () => {
     repairSystem.giveAndInstallAll();
     ship.setRepairedVisual(true);
     gameMode = 'PILOTING';
     explorer.group.visible = false;
     ship.landed = false;
-    ship.group.position.set(0, planet.radius + 260, 320);
+    const orbitAlt = planet.radius + 320;
+    ship.group.position.set(0, orbitAlt, 320);
     ship.group.quaternion.setFromEuler(new THREE.Euler(-0.28, 0, 0));
     ship.sasMode = 'STABILITY';
     ship.orbitAssist = false;
-    // Set exact circular orbital velocity for true Newtonian orbit: v_circ = sqrt(mu / r)
     const r = ship.group.position.length();
     const mu = planet.surfaceGravity * planet.radius * planet.radius;
     const vCirc = Math.sqrt(mu / r);
-    // Tangent vector in YZ plane perpendicular to r = (0, planet.radius + 260, 320)
-    ship.velocity.set(0, -vCirc * (320 / r), -vCirc * ((planet.radius + 260) / r));
+    ship.velocity.set(0, -vCirc * (320 / r), -vCirc * (orbitAlt / r));
     cameraRig.initialized = false;
-    hud.showNotice('Entered Stable Newtonian Orbit above Aurelia Prime! SAS: STABILITY ASSIST.');
+    hud.showNotice('Fast Traveled to Stable Newtonian Orbit above Aurelia Prime! SAS: STABILITY ASSIST.');
   },
-  landOnMoon: (moonIndex = 0) => {
+  teleportToMoon: (moonIndex = 0) => {
     const moon = moons[moonIndex] || moons[0];
     repairSystem.giveAndInstallAll();
     ship.setRepairedVisual(true);
+    ship.orbitAssist = false;
+    const moonDir = new THREE.Vector3(-0.35, 0.93, 0.1);
+    ship.placeOnBody(moon, moonDir);
+    ship.visitedMoons.add(moon.id);
+
+    // Synchronize Explorer right beside the ship on the moon
+    const up = ship.localUp.clone().normalize();
+    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(ship.group.quaternion).normalize();
+    explorer.group.position.copy(ship.group.position).addScaledVector(right, 6.0).addScaledVector(up, 1.2);
+    explorer.group.quaternion.copy(ship.group.quaternion);
+    explorer.velocity.set(0, 0, 0);
+    explorer.currentBody = moon;
+    explorer.localUp.copy(up);
+
+    // If already in starfighter on this moon, toggle disembark to foot!
+    if (gameMode === 'PILOTING' && ship.currentBody === moon) {
+      gameMode = 'EXPLORING';
+      explorer.group.visible = true;
+      cameraRig.initialized = false;
+      hud.showNotice(`Stepped out onto ${moon.name}! Walking in low gravity.`);
+      return;
+    }
+
     gameMode = 'PILOTING';
     explorer.group.visible = false;
-    ship.orbitAssist = false;
-    ship.placeOnBody(moon, new THREE.Vector3(-0.35, 0.93, 0.1));
-    ship.visitedMoons.add(moon.id);
     cameraRig.initialized = false;
     const isTouch = input.isTouchDevice || touchControls.visibility === 'always' || window.innerWidth <= 960;
     hud.showNotice(isTouch
       ? `Landed on ${moon.name}! Tap EXIT to step out and walk in low gravity, or UP to launch.`
-      : `Landed on ${moon.name}! Press [${input.getActionKeyLabel('flightDisembark')}] to step out and walk in low gravity, or [${input.getActionKeyLabel('flightAscend')}] to launch.`
+      : `Landed on ${moon.name}! Press [${input.getActionKeyLabel('flightDisembark')}] to step out on foot, or [${input.getActionKeyLabel('flightAscend')}] to launch.`
     );
   },
+  // Maintain backward-compatible aliases:
+  repairAndBoard: () => gameAPI.teleportToBase(),
+  enterPlanetOrbit: () => gameAPI.teleportToOrbit(),
+  landOnMoon: (i = 0) => gameAPI.teleportToMoon(i),
   fireWeaponBurst: () => {
     if (gameMode !== 'PILOTING') boardShip();
     ship.fireCooldown = 0;
@@ -195,12 +226,12 @@ export const gameAPI = {
 };
 window.gameDebug = gameAPI;
 
-// Bind quick-action UI buttons for instant play-testing of phases
-document.getElementById('btn-quick-repair')?.addEventListener('click', () => gameAPI.repairAndBoard());
-document.getElementById('btn-quick-orbit')?.addEventListener('click', () => gameAPI.enterPlanetOrbit());
-document.getElementById('btn-moon-1')?.addEventListener('click', () => gameAPI.landOnMoon(0));
-document.getElementById('btn-moon-2')?.addEventListener('click', () => gameAPI.landOnMoon(1));
-document.getElementById('btn-moon-3')?.addEventListener('click', () => gameAPI.landOnMoon(2));
+// Bind fast-travel UI buttons
+document.getElementById('btn-quick-repair')?.addEventListener('click', () => gameAPI.teleportToBase());
+document.getElementById('btn-quick-orbit')?.addEventListener('click', () => gameAPI.teleportToOrbit());
+document.getElementById('btn-moon-1')?.addEventListener('click', () => gameAPI.teleportToMoon(0));
+document.getElementById('btn-moon-2')?.addEventListener('click', () => gameAPI.teleportToMoon(1));
+document.getElementById('btn-moon-3')?.addEventListener('click', () => gameAPI.teleportToMoon(2));
 
 // Update dynamic keybinding labels across HUD footer & sidebar buttons
 function updateDynamicUIControls() {
@@ -233,14 +264,16 @@ function updateDynamicUIControls() {
     `;
   }
 
+  const btnBase = document.getElementById('btn-quick-repair');
+  if (btnBase) btnBase.textContent = `[${input.getActionKeyLabel('quickRepair')}] Base`;
   const btnOrbit = document.getElementById('btn-quick-orbit');
-  if (btnOrbit) btnOrbit.textContent = `[${input.getActionKeyLabel('quickOrbit')}] Planet Orbit View`;
+  if (btnOrbit) btnOrbit.textContent = `[${input.getActionKeyLabel('quickOrbit')}] Orbit`;
   const btnM1 = document.getElementById('btn-moon-1');
-  if (btnM1) btnM1.textContent = `[${input.getActionKeyLabel('quickMoon1')}] Moon I`;
+  if (btnM1) btnM1.textContent = `[${input.getActionKeyLabel('quickMoon1')}] M-I`;
   const btnM2 = document.getElementById('btn-moon-2');
-  if (btnM2) btnM2.textContent = `[${input.getActionKeyLabel('quickMoon2')}] Moon II`;
+  if (btnM2) btnM2.textContent = `[${input.getActionKeyLabel('quickMoon2')}] M-II`;
   const btnM3 = document.getElementById('btn-moon-3');
-  if (btnM3) btnM3.textContent = `[${input.getActionKeyLabel('quickMoon3')}] Moon III`;
+  if (btnM3) btnM3.textContent = `[${input.getActionKeyLabel('quickMoon3')}] M-III`;
   const btnSettings = document.getElementById('btn-open-settings');
   if (btnSettings) btnSettings.innerHTML = `&#9881; Settings &amp; Updates [${input.getActionKeyLabel('toggleSettings')}]`;
 }
@@ -279,6 +312,39 @@ if (urlView === 'char_back') {
   explorer.velocity.set(0, 8, -5);
   explorer.jetFlameLeft.visible = true;
   explorer.jetFlameRight.visible = true;
+} else if (urlView === 'char_jump') {
+  explorer.cameraDistance = 5.2;
+  explorer.pitch = 0.08;
+  explorer.grounded = false;
+  explorer.jumpPhase = 'ascent';
+  explorer.visualRoot.rotation.y = Math.PI * 0.85;
+  explorer.velocity.set(0, 8, -4);
+  explorer.torso.rotation.x = 0.16;
+  explorer.leftLeg.rotation.x = -0.45;
+  explorer.rightLeg.rotation.x = -0.35;
+  explorer.leftLowerLegGroup.rotation.x = 0.85;
+  explorer.rightLowerLegGroup.rotation.x = 0.70;
+  explorer.leftArm.rotation.x = -0.35;
+  explorer.rightArm.rotation.x = -0.35;
+  explorer.leftArm.rotation.z = -0.35;
+  explorer.rightArm.rotation.z = 0.35;
+  explorer.leftForearmGroup.rotation.x = 0.65;
+  explorer.rightForearmGroup.rotation.x = 0.65;
+} else if (urlView === 'char_sprint') {
+  explorer.cameraDistance = 5.2;
+  explorer.pitch = 0.08;
+  explorer.grounded = true;
+  explorer.visualRoot.rotation.y = Math.PI * 0.72;
+  explorer.walkCycle = Math.PI * 0.65;
+  explorer.torso.rotation.x = 0.35;
+  explorer.leftLeg.rotation.x = -0.75;
+  explorer.rightLeg.rotation.x = 0.75;
+  explorer.leftLowerLegGroup.rotation.x = 1.35;
+  explorer.rightLowerLegGroup.rotation.x = 0.15;
+  explorer.leftForearmGroup.rotation.x = 1.35;
+  explorer.rightForearmGroup.rotation.x = 1.35;
+  explorer.leftArm.rotation.x = 0.75;
+  explorer.rightArm.rotation.x = -0.75;
 } else if (urlView === 'ship_front') {
   repairSystem.giveAndInstallAll();
   ship.setRepairedVisual(true);
@@ -417,16 +483,18 @@ function animate(now) {
   }
   navMarkers.navLayer.style.display = 'block';
 
-  // Dynamic Keyboard shortcuts for quick testing (1: Repair+Board, 2: Planet Orbit, 3/4/5: Moons)
-  if (input.wasActionPressed('quickRepair') || input.wasPressed('Digit1')) gameAPI.repairAndBoard();
-  if (input.wasActionPressed('quickOrbit') || input.wasPressed('Digit2')) gameAPI.enterPlanetOrbit();
-  if (input.wasActionPressed('quickMoon1') || input.wasPressed('Digit3')) gameAPI.landOnMoon(0);
-  if (input.wasActionPressed('quickMoon2') || input.wasPressed('Digit4')) gameAPI.landOnMoon(1);
-  if (input.wasActionPressed('quickMoon3') || input.wasPressed('Digit5')) gameAPI.landOnMoon(2);
+  // Dynamic Keyboard shortcuts for Fast Travel (1: Base, 2: Planet Orbit, 3/4/5: Moons I-III)
+  if (input.wasActionPressed('quickRepair') || input.wasPressed('Digit1') || input.wasPressed('Numpad1')) gameAPI.teleportToBase();
+  if (input.wasActionPressed('quickOrbit') || input.wasPressed('Digit2') || input.wasPressed('Numpad2')) gameAPI.teleportToOrbit();
+  if (input.wasActionPressed('quickMoon1') || input.wasPressed('Digit3') || input.wasPressed('Numpad3')) gameAPI.teleportToMoon(0);
+  if (input.wasActionPressed('quickMoon2') || input.wasPressed('Digit4') || input.wasPressed('Numpad4')) gameAPI.teleportToMoon(1);
+  if (input.wasActionPressed('quickMoon3') || input.wasPressed('Digit5') || input.wasPressed('Numpad5')) gameAPI.teleportToMoon(2);
 
   if (gameMode === 'EXPLORING') {
     const mouseFrame = input.consumeFrame();
-    explorer.update(dt, input, mouseFrame, allBodies);
+    if (!urlView || (urlView !== 'char_front' && urlView !== 'char_jump' && urlView !== 'char_sprint')) {
+      explorer.update(dt, input, mouseFrame, allBodies);
+    }
     cameraRig.updateForExplorer(explorer, dt);
 
     // Check proximity to uncollected repair parts
