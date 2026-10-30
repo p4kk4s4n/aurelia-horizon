@@ -53,6 +53,7 @@ export class TouchControlsManager {
     this.rightPrevPos = { x: 0, y: 0 };
 
     this.maxStickRadius = 45;
+    this.uiScale = 1.0;
     this.sprintLatched = false;
     this.currentMode = 'EXPLORING';
 
@@ -80,6 +81,11 @@ export class TouchControlsManager {
     this.sensitivity = Math.max(0.3, Math.min(3.0, parseFloat(val) || 1.0));
     this.input.touchLookSensitivity = this.sensitivity;
     localStorage.setItem(STORAGE_SENS_KEY, this.sensitivity.toString());
+  }
+
+  setUIScale(scale) {
+    this.uiScale = Math.max(0.65, Math.min(1.4, parseFloat(scale) || 1.0));
+    this.maxStickRadius = 45 * this.uiScale;
   }
 
   applyVisibility(vis) {
@@ -131,8 +137,8 @@ export class TouchControlsManager {
       } else {
         this.leftStickBase.classList.remove('floating');
         this.leftStickBase.style.opacity = '1';
-        this.leftStickBase.style.left = '35px';
-        this.leftStickBase.style.bottom = '35px';
+        this.leftStickBase.style.left = '';
+        this.leftStickBase.style.bottom = '';
         this.leftStickBase.style.transform = 'none';
       }
     }
@@ -494,7 +500,7 @@ export class TouchControlsManager {
       this.footActions.style.display = isPiloting ? 'none' : 'flex';
     }
     if (this.shipActions) {
-      this.shipActions.style.display = isPiloting ? 'flex' : 'none';
+      this.shipActions.style.display = isPiloting ? 'grid' : 'none';
     }
 
     if (isPiloting) {

@@ -1,4 +1,5 @@
 :root {
+  --ui-scale: 1.0;
   --hud-primary: #00f5d4;
   --hud-secondary: #ff9f1c;
   --hud-bg: rgba(8, 18, 34, 0.84);
@@ -38,27 +39,27 @@ html, body {
 /* Top Mission & Compass */
 #hud-top {
   position: fixed;
-  top: 14px;
+  top: calc(12px * var(--ui-scale, 1.0));
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: calc(5px * var(--ui-scale, 1.0));
   pointer-events: none;
   z-index: 10;
-  width: min(760px, 92vw);
+  width: min(calc(760px * var(--ui-scale, 1.0)), 92vw);
 }
 
 .mission-banner {
   background: var(--hud-bg);
   border: 1px solid var(--hud-border);
   border-radius: 8px;
-  padding: 8px 16px;
+  padding: calc(6px * var(--ui-scale, 1.0)) calc(14px * var(--ui-scale, 1.0));
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 14px;
+  gap: calc(8px * var(--ui-scale, 1.0));
+  font-size: calc(13px * var(--ui-scale, 1.0));
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
 }
 
@@ -66,8 +67,8 @@ html, body {
   background: var(--hud-primary);
   color: #04101e;
   font-weight: 800;
-  font-size: 11px;
-  padding: 2px 7px;
+  font-size: calc(10px * var(--ui-scale, 1.0));
+  padding: 2px 6px;
   border-radius: 4px;
   letter-spacing: 0.06em;
 }
@@ -76,8 +77,8 @@ html, body {
   background: var(--hud-bg);
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 6px;
-  padding: 4px 14px;
-  font-size: 12.5px;
+  padding: calc(3px * var(--ui-scale, 1.0)) calc(12px * var(--ui-scale, 1.0));
+  font-size: calc(11.5px * var(--ui-scale, 1.0));
   color: var(--hud-compass);
   letter-spacing: 0.02em;
 }
@@ -85,13 +86,13 @@ html, body {
 /* Left Telemetry Panel */
 #hud-left {
   position: fixed;
-  top: 14px;
-  left: 14px;
-  width: 268px;
+  top: calc(14px * var(--ui-scale, 1.0));
+  left: calc(14px * var(--ui-scale, 1.0));
+  width: calc(268px * var(--ui-scale, 1.0));
   background: var(--hud-bg);
   border: 1px solid var(--hud-border);
   border-radius: 10px;
-  padding: 12px 14px;
+  padding: calc(10px * var(--ui-scale, 1.0)) calc(12px * var(--ui-scale, 1.0));
   z-index: 10;
   backdrop-filter: blur(6px);
   transition: width 0.2s, max-height 0.2s;
@@ -103,13 +104,13 @@ html, body {
   justify-content: space-between;
   border-bottom: 1px solid var(--hud-border);
   padding-bottom: 4px;
-  margin-bottom: 8px;
+  margin-bottom: calc(6px * var(--ui-scale, 1.0));
 }
 
 .panel-title {
-  font-size: 11px;
+  font-size: calc(11px * var(--ui-scale, 1.0));
   font-weight: 800;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   color: var(--hud-primary);
 }
 
@@ -118,9 +119,9 @@ html, body {
   border: 1px solid var(--hud-border);
   color: var(--hud-text);
   border-radius: 4px;
-  width: 20px;
-  height: 20px;
-  font-size: 14px;
+  width: calc(22px * var(--ui-scale, 1.0));
+  height: calc(22px * var(--ui-scale, 1.0));
+  font-size: calc(13px * var(--ui-scale, 1.0));
   line-height: 1;
   display: flex;
   align-items: center;
@@ -134,7 +135,7 @@ html, body {
 
 #hud-left.collapsed {
   width: auto;
-  padding: 8px 10px;
+  padding: calc(6px * var(--ui-scale, 1.0)) calc(10px * var(--ui-scale, 1.0));
 }
 
 #hud-left.collapsed .panel-body {
@@ -150,8 +151,8 @@ html, body {
 .stat-row {
   display: flex;
   justify-content: space-between;
-  font-size: 12.5px;
-  margin: 5px 0;
+  font-size: calc(11.5px * var(--ui-scale, 1.0));
+  margin: calc(4px * var(--ui-scale, 1.0)) 0;
   color: var(--hud-muted);
 }
 
@@ -162,19 +163,19 @@ html, body {
 }
 
 .gauge-block {
-  margin-top: 10px;
+  margin-top: calc(8px * var(--ui-scale, 1.0));
 }
 
 .gauge-label {
-  font-size: 10.5px;
+  font-size: calc(10px * var(--ui-scale, 1.0));
   color: var(--hud-muted);
-  margin-bottom: 4px;
+  margin-bottom: 3px;
   letter-spacing: 0.05em;
 }
 
 .gauge-track {
   width: 100%;
-  height: 8px;
+  height: 7px;
   background: rgba(255, 255, 255, 0.12);
   border-radius: 4px;
   overflow: hidden;
@@ -188,16 +189,16 @@ html, body {
 }
 
 .quick-actions {
-  margin-top: 12px;
-  padding-top: 8px;
+  margin-top: calc(10px * var(--ui-scale, 1.0));
+  padding-top: calc(6px * var(--ui-scale, 1.0));
   border-top: 1px solid rgba(255, 255, 255, 0.12);
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 4px;
 }
 
 .panel-subtitle {
-  font-size: 10px;
+  font-size: calc(9.5px * var(--ui-scale, 1.0));
   color: var(--hud-muted);
   letter-spacing: 0.05em;
 }
@@ -207,8 +208,8 @@ html, body {
   color: var(--hud-text);
   border: 1px solid var(--hud-border);
   border-radius: 5px;
-  padding: 5px 8px;
-  font-size: 11.5px;
+  padding: calc(4px * var(--ui-scale, 1.0)) calc(8px * var(--ui-scale, 1.0));
+  font-size: calc(11px * var(--ui-scale, 1.0));
   cursor: pointer;
   transition: background 0.15s, transform 0.1s;
 }
@@ -218,7 +219,7 @@ html, body {
 }
 
 .settings-trigger-btn {
-  margin-top: 4px;
+  margin-top: 3px;
   font-weight: 700;
   border-color: var(--hud-primary) !important;
   color: var(--hud-primary) !important;
@@ -231,19 +232,19 @@ html, body {
 
 .moon-btn-row button {
   flex: 1;
-  padding: 5px 4px;
+  padding: calc(4px * var(--ui-scale, 1.0)) calc(3px * var(--ui-scale, 1.0));
 }
 
 /* Right Orbital Radar */
 #hud-right {
   position: fixed;
-  top: 14px;
-  right: 14px;
-  width: 204px;
+  top: calc(14px * var(--ui-scale, 1.0));
+  right: calc(14px * var(--ui-scale, 1.0));
+  width: calc(204px * var(--ui-scale, 1.0));
   background: var(--hud-bg);
   border: 1px solid var(--hud-border);
   border-radius: 10px;
-  padding: 12px;
+  padding: calc(10px * var(--ui-scale, 1.0));
   z-index: 10;
   display: flex;
   flex-direction: column;
@@ -257,7 +258,7 @@ html, body {
 
 #hud-right.collapsed {
   width: auto;
-  padding: 8px 10px;
+  padding: calc(6px * var(--ui-scale, 1.0)) calc(10px * var(--ui-scale, 1.0));
 }
 
 #hud-right.collapsed .panel-body {
@@ -273,16 +274,16 @@ html, body {
 .radar-legend {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 4px 10px;
-  font-size: 11px;
-  margin-top: 8px;
+  gap: 3px 8px;
+  font-size: calc(10.5px * var(--ui-scale, 1.0));
+  margin-top: calc(6px * var(--ui-scale, 1.0));
   width: 100%;
 }
 
 .radar-legend .dot {
   display: inline-block;
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   margin-right: 4px;
 }
@@ -323,20 +324,22 @@ html, body {
 /* Center Notifications & Prompt */
 #hud-notice {
   position: fixed;
-  top: 102px;
+  top: calc(85px * var(--ui-scale, 1.0));
   left: 50%;
   transform: translateX(-50%);
   background: var(--hud-secondary);
   color: #050a14;
   font-weight: 700;
-  font-size: 13.5px;
-  padding: 8px 18px;
+  font-size: calc(12.5px * var(--ui-scale, 1.0));
+  padding: calc(6px * var(--ui-scale, 1.0)) calc(16px * var(--ui-scale, 1.0));
   border-radius: 999px;
   pointer-events: none;
   opacity: 0;
   transition: opacity 0.25s ease;
   z-index: 12;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+  max-width: min(calc(600px * var(--ui-scale, 1.0)), 90vw);
+  text-align: center;
 }
 
 #hud-notice.visible {
@@ -345,20 +348,22 @@ html, body {
 
 #hud-prompt {
   position: fixed;
-  bottom: 72px;
+  bottom: calc(72px * var(--ui-scale, 1.0));
   left: 50%;
   transform: translateX(-50%);
   background: var(--hud-primary);
   color: #04101e;
   font-weight: 700;
-  font-size: 14px;
-  padding: 8px 20px;
+  font-size: calc(13px * var(--ui-scale, 1.0));
+  padding: calc(6px * var(--ui-scale, 1.0)) calc(18px * var(--ui-scale, 1.0));
   border-radius: 8px;
   pointer-events: auto;
   cursor: pointer;
   opacity: 0;
   transition: opacity 0.2s ease, transform 0.1s;
   z-index: 12;
+  max-width: min(calc(620px * var(--ui-scale, 1.0)), 90vw);
+  text-align: center;
 }
 
 #hud-prompt.visible {
@@ -412,10 +417,10 @@ html, body {
 /* Virtual Joystick */
 .stick-base {
   position: absolute;
-  bottom: 35px;
-  left: 35px;
-  width: 110px;
-  height: 110px;
+  bottom: calc(24px * var(--ui-scale, 1.0));
+  left: calc(24px * var(--ui-scale, 1.0));
+  width: calc(100px * var(--ui-scale, 1.0));
+  height: calc(100px * var(--ui-scale, 1.0));
   background: rgba(8, 20, 36, 0.55);
   border: 2px solid var(--hud-primary);
   border-radius: 50%;
@@ -433,10 +438,10 @@ html, body {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 48px;
-  height: 48px;
-  margin-top: -24px;
-  margin-left: -24px;
+  width: calc(44px * var(--ui-scale, 1.0));
+  height: calc(44px * var(--ui-scale, 1.0));
+  margin-top: calc(-22px * var(--ui-scale, 1.0));
+  margin-left: calc(-22px * var(--ui-scale, 1.0));
   background: radial-gradient(circle, var(--hud-primary) 20%, rgba(0, 187, 249, 0.85) 90%);
   border: 2px solid #ffffff;
   border-radius: 50%;
@@ -447,20 +452,21 @@ html, body {
 
 .touch-right .stick-base {
   left: auto;
-  right: 120px;
+  right: calc(220px * var(--ui-scale, 1.0));
+  bottom: calc(24px * var(--ui-scale, 1.0));
 }
 
 /* Virtual D-Pad */
 .touch-dpad-grid {
   position: absolute;
-  bottom: 30px;
-  left: 30px;
-  width: 120px;
-  height: 120px;
+  bottom: calc(24px * var(--ui-scale, 1.0));
+  left: calc(24px * var(--ui-scale, 1.0));
+  width: calc(115px * var(--ui-scale, 1.0));
+  height: calc(115px * var(--ui-scale, 1.0));
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   grid-template-rows: repeat(3, 1fr);
-  gap: 3px;
+  gap: calc(3px * var(--ui-scale, 1.0));
   pointer-events: auto;
 }
 
@@ -468,7 +474,7 @@ html, body {
   background: rgba(8, 20, 36, 0.7);
   border: 1px solid var(--hud-primary);
   color: var(--hud-primary);
-  font-size: 16px;
+  font-size: calc(15px * var(--ui-scale, 1.0));
   border-radius: 6px;
   display: flex;
   align-items: center;
@@ -493,30 +499,38 @@ html, body {
 /* Touch Action Buttons */
 .touch-actions-cluster {
   position: absolute;
-  bottom: 25px;
-  right: 20px;
+  bottom: calc(20px * var(--ui-scale, 1.0));
+  right: calc(16px * var(--ui-scale, 1.0));
   pointer-events: auto;
   display: flex;
-  gap: 12px;
+  gap: calc(10px * var(--ui-scale, 1.0));
   align-items: flex-end;
   z-index: 26;
 }
 
+#touch-foot-actions {
+  display: flex;
+  gap: calc(8px * var(--ui-scale, 1.0));
+  align-items: flex-end;
+}
+
 #touch-ship-actions {
-  max-width: 280px;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: flex-end;
+  display: grid;
+  grid-template-columns: repeat(4, auto);
+  gap: calc(6px * var(--ui-scale, 1.0));
+  max-width: none;
+  justify-content: end;
+  align-items: center;
 }
 
 .touch-btn {
-  width: 58px;
-  height: 58px;
+  width: calc(48px * var(--ui-scale, 1.0));
+  height: calc(48px * var(--ui-scale, 1.0));
   border-radius: 50%;
   background: rgba(8, 20, 36, 0.75);
-  border: 2px solid var(--hud-primary);
+  border: 1.5px solid var(--hud-primary);
   color: var(--hud-text);
-  font-size: 11px;
+  font-size: calc(10px * var(--ui-scale, 1.0));
   font-weight: 800;
   display: flex;
   flex-direction: column;
@@ -531,7 +545,7 @@ html, body {
 }
 
 .touch-btn small {
-  font-size: 9px;
+  font-size: calc(8px * var(--ui-scale, 1.0));
   opacity: 0.85;
 }
 
@@ -545,8 +559,8 @@ html, body {
 
 .action-jump {
   border-color: var(--hud-primary);
-  width: 66px;
-  height: 66px;
+  width: calc(56px * var(--ui-scale, 1.0));
+  height: calc(56px * var(--ui-scale, 1.0));
 }
 
 .action-sprint.active {
@@ -579,8 +593,8 @@ html, body {
 .action-fire {
   border-color: #ff4d6d;
   color: #ff8fa3;
-  width: 66px;
-  height: 66px;
+  width: calc(52px * var(--ui-scale, 1.0));
+  height: calc(52px * var(--ui-scale, 1.0));
 }
 
 .action-fire.active {
@@ -1001,69 +1015,160 @@ html, body {
   width: min(920px, 95vw);
 }
 
+.touch-overlay.visible ~ #hud-controls,
+body.touch-active #hud-controls {
+  display: none !important;
+}
+
 /* ---------------------------------------------------- */
-/* Responsive Mobile Layout                             */
+/* Responsive Mobile & Compact Viewports                */
 /* ---------------------------------------------------- */
-@media (max-width: 900px), (max-height: 520px) {
+@media (max-width: 960px), (max-height: 540px) {
+  #hud-controls {
+    display: none !important;
+  }
   #hud-top {
-    top: 6px;
-    width: 96vw;
+    top: calc(5px * var(--ui-scale, 1.0));
+    width: min(calc(480px * var(--ui-scale, 1.0)), 96vw);
   }
   .mission-banner {
-    padding: 4px 10px;
-    font-size: 12px;
+    padding: calc(3px * var(--ui-scale, 1.0)) calc(8px * var(--ui-scale, 1.0));
+    font-size: calc(11px * var(--ui-scale, 1.0));
   }
   .compass-bar {
-    font-size: 11px;
-    padding: 2px 10px;
+    font-size: calc(10px * var(--ui-scale, 1.0));
+    padding: calc(2px * var(--ui-scale, 1.0)) calc(8px * var(--ui-scale, 1.0));
   }
   #hud-left {
-    top: 55px;
-    left: 8px;
-    width: 210px;
-    padding: 8px 10px;
+    top: calc(48px * var(--ui-scale, 1.0));
+    left: calc(6px * var(--ui-scale, 1.0));
+    width: min(calc(195px * var(--ui-scale, 1.0)), 46vw);
+    max-height: calc(100vh - 110px);
+    overflow-y: auto;
+    padding: calc(6px * var(--ui-scale, 1.0)) calc(8px * var(--ui-scale, 1.0));
   }
   #hud-right {
-    top: 55px;
-    right: 8px;
-    width: 140px;
-    padding: 8px;
+    top: calc(48px * var(--ui-scale, 1.0));
+    right: calc(6px * var(--ui-scale, 1.0));
+    width: calc(125px * var(--ui-scale, 1.0));
+    padding: calc(6px * var(--ui-scale, 1.0));
   }
   #radar-canvas {
-    width: 110px;
-    height: 110px;
+    width: calc(96px * var(--ui-scale, 1.0));
+    height: calc(96px * var(--ui-scale, 1.0));
   }
   .radar-legend {
-    font-size: 9.5px;
+    font-size: calc(8.5px * var(--ui-scale, 1.0));
     gap: 2px 4px;
   }
   .stat-row {
-    font-size: 11px;
-    margin: 3px 0;
+    font-size: calc(10px * var(--ui-scale, 1.0));
+    margin: calc(2.5px * var(--ui-scale, 1.0)) 0;
   }
   .quick-actions button {
-    padding: 4px;
-    font-size: 10.5px;
+    padding: calc(3px * var(--ui-scale, 1.0));
+    font-size: calc(9.5px * var(--ui-scale, 1.0));
   }
-  .touch-btn {
-    width: 52px;
-    height: 52px;
-    font-size: 10px;
+  #hud-prompt {
+    bottom: auto;
+    top: calc(72px * var(--ui-scale, 1.0));
+    max-width: min(calc(420px * var(--ui-scale, 1.0)), 88vw);
+    font-size: calc(11px * var(--ui-scale, 1.0));
+    padding: calc(4px * var(--ui-scale, 1.0)) calc(12px * var(--ui-scale, 1.0));
   }
-  .action-jump, .action-fire {
-    width: 58px;
-    height: 58px;
+  #hud-notice {
+    top: calc(106px * var(--ui-scale, 1.0));
+    max-width: min(calc(420px * var(--ui-scale, 1.0)), 88vw);
+    font-size: calc(10.5px * var(--ui-scale, 1.0));
+    padding: calc(4px * var(--ui-scale, 1.0)) calc(10px * var(--ui-scale, 1.0));
   }
   .stick-base {
-    width: 96px;
-    height: 96px;
-    bottom: 25px;
-    left: 25px;
+    width: calc(84px * var(--ui-scale, 1.0));
+    height: calc(84px * var(--ui-scale, 1.0));
+    bottom: calc(14px * var(--ui-scale, 1.0));
+    left: calc(14px * var(--ui-scale, 1.0));
   }
   .stick-knob {
-    width: 42px;
-    height: 42px;
-    margin-top: -21px;
-    margin-left: -21px;
+    width: calc(36px * var(--ui-scale, 1.0));
+    height: calc(36px * var(--ui-scale, 1.0));
+    margin-top: calc(-18px * var(--ui-scale, 1.0));
+    margin-left: calc(-18px * var(--ui-scale, 1.0));
+  }
+  .touch-btn {
+    width: calc(40px * var(--ui-scale, 1.0));
+    height: calc(40px * var(--ui-scale, 1.0));
+    font-size: calc(9px * var(--ui-scale, 1.0));
+  }
+  .touch-btn small {
+    font-size: calc(7px * var(--ui-scale, 1.0));
+  }
+  .action-jump {
+    width: calc(46px * var(--ui-scale, 1.0));
+    height: calc(46px * var(--ui-scale, 1.0));
+  }
+  .action-fire {
+    width: calc(44px * var(--ui-scale, 1.0));
+    height: calc(44px * var(--ui-scale, 1.0));
+  }
+  #touch-ship-actions {
+    gap: calc(4px * var(--ui-scale, 1.0));
+  }
+  .touch-actions-cluster {
+    bottom: calc(10px * var(--ui-scale, 1.0));
+    right: calc(10px * var(--ui-scale, 1.0));
+  }
+  .touch-right .stick-base {
+    left: auto;
+    right: calc(195px * var(--ui-scale, 1.0));
+    bottom: calc(10px * var(--ui-scale, 1.0));
+  }
+  .modal-backdrop {
+    padding: 8px;
+  }
+  .settings-card {
+    padding: 12px 14px;
+    gap: 10px;
+    max-height: 94vh;
+  }
+  .keybinds-grid {
+    grid-template-columns: 1fr;
+    gap: 5px;
+  }
+  .version-info-grid {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+}
+
+/* Specific Mobile Portrait Overrides */
+@media (max-width: 600px) and (orientation: portrait) {
+  #hud-top {
+    width: 95vw;
+  }
+  #hud-left {
+    top: calc(54px * var(--ui-scale, 1.0));
+    left: calc(6px * var(--ui-scale, 1.0));
+    width: min(calc(185px * var(--ui-scale, 1.0)), 48vw);
+  }
+  #hud-right {
+    top: calc(54px * var(--ui-scale, 1.0));
+    right: calc(6px * var(--ui-scale, 1.0));
+    width: calc(115px * var(--ui-scale, 1.0));
+  }
+  #radar-canvas {
+    width: calc(88px * var(--ui-scale, 1.0));
+    height: calc(88px * var(--ui-scale, 1.0));
+  }
+  .touch-actions-cluster {
+    bottom: calc(112px * var(--ui-scale, 1.0));
+    right: calc(10px * var(--ui-scale, 1.0));
+  }
+  .touch-right .stick-base {
+    right: calc(14px * var(--ui-scale, 1.0));
+    bottom: calc(14px * var(--ui-scale, 1.0));
+  }
+  .stick-base {
+    bottom: calc(14px * var(--ui-scale, 1.0));
+    left: calc(14px * var(--ui-scale, 1.0));
   }
 }

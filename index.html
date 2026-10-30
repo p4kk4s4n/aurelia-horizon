@@ -162,6 +162,32 @@
 
       <section class="settings-section">
         <div class="section-title-row">
+          <h3>UI SCALE &amp; DISPLAY RATIO</h3>
+          <span id="ui-scale-badge" class="setting-value-badge">100%</span>
+        </div>
+        <p class="section-desc">Adjust font sizes, icons, touch buttons, and windows to fit your screen size and aspect ratio:</p>
+        
+        <div class="settings-subsection">
+          <div class="slider-row">
+            <span class="setting-label">UI Scaling (Fonts, Icons &amp; HUD)</span>
+            <strong id="ui-scale-val">1.00x</strong>
+          </div>
+          <input id="ui-scale-slider" type="range" min="0.65" max="1.40" step="0.05" value="1.0" class="hud-slider" />
+        </div>
+
+        <div class="settings-subsection">
+          <span class="setting-label">Aspect Ratio Presets</span>
+          <div id="ui-scale-presets" class="pill-group">
+            <button type="button" class="pill-btn" data-preset="auto">Auto Aspect Fit</button>
+            <button type="button" class="pill-btn" data-preset="compact">Compact 75%</button>
+            <button type="button" class="pill-btn" data-preset="standard">Standard 100%</button>
+            <button type="button" class="pill-btn" data-preset="large">Large 120%</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="settings-section">
+        <div class="section-title-row">
           <h3>CONTROLS &amp; DYNAMIC KEYBINDINGS</h3>
           <button id="btn-reset-keybindings" class="mini-action-btn" type="button">Reset to Defaults</button>
         </div>

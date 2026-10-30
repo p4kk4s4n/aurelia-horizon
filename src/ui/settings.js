@@ -59,6 +59,8 @@ export const UI_COLOR_SCHEMES = {
 };
 
 const STORAGE_THEME_KEY = 'aurelia_ui_theme';
+const STORAGE_SCALE_KEY = 'aurelia_ui_scale';
+const STORAGE_AUTOSCALE_KEY = 'aurelia_ui_autoscale';
 const STORAGE_SHA_KEY = 'aurelia_installed_sha';
 const STORAGE_VER_KEY = 'aurelia_installed_version';
 const GITHUB_REPO = 'p4kk4s4n/aurelia-horizon';
@@ -80,6 +82,10 @@ export class SettingsManager {
     this.btnOpen = document.getElementById('btn-open-settings');
     this.btnClose = document.getElementById('btn-close-settings');
     this.themeContainer = document.getElementById('theme-options');
+    this.uiScaleSlider = document.getElementById('ui-scale-slider');
+    this.uiScaleVal = document.getElementById('ui-scale-val');
+    this.uiScaleBadge = document.getElementById('ui-scale-badge');
+    this.uiScalePresets = document.getElementById('ui-scale-presets');
     this.btnResetKeybinds = document.getElementById('btn-reset-keybindings');
     this.onfootGrid = document.getElementById('keybinds-onfoot-grid');
     this.flightGrid = document.getElementById('keybinds-flight-grid');
@@ -94,6 +100,11 @@ export class SettingsManager {
     this.btnCheckUpdate = document.getElementById('btn-check-update');
     this.btnForceRecache = document.getElementById('btn-force-recache');
 
+    this.autoScale = localStorage.getItem(STORAGE_AUTOSCALE_KEY) !== 'false';
+    const savedScale = parseFloat(localStorage.getItem(STORAGE_SCALE_KEY));
+    this.uiScale = !isNaN(savedScale) ? savedScale : this.calculateOptimalScale();
+    this.applyUIScale(this.uiScale, false);
+
     this._renderThemeButtons();
     this._renderTouchSettings();
     this._renderKeybindings();
@@ -103,6 +114,58 @@ export class SettingsManager {
 
     if (this.input) {
       this.input.onBindingsChanged(() => this._renderKeybindings());
+    }
+  }
+
+  calculateOptimalScale() {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    const aspect = w / Math.max(1, h);
+
+    if (h <= 500 && aspect >= 1.7) {
+      return 0.75;
+    }
+    if (h <= 600 && aspect >= 1.5) {
+      return 0.85;
+    }
+    if (w <= 500 && aspect <= 0.85) {
+      return 0.80;
+    }
+    if (w <= 1024 || h <= 700) {
+      return 0.90;
+    }
+    return 1.0;
+  }
+
+  applyUIScale(scale, save = true) {
+    this.uiScale = Math.max(0.65, Math.min(1.40, parseFloat(scale) || 1.0));
+    if (save) {
+      localStorage.setItem(STORAGE_SCALE_KEY, this.uiScale.toFixed(2));
+    }
+    document.documentElement.style.setProperty('--ui-scale', this.uiScale.toFixed(2));
+    if (this.touchControls?.setUIScale) {
+      this.touchControls.setUIScale(this.uiScale);
+    }
+    this._renderScaleControls();
+  }
+
+  _renderScaleControls() {
+    if (this.uiScaleSlider) {
+      this.uiScaleSlider.value = this.uiScale.toFixed(2);
+    }
+    const pct = `${Math.round(this.uiScale * 100)}%`;
+    if (this.uiScaleVal) this.uiScaleVal.textContent = `${this.uiScale.toFixed(2)}x (${pct})`;
+    if (this.uiScaleBadge) this.uiScaleBadge.textContent = pct;
+
+    if (this.uiScalePresets) {
+      this.uiScalePresets.querySelectorAll('button').forEach((btn) => {
+        const preset = btn.dataset.preset;
+        const isActive = (preset === 'auto' && this.autoScale) ||
+          (preset === 'compact' && Math.abs(this.uiScale - 0.75) < 0.03 && !this.autoScale) ||
+          (preset === 'standard' && Math.abs(this.uiScale - 1.0) < 0.03 && !this.autoScale) ||
+          (preset === 'large' && Math.abs(this.uiScale - 1.20) < 0.03 && !this.autoScale);
+        btn.classList.toggle('active', isActive);
+      });
     }
   }
 
@@ -171,6 +234,9 @@ export class SettingsManager {
 
   setTouchControls(touchControls) {
     this.touchControls = touchControls;
+    if (this.touchControls?.setUIScale) {
+      this.touchControls.setUIScale(this.uiScale);
+    }
     this._renderTouchSettings();
   }
 
@@ -276,6 +342,51 @@ export class SettingsManager {
         this.input.resetKeybindings();
         this._renderKeybindings();
         if (this.onNotice) this.onNotice('All controls reset to defaults.');
+      }
+    });
+
+    if (this.uiScaleSlider) {
+      this.uiScaleSlider.addEventListener('input', (e) => {
+        this.autoScale = false;
+        localStorage.setItem(STORAGE_AUTOSCALE_KEY, 'false');
+        this.applyUIScale(parseFloat(e.target.value), true);
+      });
+    }
+
+    if (this.uiScalePresets) {
+      this.uiScalePresets.querySelectorAll('button').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const preset = btn.dataset.preset;
+          if (preset === 'auto') {
+            this.autoScale = true;
+            localStorage.setItem(STORAGE_AUTOSCALE_KEY, 'true');
+            const opt = this.calculateOptimalScale();
+            this.applyUIScale(opt, false);
+            if (this.onNotice) this.onNotice(`UI Scale set to Auto Aspect Fit (${Math.round(opt * 100)}%)`);
+          } else if (preset === 'compact') {
+            this.autoScale = false;
+            localStorage.setItem(STORAGE_AUTOSCALE_KEY, 'false');
+            this.applyUIScale(0.75, true);
+            if (this.onNotice) this.onNotice('UI Scale set to Compact (75%)');
+          } else if (preset === 'standard') {
+            this.autoScale = false;
+            localStorage.setItem(STORAGE_AUTOSCALE_KEY, 'false');
+            this.applyUIScale(1.0, true);
+            if (this.onNotice) this.onNotice('UI Scale set to Standard (100%)');
+          } else if (preset === 'large') {
+            this.autoScale = false;
+            localStorage.setItem(STORAGE_AUTOSCALE_KEY, 'false');
+            this.applyUIScale(1.20, true);
+            if (this.onNotice) this.onNotice('UI Scale set to Large (120%)');
+          }
+        });
+      });
+    }
+
+    window.addEventListener('resize', () => {
+      if (this.autoScale) {
+        const opt = this.calculateOptimalScale();
+        this.applyUIScale(opt, false);
       }
     });
 

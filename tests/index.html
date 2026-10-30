@@ -25,7 +25,7 @@
     import { cubeToSphere, buildCubeSphereData } from '../src/world/cubeSphere.js';
     import { evaluateGravity } from '../src/world/gravity.js';
     import { ShipRepairSystem, SHIP_PART_DEFS } from '../src/ship/repair.js';
-    import { UI_COLOR_SCHEMES } from '../src/ui/settings.js';
+    import { UI_COLOR_SCHEMES, SettingsManager } from '../src/ui/settings.js';
     import { InputManager } from '../src/input.js';
     import { TouchControlsManager } from '../src/ui/touchControls.js';
     import { Explorer } from '../src/player/explorer.js';
@@ -313,6 +313,31 @@
     assert(testInput.wasActionPressed('interact'), 'Dynamic interact action triggers on rebound KeyF');
     testInput.setVirtualKey('KeyF', false);
     testInput.resetKeybindings();
+
+    // 12. UI Scale & Display Ratio Settings
+    const settingsMgr = new SettingsManager(() => {}, touchMgr, testInput);
+    assert(typeof settingsMgr.calculateOptimalScale === 'function', 'SettingsManager provides calculateOptimalScale');
+    assert(typeof settingsMgr.applyUIScale === 'function', 'SettingsManager provides applyUIScale');
+
+    // Clamping & CSS variable setting
+    settingsMgr.applyUIScale(0.85);
+    assert(Math.abs(settingsMgr.uiScale - 0.85) < 1e-3, 'applyUIScale sets uiScale to 0.85');
+    assert(document.documentElement.style.getPropertyValue('--ui-scale') === '0.85', 'applyUIScale updates document --ui-scale property');
+    assert(Math.abs(touchMgr.maxStickRadius - (45 * 0.85)) < 1e-3, 'TouchControls maxStickRadius scales with UI scale');
+
+    // Upper and lower limit clamping [0.65, 1.40]
+    settingsMgr.applyUIScale(2.50);
+    assert(Math.abs(settingsMgr.uiScale - 1.40) < 1e-3, 'applyUIScale clamps overly large scales to 1.40 max');
+    settingsMgr.applyUIScale(0.20);
+    assert(Math.abs(settingsMgr.uiScale - 0.65) < 1e-3, 'applyUIScale clamps overly small scales to 0.65 min');
+
+    // Optimal scale calculation produces reasonable scale
+    const calcScale = settingsMgr.calculateOptimalScale();
+    assert(calcScale >= 0.70 && calcScale <= 1.20, 'calculateOptimalScale returns sane scale within [0.70, 1.20]');
+
+    // Reset back to standard 1.0
+    settingsMgr.applyUIScale(1.0, false);
+    assert(document.documentElement.style.getPropertyValue('--ui-scale') === '1.00', 'applyUIScale can reset to 1.00');
 
     const summary = `SUMMARY: ${passed} passed, ${failed} failed`;
     logs.push('', summary);

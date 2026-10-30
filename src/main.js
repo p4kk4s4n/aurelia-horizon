@@ -231,6 +231,7 @@ else if (urlPhase === 'settings') settings.toggleModal(true);
 if (params.get('theme')) settings.applyTheme(params.get('theme'));
 if (params.get('touch')) touchControls.applyVisibility(params.get('touch'));
 if (params.get('scheme')) touchControls.applyScheme(params.get('scheme'));
+if (params.get('scale')) settings.applyUIScale(parseFloat(params.get('scale')), false);
 
 const urlView = params.get('view');
 if (urlView === 'char_back') {
@@ -289,6 +290,14 @@ if (urlView === 'char_back') {
 // Collapsible HUD panels on small screens
 const panelLeft = document.getElementById('hud-left');
 const panelRight = document.getElementById('hud-right');
+
+// Auto-collapse telemetry panel on mobile viewports for clean, open screen
+if (window.innerWidth <= 960 || window.innerHeight <= 540) {
+  panelLeft?.classList.add('collapsed');
+  const btn = document.getElementById('btn-toggle-left');
+  if (btn) btn.textContent = '+';
+}
+
 document.getElementById('btn-toggle-left')?.addEventListener('click', (e) => {
   e.stopPropagation();
   panelLeft?.classList.toggle('collapsed');

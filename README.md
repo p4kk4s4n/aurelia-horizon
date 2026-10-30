@@ -62,14 +62,26 @@ All keyboard controls are **dynamically assignable** in the Settings modal (`[P]
 
 ### Mobile & Touchscreen Controls (Auto-detected on Touchscreens / WebAPK)
 
+- **Ergonomic, Non-Overlapping Mobile Layouts**:
+  - **Portrait Viewports**: Virtual thumbsticks are anchored to the bottom corners with dedicated thumb reach. Action buttons (`RUN`, `JUMP/JET`, `ACT`) are elevated with a 14px buffer above the right stick, preventing accidental thumb collisions.
+  - **Landscape Viewports**: The right thumbstick and the context action buttons maintain a generous 15px clearance buffer with zero overlap.
+  - **Starfighter 4x2 Button Grid**: When piloting, the 8 flight buttons (`[DN]`, `[UP]`, `[ROLL ⟲]`, `[ROLL ⟳]`, `[SAS]`, `[BOOST]`, `[FIRE]`, `[EXIT]`) organize into a compact 4-column by 2-row grid beside the steering stick.
+  - **Clear Center Sky Prompts**: In-game interaction prompts and status notices are elevated to the upper sky beneath the compass bar, keeping the lower 70% of the screen completely clear for navigation.
+  - **Auto-Collapsing Telemetry**: On compact or mobile screens, the telemetry panel automatically collapses into a sleek header pill (`[+]`) on load to maximize screen visibility.
+  - **Desktop Legend Auto-Hide**: The desktop keyboard controls footer is automatically hidden whenever touch controls are active.
+- **UI Scale & Display Ratio Slider** (Configurable in Settings `[P]`):
+  - Global UI scaling from `0.65x` to `1.40x` dynamically adjusts all fonts, HUD panels, radar, thumbsticks, and action buttons.
+  - **Aspect Ratio Presets**:
+    - `Auto Aspect Fit`: Automatically calculates the optimal UI scale based on window aspect ratio and height (e.g., automatically scales down to 75% on ultrawide or narrow phone viewports).
+    - `Compact (75%)`, `Standard (100%)`, `Large (120%)` presets with real-time percentage badge and slider readout.
+    - Automatic responsive adaptation on window resize events, persisted to `localStorage`.
 - **Idle Auto-Hide**: All on-screen touchscreen buttons and joysticks automatically fade out after **3 seconds of inactivity**, offering an unobstructed panoramic view of space and planets. Any touch instantly wakes the controls up.
-- **Clean Mobile Prompts**: No confusing desktop keyboard key letters (`[E]`, `[O]`) on mobile buttons or in-game interaction prompts. Action buttons display clear names (`ACT`, `EXIT`, `SAS <mode>`, `BOOST`, `FIRE`).
+- **Clean Mobile Prompts**: No confusing desktop keyboard key letters on mobile buttons or in-game interaction prompts. Action buttons display clear names (`ACT`, `EXIT`, `SAS <mode>`, `BOOST`, `FIRE`).
 - **Pointer Capture & Reliable Hold**: Action buttons use pointer capture so rapid tapping or thumb drags do not lose contact or drop afterburner thrust.
 - **3 Selectable Touch Layouts** (in Settings `[P]`):
   1. **Dual Virtual Joysticks (Default)**: Left thumbstick for analog movement / thrust; Right thumbstick for smooth camera look / ship steering.
   2. **Floating Stick + Look Area**: Left half of screen spawns a floating stick dynamically under thumb; Right half is a touch-drag look trackpad.
   3. **Virtual D-Pad + Look Area**: Tactile 8-way directional pad on left; Touch-drag look trackpad on right.
-- **Collapsible HUD**: Tap the `−`/`+` button on Telemetry and Radar panels on mobile screens to minimize HUD clutter.
 
 ---
 
