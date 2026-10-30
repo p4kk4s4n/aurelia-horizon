@@ -130,8 +130,8 @@
     const testInput = new InputManager(mockCanvas);
     testInput.setVirtualKey('Space', true);
     assert(testInput.isDown('Space') && testInput.wasPressed('Space'), 'setVirtualKey marks key down and pressed');
-    const consumed = testInput.consumeFrame();
-    assert(testInput.isDown('Space') && !testInput.wasPressed('Space'), 'consumeFrame resets wasPressed while keeping isDown');
+    testInput.endFrame();
+    assert(testInput.isDown('Space') && !testInput.wasPressed('Space'), 'endFrame resets wasPressed while keeping isDown');
     testInput.setVirtualKey('Space', false);
     assert(!testInput.isDown('Space'), 'releasing virtual key unsets isDown');
 
@@ -265,6 +265,54 @@
     touchOverlay.classList.add('idle-fade');
     touchMgr.wakeFromIdle();
     assert(!touchOverlay.classList.contains('idle-fade'), 'wakeFromIdle removes idle-fade class on touch');
+
+    // 11. Dynamic Keybindings & Jump / Act Responsiveness
+    // A) Keybindings schema & labels
+    assert(testInput.keybindings.jump.primary === 'Space', 'Default jump binding is Space');
+    assert(testInput.keybindings.interact.primary === 'KeyE', 'Default interact binding is KeyE');
+    assert(testInput.keybindings.flightBoost.primary === 'ShiftLeft', 'Default flightBoost binding is ShiftLeft');
+    assert(testInput.getActionKeyLabel('jump') === 'SPACE', 'getActionKeyLabel returns human-readable label SPACE');
+    assert(testInput.getActionKeyLabel('interact') === 'E', 'getActionKeyLabel returns E for interact');
+
+    // B) Dynamic Rebinding & Action Checks
+    testInput.rebindAction('jump', 'KeyJ');
+    assert(testInput.keybindings.jump.primary === 'KeyJ', 'rebindAction updates jump primary key');
+    assert(testInput.getActionKeyLabel('jump') === 'J', 'getActionKeyLabel reflects rebound key J');
+
+    testInput.setVirtualKey('KeyJ', true);
+    assert(testInput.isActionDown('jump'), 'isActionDown returns true for newly rebound key');
+    assert(testInput.wasActionPressed('jump'), 'wasActionPressed returns true for newly rebound key');
+    testInput.endFrame();
+    assert(testInput.isActionDown('jump') && !testInput.wasActionPressed('jump'), 'endFrame resets wasActionPressed while keeping isActionDown');
+    testInput.setVirtualKey('KeyJ', false);
+    assert(!testInput.isActionDown('jump'), 'releasing virtual key unsets isActionDown');
+
+    testInput.resetKeybindings();
+    assert(testInput.keybindings.jump.primary === 'Space', 'resetKeybindings restores default Space for jump');
+
+    // C) Explorer Jump & Mid-Air Jetpack Responsiveness
+    const jumpExplorer = new Explorer(mockScene);
+    jumpExplorer.spawnOnBody(mockBodies[0], new THREE.Vector3(0, 1, 0));
+    jumpExplorer.grounded = true;
+    testInput.setVirtualKey('Space', true);
+    jumpExplorer.update(0.1, testInput, { dx: 0, dy: 0, wheel: 0 }, mockBodies);
+    assert(!jumpExplorer.grounded, 'Pressing jump while grounded launches explorer into air');
+    assert(jumpExplorer.velocity.y > 5.0, 'Jump gives upward vertical launch velocity');
+
+    // Mid-air jetpack boost
+    const preBoostFuel = jumpExplorer.jetpackFuel;
+    jumpExplorer.update(0.1, testInput, { dx: 0, dy: 0, wheel: 0 }, mockBodies);
+    assert(jumpExplorer.jetpackFuel < preBoostFuel, 'Holding jump in mid-air activates jetpack and consumes fuel');
+    assert(jumpExplorer.jetFlameLeft.visible, 'Jetpack flame cones are visible during jetpack propulsion');
+    testInput.setVirtualKey('Space', false);
+    testInput.endFrame();
+
+    // D) ACT / Interact & Disembark Checks
+    testInput.rebindAction('interact', 'KeyF');
+    testInput.setVirtualKey('KeyF', true);
+    assert(testInput.wasActionPressed('interact'), 'Dynamic interact action triggers on rebound KeyF');
+    testInput.setVirtualKey('KeyF', false);
+    testInput.resetKeybindings();
 
     const summary = `SUMMARY: ${passed} passed, ${failed} failed`;
     logs.push('', summary);

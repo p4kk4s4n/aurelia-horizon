@@ -45,7 +45,8 @@ export class HUD {
       planet,
       moons,
       promptText,
-      compassText
+      compassText,
+      input
     } = state;
 
     if (this.noticeTimer > 0) {
@@ -107,18 +108,30 @@ export class HUD {
 
     // Objective guidance
     if (this.elObjectiveText) {
+      const isTouch = input?.isTouchDevice;
+      const actKey = input?.getActionKeyLabel ? input.getActionKeyLabel('interact') : 'E';
+      const fwdKey = input?.getActionKeyLabel ? input.getActionKeyLabel('flightThrustForward') : 'W';
+      const bwdKey = input?.getActionKeyLabel ? input.getActionKeyLabel('flightThrustBackward') : 'S';
+      const boostKey = input?.getActionKeyLabel ? input.getActionKeyLabel('flightBoost') : 'Shift';
+      const sasKey = input?.getActionKeyLabel ? input.getActionKeyLabel('flightSAS') : 'O';
+      const rollLKey = input?.getActionKeyLabel ? input.getActionKeyLabel('flightRollLeft') : 'Q';
+      const rollRKey = input?.getActionKeyLabel ? input.getActionKeyLabel('flightRollRight') : 'E';
+      const exitKey = input?.getActionKeyLabel ? input.getActionKeyLabel('flightDisembark') : 'E';
+
       if (!rep.repaired) {
         if (rep.collected < rep.total) {
           this.elObjectiveText.textContent = `1. Explore Aurelia Prime & collect ship components (${rep.collected}/${rep.total} found). Follow glowing sky beacons!`;
         } else {
-          this.elObjectiveText.textContent = `2. Return to your Starfighter and press [E] to install the remaining components.`;
+          this.elObjectiveText.textContent = `2. Return to your Starfighter and ${isTouch ? 'tap ACT' : `press [${actKey}]`} to install the remaining components.`;
         }
       } else if (mode !== 'PILOTING' && ship.visitedMoons.size === 0) {
-        this.elObjectiveText.textContent = `3. Ship Repaired! Approach the Starfighter and press [E] to board and take off into orbit.`;
+        this.elObjectiveText.textContent = `3. Ship Repaired! Approach the Starfighter and ${isTouch ? 'tap ACT' : `press [${actKey}]`} to board and take off into orbit.`;
       } else if (ship.visitedMoons.size < moons.length) {
-        this.elObjectiveText.textContent = `4. Newtonian Spaceflight: Prograde [W], Retro-Brake [S], Boost [Shift], Cycle SAS [O], Roll [Q/E], land on all 3 Moons (${ship.visitedMoons.size}/3)!`;
+        this.elObjectiveText.textContent = isTouch
+          ? `4. Spaceflight: Fly to and land on all 3 Moons (${ship.visitedMoons.size}/3)! Use BOOST for afterburners & SAS for autopilot.`
+          : `4. Newtonian Spaceflight: Prograde [${fwdKey}], Retro-Brake [${bwdKey}], Boost [${boostKey}], Cycle SAS [${sasKey}], Roll [${rollLKey}/${rollRKey}], land on all 3 Moons (${ship.visitedMoons.size}/3)!`;
       } else {
-        this.elObjectiveText.textContent = `MISSION COMPLETE! All 3 Moons explored! Free-fly, step out on any moon [E], or dogfight orbital drones.`;
+        this.elObjectiveText.textContent = `MISSION COMPLETE! All 3 Moons explored! Free-fly, step out on any moon ${isTouch ? '[EXIT]' : `[${exitKey}]`}, or dogfight orbital drones.`;
       }
     }
 

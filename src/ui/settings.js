@@ -65,10 +65,12 @@ const GITHUB_REPO = 'p4kk4s4n/aurelia-horizon';
 const GITHUB_BRANCH = 'main';
 
 export class SettingsManager {
-  constructor(onNotice, touchControls = null) {
+  constructor(onNotice, touchControls = null, input = null) {
     this.onNotice = onNotice;
     this.touchControls = touchControls;
+    this.input = input;
     this.isOpen = false;
+    this.listeningBinding = null;
     this.currentThemeId = localStorage.getItem(STORAGE_THEME_KEY) || 'cyan';
     if (!UI_COLOR_SCHEMES[this.currentThemeId]) {
       this.currentThemeId = 'cyan';
@@ -78,6 +80,10 @@ export class SettingsManager {
     this.btnOpen = document.getElementById('btn-open-settings');
     this.btnClose = document.getElementById('btn-close-settings');
     this.themeContainer = document.getElementById('theme-options');
+    this.btnResetKeybinds = document.getElementById('btn-reset-keybindings');
+    this.onfootGrid = document.getElementById('keybinds-onfoot-grid');
+    this.flightGrid = document.getElementById('keybinds-flight-grid');
+    this.systemGrid = document.getElementById('keybinds-system-grid');
     this.touchVisContainer = document.getElementById('touch-vis-options');
     this.touchSchemeContainer = document.getElementById('touch-scheme-options');
     this.touchSensSlider = document.getElementById('touch-sens-slider');
@@ -90,9 +96,77 @@ export class SettingsManager {
 
     this._renderThemeButtons();
     this._renderTouchSettings();
+    this._renderKeybindings();
     this.applyTheme(this.currentThemeId);
     this._bindEvents();
     this._initLocalVersionInfo();
+
+    if (this.input) {
+      this.input.onBindingsChanged(() => this._renderKeybindings());
+    }
+  }
+
+  setInput(input) {
+    this.input = input;
+    this._renderKeybindings();
+    if (this.input) {
+      this.input.onBindingsChanged(() => this._renderKeybindings());
+    }
+  }
+
+  _renderKeybindings() {
+    if (!this.input || !this.input.keybindings) return;
+
+    if (this.onfootGrid) this.onfootGrid.innerHTML = '';
+    if (this.flightGrid) this.flightGrid.innerHTML = '';
+    if (this.systemGrid) this.systemGrid.innerHTML = '';
+
+    for (const [action, def] of Object.entries(this.input.keybindings)) {
+      const row = document.createElement('div');
+      row.className = 'keybind-row';
+
+      const label = document.createElement('span');
+      label.className = 'keybind-label';
+      label.textContent = def.label;
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'keybind-btn';
+      btn.dataset.action = action;
+      btn.dataset.slot = 'primary';
+      btn.textContent = this.input.getActionKeyLabel(action, 'primary');
+
+      if (this.listeningBinding && this.listeningBinding.action === action) {
+        btn.classList.add('listening');
+        btn.textContent = 'PRESS KEY...';
+      }
+
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this._startListeningKeybind(action, 'primary', btn);
+      });
+
+      row.appendChild(label);
+      row.appendChild(btn);
+
+      if (def.category === 'on_foot' && this.onfootGrid) {
+        this.onfootGrid.appendChild(row);
+      } else if (def.category === 'flight' && this.flightGrid) {
+        this.flightGrid.appendChild(row);
+      } else if (this.systemGrid) {
+        this.systemGrid.appendChild(row);
+      }
+    }
+  }
+
+  _startListeningKeybind(action, slot, btn) {
+    if (this.listeningBinding && this.listeningBinding.button) {
+      this.listeningBinding.button.classList.remove('listening');
+      this.listeningBinding.button.textContent = this.input.getActionKeyLabel(this.listeningBinding.action, this.listeningBinding.slot);
+    }
+    this.listeningBinding = { action, slot, button: btn };
+    btn.classList.add('listening');
+    btn.textContent = 'PRESS KEY...';
   }
 
   setTouchControls(touchControls) {
@@ -197,17 +271,46 @@ export class SettingsManager {
   _bindEvents() {
     this.btnOpen?.addEventListener('click', () => this.toggleModal(true));
     this.btnClose?.addEventListener('click', () => this.toggleModal(false));
+    this.btnResetKeybinds?.addEventListener('click', () => {
+      if (this.input) {
+        this.input.resetKeybindings();
+        this._renderKeybindings();
+        if (this.onNotice) this.onNotice('All controls reset to defaults.');
+      }
+    });
+
     this.modal?.addEventListener('click', (e) => {
       if (e.target === this.modal) this.toggleModal(false);
     });
 
     window.addEventListener('keydown', (e) => {
-      if (e.code === 'KeyP') {
+      if (this.listeningBinding) {
+        e.preventDefault();
+        e.stopPropagation();
+        const { action, slot } = this.listeningBinding;
+        this.listeningBinding = null;
+        if (e.code === 'Escape') {
+          this._renderKeybindings();
+          return;
+        }
+        if (this.input) {
+          this.input.rebindAction(action, e.code, slot);
+          this._renderKeybindings();
+          const def = this.input.keybindings[action];
+          if (this.onNotice) {
+            this.onNotice(`Control "${def?.label || action}" bound to [${this.input.getActionKeyLabel(action, slot)}]`);
+          }
+        }
+        return;
+      }
+
+      const toggleCode = this.input?.keybindings?.toggleSettings?.primary || 'KeyP';
+      if (e.code === toggleCode) {
         this.toggleModal(!this.isOpen);
       } else if (e.code === 'Escape' && this.isOpen) {
         this.toggleModal(false);
       }
-    });
+    }, true);
 
     this.btnCheckUpdate?.addEventListener('click', () => this.checkGitHubAndRecache(false));
     this.btnForceRecache?.addEventListener('click', () => this.checkGitHubAndRecache(true));
@@ -215,11 +318,16 @@ export class SettingsManager {
 
   toggleModal(open) {
     this.isOpen = Boolean(open);
+    if (this.listeningBinding) {
+      this.listeningBinding = null;
+      this._renderKeybindings();
+    }
     if (!this.modal) return;
     if (this.isOpen) {
       if (document.pointerLockElement && document.exitPointerLock) {
         try { document.exitPointerLock(); } catch (_) {}
       }
+      this._renderKeybindings();
       this.modal.classList.add('open');
     } else {
       this.modal.classList.remove('open');

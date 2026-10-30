@@ -51,6 +51,15 @@ A zero-build, web-based 3D space exploration prototype built with **Three.js (ES
 | **Quick Test Shortcuts** | Instant Repair + Board / Orbit / Moons | Keys `1`, `2`, `3`, `4`, `5` | Top-Left Quick Orbit & Moon Buttons |
 | **Settings & Updates** | Open UI Color Schemes, Touch Controls & GitHub Updater | Key `P` | `⚙ Settings & Updates` HUD Button |
 
+### Dynamic Keybindings & Custom Controls (Configurable in Settings `[P]`)
+
+All keyboard controls are **dynamically assignable** in the Settings modal (`[P]`). You can rebind any action by clicking its key button and pressing your desired key:
+- **On-Foot Exploration**: Move Forward, Backward, Strafe Left, Strafe Right, Sprint / Run, Jump / Jetpack Boost, Interact / Collect / Board.
+- **Starfighter Newtonian Flight**: Forward Thrust, Reverse Thrust / Brake, Strafe Left / Right, Ascend / Lift Off, Descend / Land, 6DoF Roll Left / Right, Afterburner Boost, Cycle SAS Autopilot, Fire Pulse Cannons, Disembark (Landed).
+- **System & Shortcuts**: Open Settings, Quick Repair & Board, Quick Orbit, Quick Moons I, II, III.
+- **Dynamic UI Propagation**: All in-game HUD prompt banners (`Press [Key] to collect/board/disembark`), mission guidance objectives, quick buttons, and bottom controls guides automatically adapt in real-time to reflect your custom key assignments.
+- **Persistence & Reset**: Custom keybindings are saved to `localStorage` automatically, with a one-click **"Reset to Defaults"** button.
+
 ### Mobile & Touchscreen Controls (Auto-detected on Touchscreens / WebAPK)
 
 - **Idle Auto-Hide**: All on-screen touchscreen buttons and joysticks automatically fade out after **3 seconds of inactivity**, offering an unobstructed panoramic view of space and planets. Any touch instantly wakes the controls up.

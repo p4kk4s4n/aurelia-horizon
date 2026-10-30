@@ -375,7 +375,7 @@ export class TouchControlsManager {
   }
 
   _setupActionButtons() {
-    const bindHold = (btn, code) => {
+    const bindHold = (btn, code, action = null) => {
       if (!btn) return;
       btn.addEventListener('pointerdown', (e) => {
         e.preventDefault();
@@ -383,6 +383,7 @@ export class TouchControlsManager {
         this.activePointerCount++;
         this.wakeFromIdle();
         this.input.setVirtualKey(code, true);
+        if (action && this.input.setVirtualAction) this.input.setVirtualAction(action, true);
         btn.classList.add('active');
       });
       const end = (e) => {
@@ -390,6 +391,7 @@ export class TouchControlsManager {
         try { btn.releasePointerCapture(e.pointerId); } catch (_) {}
         this.activePointerCount = Math.max(0, this.activePointerCount - 1);
         this.input.setVirtualKey(code, false);
+        if (action && this.input.setVirtualAction) this.input.setVirtualAction(action, false);
         btn.classList.remove('active');
         this.resetIdleTimer();
       };
@@ -397,12 +399,13 @@ export class TouchControlsManager {
       btn.addEventListener('pointercancel', end);
     };
 
-    const bindTap = (btn, code) => {
+    const bindTap = (btn, code, action = null) => {
       if (!btn) return;
       btn.addEventListener('pointerdown', (e) => {
         e.preventDefault();
         this.wakeFromIdle();
         this.input.triggerVirtualPress(code);
+        if (action && this.input.triggerVirtualAction) this.input.triggerVirtualAction(action);
         btn.classList.add('active');
       });
       const end = (e) => {
@@ -415,8 +418,8 @@ export class TouchControlsManager {
     };
 
     // On-Foot actions
-    bindHold(this.btnJump, 'Space');
-    bindTap(this.btnInteract, 'KeyE');
+    bindHold(this.btnJump, 'Space', 'jump');
+    bindTap(this.btnInteract, 'KeyE', 'interact');
 
     // Sprint toggle button
     this.btnSprint?.addEventListener('pointerdown', (e) => {
@@ -424,6 +427,7 @@ export class TouchControlsManager {
       this.wakeFromIdle();
       this.sprintLatched = !this.sprintLatched;
       this.input.setVirtualKey('ShiftLeft', this.sprintLatched);
+      if (this.input.setVirtualAction) this.input.setVirtualAction('sprint', this.sprintLatched);
       this.btnSprint.classList.toggle('active', this.sprintLatched);
       if (this.onNotice) {
         this.onNotice(this.sprintLatched ? 'Sprint Lock ON' : 'Sprint Lock OFF', 1.5);
@@ -432,13 +436,13 @@ export class TouchControlsManager {
     });
 
     // Starfighter actions
-    bindHold(this.btnFire, 'KeyF');
-    bindHold(this.btnBoost, 'ShiftLeft');
-    bindHold(this.btnAscend, 'Space');
-    bindHold(this.btnDescend, 'ControlLeft');
+    bindHold(this.btnFire, 'KeyF', 'flightFire');
+    bindHold(this.btnBoost, 'ShiftLeft', 'flightBoost');
+    bindHold(this.btnAscend, 'Space', 'flightAscend');
+    bindHold(this.btnDescend, 'ControlLeft', 'flightDescend');
 
     // Starfighter 6DoF Axial Roll buttons
-    const bindRoll = (btn, rate) => {
+    const bindRoll = (btn, rate, action = null) => {
       if (!btn) return;
       btn.addEventListener('pointerdown', (e) => {
         e.preventDefault();
@@ -446,6 +450,7 @@ export class TouchControlsManager {
         this.activePointerCount++;
         this.wakeFromIdle();
         this.input.rollRate = rate;
+        if (action && this.input.setVirtualAction) this.input.setVirtualAction(action, true);
         btn.classList.add('active');
       });
       const end = (e) => {
@@ -453,6 +458,7 @@ export class TouchControlsManager {
         try { btn.releasePointerCapture(e.pointerId); } catch (_) {}
         this.activePointerCount = Math.max(0, this.activePointerCount - 1);
         if (this.input.rollRate === rate) this.input.rollRate = 0;
+        if (action && this.input.setVirtualAction) this.input.setVirtualAction(action, false);
         btn.classList.remove('active');
         this.resetIdleTimer();
       };
@@ -460,11 +466,11 @@ export class TouchControlsManager {
       btn.addEventListener('pointercancel', end);
     };
 
-    bindRoll(this.btnRollL, -1);
-    bindRoll(this.btnRollR, 1);
+    bindRoll(this.btnRollL, -1, 'flightRollLeft');
+    bindRoll(this.btnRollR, 1, 'flightRollRight');
 
-    bindTap(this.btnOrbit, 'KeyO');
-    bindTap(this.btnExit, 'KeyE');
+    bindTap(this.btnOrbit, 'KeyO', 'flightSAS');
+    bindTap(this.btnExit, 'KeyE', 'flightDisembark');
 
     // Center HUD prompt pill tap
     const centerPrompt = document.getElementById('hud-prompt');
@@ -472,6 +478,10 @@ export class TouchControlsManager {
       e.preventDefault();
       this.wakeFromIdle();
       this.input.triggerVirtualPress('KeyE');
+      if (this.input.triggerVirtualAction) {
+        this.input.triggerVirtualAction('interact');
+        this.input.triggerVirtualAction('flightDisembark');
+      }
       this.resetIdleTimer();
     });
   }

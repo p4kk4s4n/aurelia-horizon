@@ -39,7 +39,7 @@ const cameraRig = new CameraRig(camera);
 const input = new InputManager(canvas);
 const hud = new HUD();
 const touchControls = new TouchControlsManager(input, (msg, dur) => hud.showNotice(msg, dur));
-const settings = new SettingsManager((msg) => hud.showNotice(msg), touchControls);
+const settings = new SettingsManager((msg) => hud.showNotice(msg), touchControls, input);
 
 let gameMode = 'EXPLORING'; // 'EXPLORING' | 'PILOTING'
 let elapsedTime = 0;
@@ -51,12 +51,17 @@ function boardShip() {
   }
   gameMode = 'PILOTING';
   explorer.group.visible = false;
-  hud.showNotice('Starfighter Systems Online! Hold [Space] + [W] to Lift Off, [Shift] Boost, [O] Orbit Assist, [Click/F] Fire Cannons.');
+  const isTouch = input.isTouchDevice || touchControls.visibility === 'always' || window.innerWidth <= 960;
+  hud.showNotice(isTouch
+    ? 'Starfighter Systems Online! Use UP & DN to launch, BOOST for afterburners, SAS for orbit assists, and FIRE for cannons.'
+    : `Starfighter Systems Online! Hold [${input.getActionKeyLabel('flightAscend')}] + [${input.getActionKeyLabel('flightThrustForward')}] to Lift Off, [${input.getActionKeyLabel('flightBoost')}] Boost, [${input.getActionKeyLabel('flightSAS')}] SAS Assist, [${input.getActionKeyLabel('flightFire')}/Click] Fire Cannons.`
+  );
 }
 
 function disembarkShip() {
   if (!ship.landed && ship.altitude > 18) {
-    hud.showNotice('Land on a planet or moon surface before disembarking ([Ctrl]/[C] to descend)!');
+    const dsc = input.getActionKeyLabel('flightDescend');
+    hud.showNotice(`Land on a planet or moon surface before disembarking ([${dsc}] to descend)!`);
     return;
   }
   gameMode = 'EXPLORING';
@@ -147,7 +152,11 @@ export const gameAPI = {
     ship.placeOnBody(moon, new THREE.Vector3(-0.35, 0.93, 0.1));
     ship.visitedMoons.add(moon.id);
     cameraRig.initialized = false;
-    hud.showNotice(`Landed on ${moon.name}! Press [E] to step out and walk in low gravity, or [Space] to launch.`);
+    const isTouch = input.isTouchDevice || touchControls.visibility === 'always' || window.innerWidth <= 960;
+    hud.showNotice(isTouch
+      ? `Landed on ${moon.name}! Tap EXIT to step out and walk in low gravity, or UP to launch.`
+      : `Landed on ${moon.name}! Press [${input.getActionKeyLabel('flightDisembark')}] to step out and walk in low gravity, or [${input.getActionKeyLabel('flightAscend')}] to launch.`
+    );
   },
   fireWeaponBurst: () => {
     if (gameMode !== 'PILOTING') boardShip();
@@ -163,6 +172,52 @@ document.getElementById('btn-quick-orbit')?.addEventListener('click', () => game
 document.getElementById('btn-moon-1')?.addEventListener('click', () => gameAPI.landOnMoon(0));
 document.getElementById('btn-moon-2')?.addEventListener('click', () => gameAPI.landOnMoon(1));
 document.getElementById('btn-moon-3')?.addEventListener('click', () => gameAPI.landOnMoon(2));
+
+// Update dynamic keybinding labels across HUD footer & sidebar buttons
+function updateDynamicUIControls() {
+  const footer = document.getElementById('hud-controls');
+  if (footer) {
+    const fwd = input.getActionKeyLabel('moveForward');
+    const left = input.getActionKeyLabel('strafeLeft');
+    const bwd = input.getActionKeyLabel('moveBackward');
+    const right = input.getActionKeyLabel('strafeRight');
+    const sprint = input.getActionKeyLabel('sprint');
+    const jump = input.getActionKeyLabel('jump');
+    const act = input.getActionKeyLabel('interact');
+
+    const fThrust = input.getActionKeyLabel('flightThrustForward');
+    const rThrust = input.getActionKeyLabel('flightThrustBackward');
+    const sLeft = input.getActionKeyLabel('flightStrafeLeft');
+    const sRight = input.getActionKeyLabel('flightStrafeRight');
+    const rollL = input.getActionKeyLabel('flightRollLeft');
+    const rollR = input.getActionKeyLabel('flightRollRight');
+    const asc = input.getActionKeyLabel('flightAscend');
+    const dsc = input.getActionKeyLabel('flightDescend');
+    const boost = input.getActionKeyLabel('flightBoost');
+    const sas = input.getActionKeyLabel('flightSAS');
+    const fire = input.getActionKeyLabel('flightFire');
+    const exit = input.getActionKeyLabel('flightDisembark');
+
+    footer.innerHTML = `
+      <div><strong>ON FOOT:</strong> [${fwd}/${left}/${bwd}/${right}] Move &bull; [${sprint}] Sprint &bull; [${jump}] Jump / Jetpack &bull; [Mouse] Look &bull; [${act}] Collect / Install / Board</div>
+      <div><strong>STARFIGHTER (NEWTONIAN):</strong> [${fThrust}/${rThrust}] Thrust &bull; [${sLeft}/${sRight}] Strafe &bull; [${rollL}/${rollR}] 6DoF Roll &bull; [${asc}/${dsc}] Ascend/Descend &bull; [${boost}] Boost &bull; [${sas}] SAS Assist &bull; [${fire}/Click] Pulse Cannons &bull; [${exit}] Disembark</div>
+    `;
+  }
+
+  const btnOrbit = document.getElementById('btn-quick-orbit');
+  if (btnOrbit) btnOrbit.textContent = `[${input.getActionKeyLabel('quickOrbit')}] Planet Orbit View`;
+  const btnM1 = document.getElementById('btn-moon-1');
+  if (btnM1) btnM1.textContent = `[${input.getActionKeyLabel('quickMoon1')}] Moon I`;
+  const btnM2 = document.getElementById('btn-moon-2');
+  if (btnM2) btnM2.textContent = `[${input.getActionKeyLabel('quickMoon2')}] Moon II`;
+  const btnM3 = document.getElementById('btn-moon-3');
+  if (btnM3) btnM3.textContent = `[${input.getActionKeyLabel('quickMoon3')}] Moon III`;
+  const btnSettings = document.getElementById('btn-open-settings');
+  if (btnSettings) btnSettings.innerHTML = `&#9881; Settings &amp; Updates [${input.getActionKeyLabel('toggleSettings')}]`;
+}
+
+input.onBindingsChanged(updateDynamicUIControls);
+updateDynamicUIControls();
 
 // Support URL query parameter ?phase=orbit|moon1|moon2|moon3|board|settings for instant phase entry
 const params = new URLSearchParams(window.location.search);
@@ -275,15 +330,16 @@ function animate(now) {
   if (settings.isOpen) {
     input.consumeFrame();
     renderer.render(scene, camera);
+    input.endFrame();
     return;
   }
 
-  // Keyboard shortcuts for quick testing (1: Repair+Board, 2: Planet Orbit, 3/4/5: Moons)
-  if (input.wasPressed('Digit1')) gameAPI.repairAndBoard();
-  if (input.wasPressed('Digit2')) gameAPI.enterPlanetOrbit();
-  if (input.wasPressed('Digit3')) gameAPI.landOnMoon(0);
-  if (input.wasPressed('Digit4')) gameAPI.landOnMoon(1);
-  if (input.wasPressed('Digit5')) gameAPI.landOnMoon(2);
+  // Dynamic Keyboard shortcuts for quick testing (1: Repair+Board, 2: Planet Orbit, 3/4/5: Moons)
+  if (input.wasActionPressed('quickRepair') || input.wasPressed('Digit1')) gameAPI.repairAndBoard();
+  if (input.wasActionPressed('quickOrbit') || input.wasPressed('Digit2')) gameAPI.enterPlanetOrbit();
+  if (input.wasActionPressed('quickMoon1') || input.wasPressed('Digit3')) gameAPI.landOnMoon(0);
+  if (input.wasActionPressed('quickMoon2') || input.wasPressed('Digit4')) gameAPI.landOnMoon(1);
+  if (input.wasActionPressed('quickMoon3') || input.wasPressed('Digit5')) gameAPI.landOnMoon(2);
 
   if (gameMode === 'EXPLORING') {
     const mouseFrame = input.consumeFrame();
@@ -292,10 +348,13 @@ function animate(now) {
 
     // Check proximity to uncollected repair parts
     const isTouch = input.isTouchDevice || touchControls.visibility === 'always' || window.innerWidth <= 960;
+    const actKeyLabel = input.getActionKeyLabel('interact');
+    const wantsAct = (input.wasActionPressed ? input.wasActionPressed('interact') : false) || input.wasPressed('KeyE');
+
     const nearest = repairSystem.getNearestUncollectedPart(explorer.group.position);
     if (nearest && nearest.distance < 9.5) {
-      promptText = isTouch ? `Tap ACT to collect ${nearest.part.name}` : `Press [E] to collect ${nearest.part.name}`;
-      if (input.wasPressed('KeyE') || nearest.distance < 4.2) {
+      promptText = isTouch ? `Tap ACT to collect ${nearest.part.name}` : `Press [${actKeyLabel}] to collect ${nearest.part.name}`;
+      if (wantsAct || nearest.distance < 4.2) {
         repairSystem.tryPickupPart(nearest.part);
         const st = repairSystem.getStatus();
         hud.showNotice(`Collected ${nearest.part.name}! (${st.collected}/${st.total} found)`);
@@ -308,20 +367,20 @@ function animate(now) {
       if (repairSystem.carriedParts.length > 0) {
         promptText = isTouch
           ? `Tap ACT to install ${repairSystem.carriedParts.length} component(s) into Starfighter`
-          : `Press [E] to install ${repairSystem.carriedParts.length} component(s) into Starfighter`;
-        if (input.wasPressed('KeyE')) {
+          : `Press [${actKeyLabel}] to install ${repairSystem.carriedParts.length} component(s) into Starfighter`;
+        if (wantsAct) {
           const installedCount = repairSystem.installCarriedParts();
           const st = repairSystem.getStatus();
           if (st.repaired) {
             ship.setRepairedVisual(true);
-            hud.showNotice(`Installed ${installedCount} component(s)! Starfighter 100% Repaired — ${isTouch ? 'Tap ACT' : 'Press [E]'} to board!`);
+            hud.showNotice(`Installed ${installedCount} component(s)! Starfighter 100% Repaired — ${isTouch ? 'Tap ACT' : `Press [${actKeyLabel}]`} to board!`);
           } else {
             hud.showNotice(`Installed ${installedCount} component(s) (${st.installed}/${st.total} installed). Find the remaining parts!`);
           }
         }
       } else if (repairSystem.isShipRepaired()) {
-        promptText = isTouch ? 'Tap ACT to board Starfighter' : 'Press [E] to board Starfighter';
-        if (input.wasPressed('KeyE')) {
+        promptText = isTouch ? 'Tap ACT to board Starfighter' : `Press [${actKeyLabel}] to board Starfighter`;
+        if (wantsAct) {
           boardShip();
         }
       } else {
@@ -336,17 +395,26 @@ function animate(now) {
     cameraRig.updateForShip(ship, dt);
 
     const isTouch = input.isTouchDevice || touchControls.visibility === 'always' || window.innerWidth <= 960;
+    const exitKeyLabel = input.getActionKeyLabel('flightDisembark');
+    const wantsExit = (input.wasActionPressed ? input.wasActionPressed('flightDisembark') : false) || input.wasPressed('KeyE');
+
     if (ship.landed || ship.altitude < 16) {
+      const ascKey = input.getActionKeyLabel('flightAscend');
+      const fwdKey = input.getActionKeyLabel('flightThrustForward');
       promptText = isTouch
         ? `Tap EXIT to disembark onto ${ship.currentBody ? ship.currentBody.name : 'surface'} | Hold UP to Launch`
-        : `Press [E] to disembark onto ${ship.currentBody ? ship.currentBody.name : 'surface'} | Hold [Space]+[W] to Launch`;
-      if (input.wasPressed('KeyE')) {
+        : `Press [${exitKeyLabel}] to disembark onto ${ship.currentBody ? ship.currentBody.name : 'surface'} | Hold [${ascKey}]+[${fwdKey}] to Launch`;
+      if (wantsExit) {
         disembarkShip();
       }
     } else if (ship.altitude > 100) {
+      const sasKey = input.getActionKeyLabel('flightSAS');
+      const boostKey = input.getActionKeyLabel('flightBoost');
+      const rollLKey = input.getActionKeyLabel('flightRollLeft');
+      const rollRKey = input.getActionKeyLabel('flightRollRight');
       promptText = isTouch
         ? `Tap SAS to cycle Flight Computer (${ship.sasMode}) • BOOST for afterburners`
-        : `Press [O] to cycle SAS Flight Computer (${ship.sasMode}) • [Shift] Boost • [Q/E] 6DoF Roll`;
+        : `Press [${sasKey}] to cycle SAS Flight Computer (${ship.sasMode}) • [${boostKey}] Boost • [${rollLKey}/${rollRKey}] 6DoF Roll`;
     }
   }
 
@@ -366,7 +434,8 @@ function animate(now) {
     planet,
     moons,
     promptText,
-    compassText: computeCompassText()
+    compassText: computeCompassText(),
+    input
   });
 
   touchControls.update(gameMode, {
@@ -376,6 +445,7 @@ function animate(now) {
   });
 
   renderer.render(scene, camera);
+  input.endFrame();
 }
 
 requestAnimationFrame(animate);

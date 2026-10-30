@@ -592,13 +592,15 @@ export class Ship {
       this.group.position.add(body.deltaPosition);
     }
 
-    // Toggle / Cycle Flight Computer / SAS Mode (Key O)
-    if (input.wasPressed('KeyO')) {
+    // Toggle / Cycle Flight Computer / SAS Mode
+    const wantsSAS = (input.wasActionPressed ? input.wasActionPressed('flightSAS') : false) || input.wasPressed('KeyO');
+    if (wantsSAS) {
       this.cycleSASMode(onNotice);
     }
 
-    // Weapons fire (Left Mouse or F)
-    if (input.mouseDown || input.isDown('KeyF')) {
+    // Weapons fire (Left Mouse, touch button, or flightFire action / KeyF)
+    const wantsFire = input.mouseDown || (input.isActionDown ? input.isActionDown('flightFire') : false) || input.isDown('KeyF');
+    if (wantsFire) {
       this.fireCannons();
     }
 
@@ -609,8 +611,10 @@ export class Ship {
     const yawInput = -mouseFrame.dx * 0.0028 - stickYaw + ((input.isDown('ArrowLeft') ? 1 : 0) - (input.isDown('ArrowRight') ? 1 : 0)) * 1.4 * dt;
 
     let rollDir = 0;
-    if (input.isDown('KeyQ')) rollDir += 1;
-    if (!this.landed && (this.altitude >= 16 || !this.currentBody) && input.isDown('KeyE')) rollDir -= 1;
+    const isRollL = (input.isActionDown ? input.isActionDown('flightRollLeft') : false) || input.isDown('KeyQ');
+    const isRollR = (input.isActionDown ? input.isActionDown('flightRollRight') : false) || input.isDown('KeyE');
+    if (isRollL) rollDir += 1;
+    if (!this.landed && (this.altitude >= 16 || !this.currentBody) && isRollR) rollDir -= 1;
     if (input.rollRate) rollDir -= input.rollRate;
 
     const rollSpeed = 2.5;
@@ -667,16 +671,23 @@ export class Ship {
     let thrustRight = (input.moveX || 0) * 0.75;
     let thrustUp = 0;
 
-    if (input.isDown('KeyW')) thrustForward += 1;
-    if (input.isDown('KeyS')) thrustForward -= 0.7;
-    if (input.isDown('KeyD')) thrustRight += 0.65;
-    if (input.isDown('KeyA')) thrustRight -= 0.65;
-    if (input.isDown('Space')) thrustUp += 1;
-    if (input.isDown('ControlLeft') || input.isDown('KeyC')) thrustUp -= 0.85;
+    const isThrustFwd = (input.isActionDown ? input.isActionDown('flightThrustForward') : false) || input.isDown('KeyW') || input.isDown('ArrowUp');
+    const isThrustBwd = (input.isActionDown ? input.isActionDown('flightThrustBackward') : false) || input.isDown('KeyS') || input.isDown('ArrowDown');
+    const isStrafeR = (input.isActionDown ? input.isActionDown('flightStrafeRight') : false) || input.isDown('KeyD') || input.isDown('ArrowRight');
+    const isStrafeL = (input.isActionDown ? input.isActionDown('flightStrafeLeft') : false) || input.isDown('KeyA') || input.isDown('ArrowLeft');
+    const isAscend = (input.isActionDown ? input.isActionDown('flightAscend') : false) || input.isDown('Space');
+    const isDescend = (input.isActionDown ? input.isActionDown('flightDescend') : false) || input.isDown('ControlLeft') || input.isDown('KeyC');
 
-    // Afterburner Boost (Shift or Touch Boost button)
-    // FIX: Engaging boost immediately fires forward thrust at full power!
-    const wantsBoost = (input.isDown('ShiftLeft') || input.isDown('ShiftRight')) && !this.landed;
+    if (isThrustFwd) thrustForward += 1;
+    if (isThrustBwd) thrustForward -= 0.7;
+    if (isStrafeR) thrustRight += 0.65;
+    if (isStrafeL) thrustRight -= 0.65;
+    if (isAscend) thrustUp += 1;
+    if (isDescend) thrustUp -= 0.85;
+
+    // Afterburner Boost (Shift, touch BOOST, or flightBoost action)
+    const isBoostDown = (input.isActionDown ? input.isActionDown('flightBoost') : false) || input.isDown('ShiftLeft') || input.isDown('ShiftRight');
+    const wantsBoost = isBoostDown && !this.landed;
     if (wantsBoost && this.boostEnergy > 2) {
       this.isBoosting = true;
       this.boostEnergy = Math.max(0, this.boostEnergy - 32 * dt);

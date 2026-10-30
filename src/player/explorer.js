@@ -484,13 +484,18 @@ export class Explorer {
 
     let moveF = input.moveY || 0;
     let moveR = input.moveX || 0;
-    if (input.isDown('KeyW') || input.isDown('ArrowUp')) moveF += 1;
-    if (input.isDown('KeyS') || input.isDown('ArrowDown')) moveF -= 1;
-    if (input.isDown('KeyD')) moveR += 1;
-    if (input.isDown('KeyA')) moveR -= 1;
+    const isFwd = (input.isActionDown ? input.isActionDown('moveForward') : false) || input.isDown('KeyW') || input.isDown('ArrowUp');
+    const isBwd = (input.isActionDown ? input.isActionDown('moveBackward') : false) || input.isDown('KeyS') || input.isDown('ArrowDown');
+    const isRight = (input.isActionDown ? input.isActionDown('strafeRight') : false) || input.isDown('KeyD') || input.isDown('ArrowRight');
+    const isLeft = (input.isActionDown ? input.isActionDown('strafeLeft') : false) || input.isDown('KeyA') || input.isDown('ArrowLeft');
+
+    if (isFwd) moveF += 1;
+    if (isBwd) moveF -= 1;
+    if (isRight) moveR += 1;
+    if (isLeft) moveR -= 1;
 
     const stickMag = Math.hypot(input.moveX || 0, input.moveY || 0);
-    const isSprinting = input.isDown('ShiftLeft') || input.isDown('ShiftRight') || stickMag > 0.88;
+    const isSprinting = ((input.isActionDown ? input.isActionDown('sprint') : false) || input.isDown('ShiftLeft') || input.isDown('ShiftRight')) || stickMag > 0.88;
     const baseSpeed = isSprinting ? 28 : 16;
     const speedScale = stickMag > 0 ? Math.min(1.0, Math.max(0.4, stickMag)) : 1.0;
     const moveSpeed = baseSpeed * speedScale;
@@ -513,10 +518,17 @@ export class Explorer {
     this.velocity.z += grav.acceleration.z * dt;
 
     let isBoosting = false;
-    if (this.grounded && input.wasPressed('Space')) {
+    const wantsJump = (input.wasActionPressed ? input.wasActionPressed('jump') : false) || input.wasPressed('Space');
+    const holdingJump = (input.isActionDown ? input.isActionDown('jump') : false) || input.isDown('Space');
+
+    if (this.jumpCooldown === undefined) this.jumpCooldown = 0;
+    if (this.jumpCooldown > 0) this.jumpCooldown -= dt;
+
+    if (this.grounded && (wantsJump || (holdingJump && this.jumpCooldown <= 0))) {
       this.velocity.addScaledVector(newUp, 15.5);
       this.grounded = false;
-    } else if (!this.grounded && input.isDown('Space') && this.jetpackFuel > 0) {
+      this.jumpCooldown = 0.25;
+    } else if (!this.grounded && holdingJump && this.jetpackFuel > 0) {
       // Sci-fi jetpack boost while holding space in mid-air
       this.velocity.addScaledVector(newUp, 38 * dt);
       this.jetpackFuel = Math.max(0, this.jetpackFuel - 34 * dt);
