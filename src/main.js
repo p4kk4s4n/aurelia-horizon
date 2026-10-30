@@ -188,6 +188,41 @@ if (urlView === 'char_back') {
   explorer.velocity.set(0, 8, -5);
   explorer.jetFlameLeft.visible = true;
   explorer.jetFlameRight.visible = true;
+} else if (urlView === 'ship_front') {
+  repairSystem.giveAndInstallAll();
+  ship.setRepairedVisual(true);
+  gameMode = 'PILOTING';
+  explorer.group.visible = false;
+  ship.landed = false;
+  ship.group.position.set(0, planet.radius + 160, 200);
+  ship.group.quaternion.setFromEuler(new THREE.Euler(-0.15, 0, 0));
+  ship.visualRoot.rotation.y = Math.PI - 0.45;
+  ship.visualRoot.rotation.x = -0.12;
+  ship.visualRoot.position.z = 6.0;
+} else if (urlView === 'ship_rear') {
+  repairSystem.giveAndInstallAll();
+  ship.setRepairedVisual(true);
+  gameMode = 'PILOTING';
+  explorer.group.visible = false;
+  ship.landed = false;
+  ship.group.position.set(0, planet.radius + 160, 200);
+  ship.group.quaternion.setFromEuler(new THREE.Euler(-0.25, 0, 0));
+  ship.visualRoot.rotation.y = -0.26;
+  ship.visualRoot.position.z = 4.0;
+  ship.engineFlames.forEach(f => f.visible = true);
+} else if (urlView === 'ship_roll') {
+  repairSystem.giveAndInstallAll();
+  ship.setRepairedVisual(true);
+  gameMode = 'PILOTING';
+  explorer.group.visible = false;
+  ship.landed = false;
+  ship.group.position.set(0, planet.radius + 160, 200);
+  ship.group.quaternion.setFromEuler(new THREE.Euler(-0.2, 0, 0));
+  ship.visualBank = -0.52;
+  ship.visualRoot.rotation.z = -0.52;
+  ship.engineFlames.forEach(f => f.visible = true);
+  ship.fireCooldown = 0;
+  ship.fireCannons();
 }
 
 // Collapsible HUD panels on small screens

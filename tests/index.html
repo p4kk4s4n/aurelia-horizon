@@ -29,6 +29,7 @@
     import { InputManager } from '../src/input.js';
     import { TouchControlsManager } from '../src/ui/touchControls.js';
     import { Explorer } from '../src/player/explorer.js';
+    import { Ship } from '../src/ship/ship.js';
     import * as THREE from 'three';
 
     const logs = [];
@@ -170,6 +171,41 @@
     assert(Boolean(testExplorer.leftArm && testExplorer.rightArm), 'Explorer has articulated left and right arms');
     assert(Boolean(testExplorer.leftLeg && testExplorer.rightLeg), 'Explorer has articulated left and right legs');
     assert(Boolean(testExplorer.jetFlameLeft && testExplorer.jetFlameRight), 'Explorer has dual jetpack boost thrusters');
+
+    // 9. Upgraded Starfighter Model & Firing & Roll
+    const testShip = new Ship(mockScene);
+    assert(Boolean(testShip.chinGunPod), 'Ship has underslung chin gun turret pod');
+    assert(Array.isArray(testShip.gunBarrels) && testShip.gunBarrels.length === 2, 'Chin gun pod has twin pulse barrels');
+    assert(Array.isArray(testShip.crystalEngines) && testShip.crystalEngines.length === 3, 'Ship has rear 3-crystal propulsion array');
+    assert(Array.isArray(testShip.floatingFins) && testShip.floatingFins.length === 2, 'Ship has dual floating outrigger canard fins');
+    assert(Array.isArray(testShip.engineFlames) && testShip.engineFlames.length === 3, 'Ship has 3 dynamic exhaust flames');
+
+    // Test chin cannon firing origin
+    testShip.group.position.set(0, 100, 0);
+    testShip.group.quaternion.identity();
+    testShip.fireCooldown = 0;
+    testShip.fireCannons();
+    assert(testShip.projectiles.length === 2, 'fireCannons launches twin pulse cannon bolts');
+    const bolt1 = testShip.projectiles[0];
+    const bolt2 = testShip.projectiles[1];
+    assert(bolt1.mesh.position.y < 102 && bolt1.mesh.position.z < 0, 'Projectiles spawn forward from chin gun pod position');
+    assert(Math.abs(bolt1.mesh.position.x - bolt2.mesh.position.x) > 0.15, 'Projectiles spawn from twin separated chin barrels');
+
+    // Test roll input integration
+    testShip.landed = false;
+    testShip.altitude = 200;
+    const initialQuat = testShip.group.quaternion.clone();
+    testInput.setVirtualKey('KeyQ', true);
+    testShip.updateFlight(0.1, testInput, { dx: 0, dy: 0 }, mockBodies);
+    testInput.setVirtualKey('KeyQ', false);
+    assert(!testShip.group.quaternion.equals(initialQuat), 'KeyQ induces roll rotation on ship');
+
+    // Test mobile rollRate
+    const midQuat = testShip.group.quaternion.clone();
+    testInput.rollRate = 1;
+    testShip.updateFlight(0.1, testInput, { dx: 0, dy: 0 }, mockBodies);
+    testInput.rollRate = 0;
+    assert(!testShip.group.quaternion.equals(midQuat), 'Mobile rollRate induces roll rotation on ship');
 
     const summary = `SUMMARY: ${passed} passed, ${failed} failed`;
     logs.push('', summary);

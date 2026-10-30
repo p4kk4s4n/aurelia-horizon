@@ -52,16 +52,16 @@ export class CameraRig {
     const up = new THREE.Vector3(0, 1, 0).applyQuaternion(shipQuat).normalize();
     const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(shipQuat).normalize();
 
-    const camDist = ship.isBoosting ? 30 : 24;
+    const camDist = ship.isBoosting ? 22 : 17;
     const desiredPos = ship.group.position
       .clone()
-      .addScaledVector(up, 7.2)
+      .addScaledVector(up, 4.8)
       .addScaledVector(forward, -camDist);
 
     const desiredLook = ship.group.position
       .clone()
-      .addScaledVector(forward, 28)
-      .addScaledVector(up, 1.6);
+      .addScaledVector(forward, 22)
+      .addScaledVector(up, 1.1);
 
     if (!this.initialized) {
       this.currentPos.copy(desiredPos);

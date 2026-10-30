@@ -42,6 +42,8 @@ export class TouchControlsManager {
     this.btnBoost = document.getElementById('btn-touch-boost');
     this.btnAscend = document.getElementById('btn-touch-ascend');
     this.btnDescend = document.getElementById('btn-touch-descend');
+    this.btnRollL = document.getElementById('btn-touch-roll-l');
+    this.btnRollR = document.getElementById('btn-touch-roll-r');
     this.btnOrbit = document.getElementById('btn-touch-orbit');
     this.btnExit = document.getElementById('btn-touch-exit');
 
@@ -360,6 +362,28 @@ export class TouchControlsManager {
     bindHold(this.btnBoost, 'ShiftLeft');
     bindHold(this.btnAscend, 'Space');
     bindHold(this.btnDescend, 'ControlLeft');
+
+    // Starfighter 6DoF Axial Roll buttons
+    const bindRoll = (btn, rate) => {
+      if (!btn) return;
+      btn.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        this.input.rollRate = rate;
+        btn.classList.add('active');
+      });
+      const end = (e) => {
+        e.preventDefault();
+        if (this.input.rollRate === rate) this.input.rollRate = 0;
+        btn.classList.remove('active');
+      };
+      btn.addEventListener('pointerup', end);
+      btn.addEventListener('pointercancel', end);
+      btn.addEventListener('pointerleave', end);
+    };
+
+    bindRoll(this.btnRollL, -1);
+    bindRoll(this.btnRollR, 1);
+
     bindTap(this.btnOrbit, 'KeyO');
     bindTap(this.btnExit, 'KeyE');
 

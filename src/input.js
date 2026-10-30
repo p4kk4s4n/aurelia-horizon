@@ -21,6 +21,8 @@ export class InputManager {
     // Continuous look rates from right joystick (yaw/pitch speed)
     this.lookVelX = 0;
     this.lookVelY = 0;
+    // Direct roll rate (-1 for roll left, +1 for roll right)
+    this.rollRate = 0;
 
     // Flag indicating if user recently touched the screen
     this.isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
