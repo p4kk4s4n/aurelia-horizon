@@ -21,10 +21,26 @@ export class NavMarkerSystem {
     this.navLayer.id = 'hud-nav-markers';
     this.navLayer.className = 'nav-markers-layer';
     this.container.appendChild(this.navLayer);
+
+    this.progradeEl = null;
+    this.retrogradeEl = null;
+    this._initVectorReticles();
+  }
+
+  _initVectorReticles() {
+    this.progradeEl = document.createElement('div');
+    this.progradeEl.className = 'flight-vector-marker prograde-marker';
+    this.progradeEl.innerHTML = '<div class="vector-symbol">&#10753;</div><div class="vector-label">PROGRADE</div>';
+    this.navLayer.appendChild(this.progradeEl);
+
+    this.retrogradeEl = document.createElement('div');
+    this.retrogradeEl.className = 'flight-vector-marker retrograde-marker';
+    this.retrogradeEl.innerHTML = '<div class="vector-symbol">&#8855;</div><div class="vector-label">RETROGRADE</div>';
+    this.navLayer.appendChild(this.retrogradeEl);
   }
 
   setBodies(bodies) {
-    this.navLayer.innerHTML = '';
+    this.navLayer.querySelectorAll('.nav-marker').forEach(m => m.remove());
     this.markers.clear();
 
     bodies.forEach((body, idx) => {
@@ -65,7 +81,7 @@ export class NavMarkerSystem {
     }
   }
 
-  update(actorPos, mode, shipTargetBody = null) {
+  update(actorPos, mode, shipTargetBody = null, ship = null) {
     if (shipTargetBody && this.activeTarget !== shipTargetBody) {
       this.activeTarget = shipTargetBody;
       this.markers.forEach((data) => {
@@ -79,6 +95,19 @@ export class NavMarkerSystem {
     const cy = h / 2;
 
     const camForward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion).normalize();
+
+    // Render Flight Trajectory Vectors (Prograde & Retrograde)
+    if (mode === 'PILOTING' && ship && ship.relativeVelocity && ship.relativeVelocity.length() > 2.0 && !ship.landed) {
+      const vNorm = ship.relativeVelocity.clone().normalize();
+      const pWorld = ship.group.position.clone().addScaledVector(vNorm, 120);
+      const rWorld = ship.group.position.clone().addScaledVector(vNorm, -120);
+
+      this._projectVectorMarker(this.progradeEl, pWorld, w, h);
+      this._projectVectorMarker(this.retrogradeEl, rWorld, w, h);
+    } else {
+      if (this.progradeEl) this.progradeEl.style.display = 'none';
+      if (this.retrogradeEl) this.retrogradeEl.style.display = 'none';
+    }
 
     this.markers.forEach(({ body, el, arrow, reticle, label }) => {
       const bodyPos = body.getWorldPosition();
@@ -154,5 +183,24 @@ export class NavMarkerSystem {
         arrow.style.transform = `rotate(${angleRad}rad)`;
       }
     });
+  }
+
+  _projectVectorMarker(el, worldPos, w, h) {
+    if (!el) return;
+    const toMarker = worldPos.clone().sub(this.camera.position);
+    const camForward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion).normalize();
+    if (camForward.dot(toMarker) <= 0) {
+      el.style.display = 'none';
+      return;
+    }
+    const proj = worldPos.clone().project(this.camera);
+    const sx = (proj.x * 0.5 + 0.5) * w;
+    const sy = (-proj.y * 0.5 + 0.5) * h;
+    if (sx < 20 || sx > w - 20 || sy < 20 || sy > h - 20) {
+      el.style.display = 'none';
+      return;
+    }
+    el.style.display = 'flex';
+    el.style.transform = `translate3d(${sx}px, ${sy}px, 0)`;
   }
 }

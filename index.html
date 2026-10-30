@@ -57,10 +57,18 @@
         <div class="stat-row"><span>Periapsis (Pe)</span><strong id="hud-pe">--</strong></div>
         <div class="stat-row"><span>Eccentricity</span><strong id="hud-ecc">--</strong></div>
         <div class="stat-row"><span>Flight Computer</span><strong id="hud-sas-mode">STABILITY ASSIST</strong></div>
+        <div class="stat-row"><span>Vertical Speed</span><strong id="hud-vert-spd">--</strong></div>
+        <div class="stat-row"><span>Touchdown Advisory</span><strong id="hud-landing-status">--</strong></div>
       </div>
+      <div class="stat-row"><span>Minerals Harvested</span><strong id="hud-minerals">0 Ti • 0 Cry</strong></div>
       <div class="stat-row"><span>Ship Repair</span><strong id="hud-parts">0/5 Installed</strong></div>
       <div class="stat-row"><span>Moons Landed</span><strong id="hud-moons">0 / 3 Moons Landed</strong></div>
       <div class="stat-row"><span>Targets Blasted</span><strong id="hud-targets">0 Destroyed</strong></div>
+
+      <div id="hud-hull-block" class="gauge-block" style="display: none;">
+        <div class="gauge-label">STARFIGHTER HULL INTEGRITY</div>
+        <div class="gauge-track"><div id="hud-hull-bar" class="gauge-fill" style="background: #00f5d4; width: 100%;"></div></div>
+      </div>
 
       <div class="gauge-block">
         <div class="gauge-label">BOOST / JETPACK ENERGY</div>
@@ -247,6 +255,32 @@
             <strong id="touch-sens-val">1.0x</strong>
           </div>
           <input id="touch-sens-slider" type="range" min="0.4" max="2.6" step="0.1" value="1.0" class="hud-slider" />
+        </div>
+      </section>
+
+      <section class="settings-section">
+        <h3>FLIGHT DYNAMICS &amp; LANDING ASSIST</h3>
+        <p class="section-desc">Configure touchdown assistance and flight throttle behavior:</p>
+        <div class="settings-subsection">
+          <span class="setting-label">Auto-Safe Landing Assist</span>
+          <div id="landing-assist-options" class="pill-group">
+            <button type="button" class="pill-btn active" data-assist="true">Auto-Safe (Dampen Drift &amp; Brake Descent)</button>
+            <button type="button" class="pill-btn" data-assist="false">Manual (Pilot Controlled • Impact Damage Active)</button>
+          </div>
+          <div class="setting-detail-note" style="margin-top: 6px; font-size: 0.82em; color: var(--hud-muted);">
+            When enabled, the flight computer automatically cancels lateral drift and brakes descent below 70m to ensure touchdown speed &le; 12 m/s.
+          </div>
+        </div>
+
+        <div class="settings-subsection">
+          <span class="setting-label">Flight Throttle Mode</span>
+          <div id="throttle-mode-options" class="pill-group">
+            <button type="button" class="pill-btn active" data-throttle="direct">Standard (Hold W to Thrust / S to Brake)</button>
+            <button type="button" class="pill-btn" data-throttle="persistent">Persistent Throttle (Z to Inc • X to Dec • Bksp Cut)</button>
+          </div>
+          <div class="setting-detail-note" style="margin-top: 6px; font-size: 0.82em; color: var(--hud-muted);">
+            Persistent mode holds engine thrust output (0–100%) like an aircraft or spaceplane throttle.
+          </div>
         </div>
       </section>
 

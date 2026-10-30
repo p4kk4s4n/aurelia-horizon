@@ -10,6 +10,7 @@ import { HUD } from './ui/hud.js';
 import { SettingsManager } from './ui/settings.js';
 import { TouchControlsManager } from './ui/touchControls.js';
 import { NavMarkerSystem } from './ui/navMarkers.js';
+import { MineralSystem } from './world/minerals.js';
 
 const canvas = document.getElementById('game-canvas');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -39,6 +40,7 @@ const ship = new Ship(scene);
 ship.placeOnBody(planet, new THREE.Vector3(0.055, 0.997, 0.045));
 
 const repairSystem = new ShipRepairSystem(scene, planet);
+const mineralSystem = new MineralSystem(scene, planet, moons);
 const cameraRig = new CameraRig(camera);
 const input = new InputManager(canvas);
 const hud = new HUD();
@@ -46,6 +48,7 @@ const touchControls = new TouchControlsManager(input, (msg, dur) => hud.showNoti
 const settings = new SettingsManager((msg) => hud.showNotice(msg), touchControls, input);
 settings.setRenderer(renderer);
 settings.setExplorer(explorer);
+settings.setShip(ship);
 
 // WebAPK / PWA installation event listener & prompt capture
 window.addEventListener('beforeinstallprompt', (e) => {
@@ -83,6 +86,47 @@ function boardShip() {
   );
 }
 
+export function findSafeExitSpot(ship, body) {
+  const bPos = body ? body.getWorldPosition() : new THREE.Vector3();
+  const up = ship.localUp.clone().normalize();
+  const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(ship.group.quaternion).normalize();
+  const right = new THREE.Vector3(1, 0, 0).applyQuaternion(ship.group.quaternion).normalize();
+
+  // 4 candidate egress locations around the ship (Starboard, Port, Rear-Starboard, Rear-Port)
+  const candidates = [
+    right.clone().multiplyScalar(6.4).addScaledVector(fwd, -0.8),
+    right.clone().multiplyScalar(-6.4).addScaledVector(fwd, -0.8),
+    right.clone().multiplyScalar(4.5).addScaledVector(fwd, -4.5),
+    right.clone().multiplyScalar(-4.5).addScaledVector(fwd, -4.5)
+  ];
+
+  for (const offset of candidates) {
+    const testWorld = ship.group.position.clone().add(offset);
+    if (!body) return { position: testWorld, up };
+
+    const rel = testWorld.clone().sub(bPos);
+    const dist = rel.length();
+    const dir = rel.clone().normalize();
+    const terrainR = body.getSurfaceRadiusAtDir(dir.x, dir.y, dir.z);
+    const floorR = Math.max(terrainR, body.seaLevelRadius || 0);
+
+    // Safe point resting 0.15m on solid ground
+    const safePoint = bPos.clone().addScaledVector(dir, floorR + 0.15);
+    const heightDelta = Math.abs((floorR + 0.15) - dist);
+    if (heightDelta < 4.5) {
+      return { position: safePoint, up: dir };
+    }
+  }
+
+  const fallbackDir = ship.group.position.clone().add(candidates[0]).sub(bPos).normalize();
+  const sR = body ? body.getSurfaceRadiusAtDir(fallbackDir.x, fallbackDir.y, fallbackDir.z) : 720;
+  const fR = Math.max(sR, body ? body.seaLevelRadius || 0 : 0);
+  return {
+    position: bPos.clone().addScaledVector(fallbackDir, fR + 0.15),
+    up: fallbackDir
+  };
+}
+
 function disembarkShip() {
   if (!ship.landed && ship.altitude > 18) {
     const dsc = input.getActionKeyLabel('flightDescend');
@@ -90,13 +134,19 @@ function disembarkShip() {
     return;
   }
   gameMode = 'EXPLORING';
-  const up = ship.localUp.clone().normalize();
-  const right = new THREE.Vector3(1, 0, 0).applyQuaternion(ship.group.quaternion).normalize();
-  explorer.group.position.copy(ship.group.position).addScaledVector(right, 6.5).addScaledVector(up, 1.5);
+  const targetBody = ship.currentBody || planet;
+  const exit = findSafeExitSpot(ship, targetBody);
+
+  explorer.group.position.copy(exit.position);
+  explorer.localUp.copy(exit.up);
   explorer.group.quaternion.copy(ship.group.quaternion);
   explorer.velocity.set(0, 0, 0);
+  explorer.currentBody = targetBody;
+  explorer.grounded = true;
+  explorer.jumpPhase = 'idle';
   explorer.group.visible = true;
-  hud.showNotice(`Stepped out onto ${ship.currentBody ? ship.currentBody.name : 'surface'}.`);
+
+  hud.showNotice(`Stepped out onto ${targetBody.name}.`);
 }
 
 function computeCompassText() {
@@ -187,14 +237,15 @@ export const gameAPI = {
     ship.placeOnBody(moon, moonDir);
     ship.visitedMoons.add(moon.id);
 
-    // Synchronize Explorer right beside the ship on the moon
-    const up = ship.localUp.clone().normalize();
-    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(ship.group.quaternion).normalize();
-    explorer.group.position.copy(ship.group.position).addScaledVector(right, 6.0).addScaledVector(up, 1.2);
+    // Synchronize Explorer right beside the ship on the moon using safe ground egress
+    const exit = findSafeExitSpot(ship, moon);
+    explorer.group.position.copy(exit.position);
+    explorer.localUp.copy(exit.up);
     explorer.group.quaternion.copy(ship.group.quaternion);
     explorer.velocity.set(0, 0, 0);
     explorer.currentBody = moon;
-    explorer.localUp.copy(up);
+    explorer.grounded = true;
+    explorer.jumpPhase = 'idle';
 
     // If already in starfighter on this moon, toggle disembark to foot!
     if (gameMode === 'PILOTING' && ship.currentBody === moon) {
@@ -287,6 +338,10 @@ const urlPhase = params.get('phase');
 if (urlPhase === 'board') gameAPI.repairAndBoard();
 else if (urlPhase === 'orbit') gameAPI.enterPlanetOrbit();
 else if (urlPhase === 'moon1') gameAPI.landOnMoon(0);
+else if (urlPhase === 'moon1_foot') {
+  gameAPI.landOnMoon(0);
+  disembarkShip();
+}
 else if (urlPhase === 'moon2') gameAPI.landOnMoon(1);
 else if (urlPhase === 'moon3') gameAPI.landOnMoon(2);
 else if (urlPhase === 'settings') settings.toggleModal(true);
@@ -414,6 +469,27 @@ if (urlView === 'char_back') {
   ship.sasMode = 'STABILITY';
   ship.velocity.set(0, 0, 0);
   cameraRig.initialized = false;
+} else if (urlView === 'mining') {
+  explorer.cameraDistance = 5.8;
+  explorer.pitch = 0.12;
+  const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(explorer.group.quaternion);
+  const targetPos = explorer.group.position.clone().addScaledVector(fwd, 6.0);
+  explorer.inventory.titanium = 18;
+  explorer.inventory.crystal = 9;
+  explorer.setMiningTarget(targetPos, true);
+  hud.updateMinerals(explorer.inventory);
+} else if (urlView === 'flight_hud') {
+  repairSystem.giveAndInstallAll();
+  ship.setRepairedVisual(true);
+  gameMode = 'PILOTING';
+  explorer.group.visible = false;
+  ship.landed = false;
+  ship.group.position.set(0, planet.radius + 60, 0);
+  ship.relativeVelocity.set(4.2, -4.8, -32.0);
+  ship.vRelVert = -4.8;
+  ship.vRelHoriz = 32.2;
+  ship.hullIntegrity = 82;
+  hud.updateMinerals({ titanium: 18, crystal: 9 });
 }
 
 // Collapsible HUD panels on small screens
@@ -468,8 +544,9 @@ function animate(now) {
   planet.updateOcean(elapsedTime);
   skyTargets.update(elapsedTime, camera);
 
-  // 3. Update rotating repair parts & projectiles
+  // 3. Update rotating repair parts, mineral nodes & projectiles
   repairSystem.update(dt, elapsedTime);
+  mineralSystem.update(dt);
   ship.updateProjectilesAndTargets(dt, spaceTargets);
 
   let promptText = '';
@@ -492,16 +569,45 @@ function animate(now) {
 
   if (gameMode === 'EXPLORING') {
     const mouseFrame = input.consumeFrame();
+    // Keep parked Starfighter firmly anchored to orbiting moons with 5-point ground contact
+    ship.updateParked(dt, allBodies);
+
     if (!urlView || (urlView !== 'char_front' && urlView !== 'char_jump' && urlView !== 'char_sprint')) {
-      explorer.update(dt, input, mouseFrame, allBodies);
+      explorer.update(dt, input, mouseFrame, allBodies, ship);
     }
     cameraRig.updateForExplorer(explorer, dt);
 
-    // Check proximity to uncollected repair parts
     const isTouch = input.isTouchDevice || touchControls.visibility === 'always' || window.innerWidth <= 960;
     const actKeyLabel = input.getActionKeyLabel('interact');
     const wantsAct = (input.wasActionPressed ? input.wasActionPressed('interact') : false) || input.wasPressed('KeyE');
 
+    // Check proximity to interactive mineral deposits & mining laser
+    const nearestDeposit = mineralSystem.getNearestDeposit(explorer.group.position, 16.0);
+    const isMiningKey = input.mouseDown || (input.isActionDown ? input.isActionDown('mine') : false) || input.isDown('KeyF');
+
+    if (nearestDeposit && nearestDeposit.distance < 14.0) {
+      if (isMiningKey) {
+        explorer.setMiningTarget(nearestDeposit.deposit.position, true);
+        const harvest = nearestDeposit.deposit.takeMiningDamage(52 * dt);
+        if (harvest.harvested) {
+          if (harvest.type === 'titanium') {
+            explorer.inventory.titanium += harvest.amount;
+          } else {
+            explorer.inventory.crystal += harvest.amount;
+          }
+          hud.showNotice(`Harvested +${harvest.amount} ${harvest.type === 'titanium' ? 'Titanium Alloy' : 'Silica Crystal'}!`);
+        }
+      } else {
+        explorer.setMiningTarget(null, false);
+        promptText = isTouch
+          ? `Tap FIRE/ACT to Mine ${nearestDeposit.deposit.name}`
+          : `Hold [Left Click / Key F] to Mine ${nearestDeposit.deposit.name}`;
+      }
+    } else {
+      explorer.setMiningTarget(null, false);
+    }
+
+    // Check proximity to uncollected repair parts
     const nearest = repairSystem.getNearestUncollectedPart(explorer.group.position);
     if (nearest && nearest.distance < 9.5) {
       promptText = isTouch ? `Tap ACT to collect ${nearest.part.name}` : `Press [${actKeyLabel}] to collect ${nearest.part.name}`;
@@ -515,7 +621,23 @@ function animate(now) {
     // Check proximity to Starfighter
     const shipDist = explorer.group.position.distanceTo(ship.group.position);
     if (shipDist < 13.5) {
-      if (repairSystem.carriedParts.length > 0) {
+      if (ship.hullIntegrity < 100) {
+        const repairCostTi = 5;
+        const repairCostCry = 3;
+        promptText = isTouch
+          ? `Tap ACT to repair Starfighter Hull (${ship.hullIntegrity}%) [Cost: ${repairCostTi} Ti, ${repairCostCry} Cry]`
+          : `Press [${actKeyLabel}] to repair Starfighter Hull (${ship.hullIntegrity}%) [Cost: ${repairCostTi} Ti, ${repairCostCry} Cry]`;
+        if (wantsAct) {
+          if (explorer.inventory.titanium >= repairCostTi && explorer.inventory.crystal >= repairCostCry) {
+            explorer.inventory.titanium -= repairCostTi;
+            explorer.inventory.crystal -= repairCostCry;
+            const newIntegrity = ship.repairHull(25);
+            hud.showNotice(`Repaired Starfighter Hull to ${newIntegrity}%! (-${repairCostTi} Titanium, -${repairCostCry} Crystal)`);
+          } else {
+            hud.showNotice(`Need ${repairCostTi} Titanium & ${repairCostCry} Crystal to repair hull! Mine nearby nodes.`);
+          }
+        }
+      } else if (repairSystem.carriedParts.length > 0) {
         promptText = isTouch
           ? `Tap ACT to install ${repairSystem.carriedParts.length} component(s) into Starfighter`
           : `Press [${actKeyLabel}] to install ${repairSystem.carriedParts.length} component(s) into Starfighter`;
@@ -595,8 +717,8 @@ function animate(now) {
     scene.fog.density = 0.00010;
   }
 
-  // Update planetary nav reticles and off-screen edge arrows
-  navMarkers.update(activePos, gameMode, ship.targetBody);
+  // Update planetary nav reticles, off-screen edge arrows, and flight vectors
+  navMarkers.update(activePos, gameMode, ship.targetBody, ship);
 
   hud.update(dt, {
     mode: gameMode,

@@ -105,6 +105,11 @@ export class SettingsManager {
     this.elWebapkStatus = document.getElementById('webapk-install-status');
     this.deferredInstallPrompt = null;
 
+    this.landingAssistContainer = document.getElementById('landing-assist-options');
+    this.throttleModeContainer = document.getElementById('throttle-mode-options');
+    this.autoLandingAssist = localStorage.getItem('aurelia_auto_landing_assist') !== 'false';
+    this.throttleMode = localStorage.getItem('aurelia_throttle_mode') || 'direct';
+
     this.autoScale = localStorage.getItem(STORAGE_AUTOSCALE_KEY) !== 'false';
     const savedScale = parseFloat(localStorage.getItem(STORAGE_SCALE_KEY));
     this.uiScale = !isNaN(savedScale) ? savedScale : this.calculateOptimalScale();
@@ -114,6 +119,7 @@ export class SettingsManager {
     this._renderThemeButtons();
     this._renderTouchSettings();
     this._renderGraphicsSettings();
+    this._renderFlightSettings();
     this._renderKeybindings();
     this.applyTheme(this.currentThemeId);
     this._bindEvents();
@@ -304,6 +310,65 @@ export class SettingsManager {
     this._renderGraphicsSettings();
   }
 
+  setShip(ship) {
+    this.ship = ship;
+    if (this.ship) {
+      this.ship.autoLandingAssist = this.autoLandingAssist;
+      this.ship.throttleMode = this.throttleMode;
+    }
+    this._renderFlightSettings();
+  }
+
+  applyAutoLandingAssist(enabled, save = true) {
+    this.autoLandingAssist = !!enabled;
+    if (save) {
+      localStorage.setItem('aurelia_auto_landing_assist', this.autoLandingAssist ? 'true' : 'false');
+    }
+    if (this.ship) {
+      this.ship.autoLandingAssist = this.autoLandingAssist;
+    }
+    this._renderFlightSettings();
+  }
+
+  applyThrottleMode(mode, save = true) {
+    this.throttleMode = mode === 'persistent' ? 'persistent' : 'direct';
+    if (save) {
+      localStorage.setItem('aurelia_throttle_mode', this.throttleMode);
+    }
+    if (this.ship) {
+      this.ship.throttleMode = this.throttleMode;
+    }
+    this._renderFlightSettings();
+  }
+
+  _renderFlightSettings() {
+    if (this.landingAssistContainer) {
+      this.landingAssistContainer.querySelectorAll('button').forEach((btn) => {
+        const val = btn.dataset.assist === 'true';
+        btn.classList.toggle('active', val === this.autoLandingAssist);
+        btn.onclick = () => {
+          this.applyAutoLandingAssist(val, true);
+          if (this.onNotice) {
+            this.onNotice(`Auto-Safe Landing Assist: ${val ? 'ENABLED (Dampens drift & brakes descent)' : 'DISABLED (Manual touchdown)'}`);
+          }
+        };
+      });
+    }
+
+    if (this.throttleModeContainer) {
+      this.throttleModeContainer.querySelectorAll('button').forEach((btn) => {
+        const mode = btn.dataset.throttle;
+        btn.classList.toggle('active', mode === this.throttleMode);
+        btn.onclick = () => {
+          this.applyThrottleMode(mode, true);
+          if (this.onNotice) {
+            this.onNotice(`Throttle Mode: ${mode === 'persistent' ? 'PERSISTENT (Z/X to adjust, Backspace to cut)' : 'STANDARD (Hold W/S)'}`);
+          }
+        };
+      });
+    }
+  }
+
   _renderGraphicsSettings() {
     if (!this.graphicsContainer) return;
     this.graphicsContainer.querySelectorAll('button').forEach((btn) => {
@@ -350,6 +415,65 @@ export class SettingsManager {
       this.explorer.setPolygonDensity(this.currentQuality);
     }
     this._renderGraphicsSettings();
+  }
+
+  setShip(ship) {
+    this.ship = ship;
+    if (this.ship) {
+      this.ship.autoLandingAssist = this.autoLandingAssist;
+      this.ship.throttleMode = this.throttleMode;
+    }
+    this._renderFlightSettings();
+  }
+
+  applyAutoLandingAssist(enabled, save = true) {
+    this.autoLandingAssist = !!enabled;
+    if (save) {
+      localStorage.setItem('aurelia_auto_landing_assist', this.autoLandingAssist ? 'true' : 'false');
+    }
+    if (this.ship) {
+      this.ship.autoLandingAssist = this.autoLandingAssist;
+    }
+    this._renderFlightSettings();
+  }
+
+  applyThrottleMode(mode, save = true) {
+    this.throttleMode = mode === 'persistent' ? 'persistent' : 'direct';
+    if (save) {
+      localStorage.setItem('aurelia_throttle_mode', this.throttleMode);
+    }
+    if (this.ship) {
+      this.ship.throttleMode = this.throttleMode;
+    }
+    this._renderFlightSettings();
+  }
+
+  _renderFlightSettings() {
+    if (this.landingAssistContainer) {
+      this.landingAssistContainer.querySelectorAll('button').forEach((btn) => {
+        const val = btn.dataset.assist === 'true';
+        btn.classList.toggle('active', val === this.autoLandingAssist);
+        btn.onclick = () => {
+          this.applyAutoLandingAssist(val, true);
+          if (this.onNotice) {
+            this.onNotice(`Auto-Safe Landing Assist: ${val ? 'ENABLED (Dampens drift & brakes descent)' : 'DISABLED (Manual touchdown)'}`);
+          }
+        };
+      });
+    }
+
+    if (this.throttleModeContainer) {
+      this.throttleModeContainer.querySelectorAll('button').forEach((btn) => {
+        const mode = btn.dataset.throttle;
+        btn.classList.toggle('active', mode === this.throttleMode);
+        btn.onclick = () => {
+          this.applyThrottleMode(mode, true);
+          if (this.onNotice) {
+            this.onNotice(`Throttle Mode: ${mode === 'persistent' ? 'PERSISTENT (Z/X to adjust, Backspace to cut)' : 'STANDARD (Hold W/S)'}`);
+          }
+        };
+      });
+    }
   }
 
   _renderThemeButtons() {

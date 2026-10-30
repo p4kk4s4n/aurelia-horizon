@@ -96,6 +96,89 @@ export class Explorer {
     this.landingCompression = 0;
     this.wasGroundedLastFrame = true;
     this.prevVertSpeed = 0;
+
+    // Mineral Resource Inventory
+    this.inventory = {
+      titanium: 0,
+      crystal: 0
+    };
+
+    // Mining Laser Tool
+    this.isMining = false;
+    this.miningTarget = null;
+    this._initMiningBeam();
+  }
+
+  _initMiningBeam() {
+    const beamGeo = new THREE.CylinderGeometry(0.04, 0.08, 1.0, 8);
+    beamGeo.translate(0, 0.5, 0);
+    beamGeo.rotateX(Math.PI / 2);
+    const beamMat = new THREE.MeshBasicMaterial({
+      color: 0x00f5d4,
+      transparent: true,
+      opacity: 0.88,
+      blending: THREE.AdditiveBlending
+    });
+    this.miningBeamMesh = new THREE.Mesh(beamGeo, beamMat);
+    this.miningBeamMesh.visible = false;
+    this.scene.add(this.miningBeamMesh);
+  }
+
+  setMiningTarget(targetPos, isMining = true) {
+    this.isMining = isMining;
+    this.miningTarget = targetPos ? targetPos.clone() : null;
+    if (!this.miningBeamMesh) return;
+
+    if (this.isMining && this.miningTarget) {
+      const start = this.group.position.clone().addScaledVector(this.localUp, 1.25);
+      const right = new THREE.Vector3(1, 0, 0).applyQuaternion(this.group.quaternion);
+      start.addScaledVector(right, 0.38);
+
+      const toTarget = this.miningTarget.clone().sub(start);
+      const dist = toTarget.length();
+      if (dist > 0.001) {
+        this.miningBeamMesh.position.copy(start);
+        this.miningBeamMesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), toTarget.clone().normalize());
+        this.miningBeamMesh.scale.set(1.0 + Math.sin(performance.now() * 0.03) * 0.25, 1.0 + Math.cos(performance.now() * 0.03) * 0.25, dist);
+        this.miningBeamMesh.visible = true;
+      }
+    } else {
+      this.miningBeamMesh.visible = false;
+    }
+  }
+
+  resolveShipCollision(ship) {
+    if (!ship || !ship.landed) return;
+    const d = this.group.position.distanceTo(ship.group.position);
+    if (d > 9.5) return;
+
+    // Transform explorer position into ship's local coordinate frame
+    const localPos = ship.group.worldToLocal(this.group.position.clone());
+
+    // Starfighter bounding box half-extents in local frame:
+    // X: [-2.6, 2.6], Y: [0.0, 2.4], Z: [-5.2, 4.2]
+    const minX = -2.6, maxX = 2.6;
+    const minY = 0.0, maxY = 2.4;
+    const minZ = -5.2, maxZ = 4.2;
+
+    if (localPos.x > minX && localPos.x < maxX &&
+        localPos.y > minY && localPos.y < maxY &&
+        localPos.z > minZ && localPos.z < maxZ) {
+      // Find shortest penetration escape axis
+      const dx1 = localPos.x - minX;
+      const dx2 = maxX - localPos.x;
+      const dz1 = localPos.z - minZ;
+      const dz2 = maxZ - localPos.z;
+
+      const minPen = Math.min(dx1, dx2, dz1, dz2);
+      if (minPen === dx1) localPos.x = minX - 0.12;
+      else if (minPen === dx2) localPos.x = maxX + 0.12;
+      else if (minPen === dz1) localPos.z = minZ - 0.12;
+      else localPos.z = maxZ + 0.12;
+
+      // Transform back to world space
+      this.group.position.copy(ship.group.localToWorld(localPos));
+    }
   }
 
   _initMaterials() {
@@ -588,7 +671,7 @@ export class Explorer {
     this.jumpPhase = 'idle';
   }
 
-  update(dt, input, mouseFrame, bodies) {
+  update(dt, input, mouseFrame, bodies, ship = null) {
     this.animTime += dt;
 
     // 1. Evaluate spherical gravity & dominant body
@@ -800,6 +883,11 @@ export class Explorer {
       }
     }
 
+    // Resolve collision against parked Starfighter hull
+    if (ship) {
+      this.resolveShipCollision(ship);
+    }
+
     // 7. Motion Kinematics & Procedural Articulation
     const horizSpeed = tangentVel.length();
     const currentVertSpeed = this.velocity.dot(newUp);
@@ -975,6 +1063,13 @@ export class Explorer {
       this.rightArm.rotation.z = THREE.MathUtils.lerp(this.rightArm.rotation.z, 0.04, 0.15);
       this.leftForearmGroup.rotation.x = THREE.MathUtils.lerp(this.leftForearmGroup.rotation.x, 0.25, 0.15);
       this.rightForearmGroup.rotation.x = THREE.MathUtils.lerp(this.rightForearmGroup.rotation.x, 0.25, 0.15);
+    }
+
+    // Aim right arm forward when firing gauntlet mining laser
+    if (this.isMining && this.rightArm && this.rightForearmGroup) {
+      this.rightArm.rotation.x = -1.45;
+      this.rightArm.rotation.z = 0.12;
+      this.rightForearmGroup.rotation.x = 0.15;
     }
 
     // Animate Floating Companion Drone (gentle hover bob & yaw spin)

@@ -406,6 +406,47 @@ html, body {
   color: #ffffff;
 }
 
+/* Trajectory Vectors (Prograde & Retrograde) */
+.flight-vector-marker {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform: translate3d(-1000px, -1000px, 0);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  user-select: none;
+  transition: opacity 0.12s ease;
+  z-index: 10;
+}
+
+.flight-vector-marker .vector-symbol {
+  font-size: calc(22px * var(--ui-scale, 1.0));
+  line-height: 1;
+  font-weight: bold;
+}
+
+.flight-vector-marker .vector-label {
+  font-family: monospace;
+  font-size: calc(8.5px * var(--ui-scale, 1.0));
+  letter-spacing: 1px;
+  font-weight: bold;
+  margin-top: 2px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+.prograde-marker {
+  color: #00f5d4;
+  filter: drop-shadow(0 0 6px #00f5d4);
+}
+
+.retrograde-marker {
+  color: #ff9f1c;
+  filter: drop-shadow(0 0 6px #ff9f1c);
+}
+
 /* Center Notifications & Prompt */
 #hud-notice {
   position: fixed;

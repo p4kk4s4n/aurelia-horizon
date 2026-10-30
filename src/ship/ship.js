@@ -1,6 +1,14 @@
 import * as THREE from 'three';
 import { evaluateGravity } from '../world/gravity.js';
 
+function getBodyWorldPos(body) {
+  if (!body) return new THREE.Vector3();
+  const raw = typeof body.getWorldPosition === 'function' ? body.getWorldPosition() : body.position;
+  if (raw && typeof raw.clone === 'function') return raw.clone();
+  if (raw && typeof raw.x === 'number') return new THREE.Vector3(raw.x, raw.y, raw.z);
+  return new THREE.Vector3();
+}
+
 /**
  * Sci-Fi Starfighter with Full Newtonian Orbital Mechanics:
  * - True inverse-square spherical gravitational attraction: a = mu / r^2
@@ -51,6 +59,18 @@ export class Ship {
     this.targetsDestroyed = 0;
     this.visitedMoons = new Set();
     this.hullIntegrity = 100;
+    this.maxHullIntegrity = 100;
+
+    // Landing & Moon Orbit Anchor State
+    this.landedBody = null;
+    this.landedDir = new THREE.Vector3(0, 1, 0);
+    this.autoLandingAssist = true;
+    this.throttleMode = 'direct'; // 'direct' | 'persistent'
+    this.throttle = 0.0;
+    this.relativeVelocity = new THREE.Vector3();
+    this.relativeSpeed = 0;
+    this.vRelVert = 0;
+    this.vRelHoriz = 0;
   }
 
   _buildShipMesh() {
@@ -357,19 +377,129 @@ export class Ship {
     this.beaconMat.color.setHex(repaired ? 0x00f5d4 : 0xff595e);
   }
 
+  repairHull(amount = 25) {
+    this.hullIntegrity = Math.min(this.maxHullIntegrity || 100, this.hullIntegrity + amount);
+    return this.hullIntegrity;
+  }
+
+  _resolveGroundContact(body, dirVector = null) {
+    if (!body) return { elevation: 720, groundNormal: new THREE.Vector3(0, 1, 0), tiltAngle: 0, maxSurfaceR: 720 };
+    const bPos = getBodyWorldPos(body);
+    const centerDir = dirVector ? dirVector.clone().normalize() : this.group.position.clone().sub(bPos).normalize();
+
+    let shipForward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.group.quaternion).normalize();
+    // Project forward vector onto the tangent plane perpendicular to centerDir
+    shipForward.addScaledVector(centerDir, -shipForward.dot(centerDir));
+    if (shipForward.lengthSq() < 0.001) {
+      shipForward.set(0, 0, -1);
+    } else {
+      shipForward.normalize();
+    }
+    const shipRight = centerDir.clone().cross(shipForward).normalize();
+    shipForward = shipRight.clone().cross(centerDir).normalize();
+
+    // 5-Point Footprint Samples (Center, Nose, Tail, Port Wing, Starboard Wing)
+    const footprintSamples = [
+      { name: 'center', offset: new THREE.Vector3(0, 0, 0) },
+      { name: 'nose', offset: shipForward.clone().multiplyScalar(4.5) },
+      { name: 'tail', offset: shipForward.clone().multiplyScalar(-3.8) },
+      { name: 'port', offset: shipRight.clone().multiplyScalar(-2.8) },
+      { name: 'starboard', offset: shipRight.clone().multiplyScalar(2.8) }
+    ];
+
+    let maxSurfaceR = -Infinity;
+    const groundPoints = [];
+
+    for (const sample of footprintSamples) {
+      const sampleWorld = bPos.clone().addScaledVector(centerDir, body.radius).add(sample.offset);
+      const sampleDir = sampleWorld.clone().sub(bPos).normalize();
+      const terrainR = body.getSurfaceRadiusAtDir(sampleDir.x, sampleDir.y, sampleDir.z);
+      const floorR = Math.max(terrainR, body.seaLevelRadius || 0);
+      const pt = bPos.clone().addScaledVector(sampleDir, floorR);
+      groundPoints.push({ name: sample.name, point: pt, floorR });
+      if (floorR > maxSurfaceR) {
+        maxSurfaceR = floorR;
+      }
+    }
+
+    // Ground surface normal calculated from footprint samples
+    const nosePt = groundPoints[1].point;
+    const tailPt = groundPoints[2].point;
+    const portPt = groundPoints[3].point;
+    const stbdPt = groundPoints[4].point;
+
+    const vLong = nosePt.clone().sub(tailPt).normalize();
+    const vLat = stbdPt.clone().sub(portPt).normalize();
+    let groundNormal = vLat.clone().cross(vLong).normalize();
+    if (groundNormal.dot(centerDir) < 0) {
+      groundNormal.negate();
+    }
+
+    const tiltCos = THREE.MathUtils.clamp(groundNormal.dot(centerDir), -1, 1);
+    const tiltAngle = Math.acos(tiltCos) * (180 / Math.PI);
+
+    // Height offset so the bottom ventral plate sits cleanly above highest terrain feature
+    const clearance = 0.42;
+    const finalCenterRadius = maxSurfaceR + clearance;
+
+    return {
+      elevation: finalCenterRadius,
+      groundNormal,
+      tiltAngle,
+      maxSurfaceR
+    };
+  }
+
   placeOnBody(body, dirVector = new THREE.Vector3(0.03, 0.998, 0.05)) {
     const dir = dirVector.clone().normalize();
-    const surfaceR = body.getSurfaceRadiusAtDir(dir.x, dir.y, dir.z);
-    const bPos = body.getWorldPosition();
-    this.group.position.copy(bPos).addScaledVector(dir, surfaceR + 0.35);
+    const bPos = getBodyWorldPos(body);
+    this.landed = true;
+    this.currentBody = body;
+    this.landedBody = body;
+    this.landedDir = dir.clone();
 
+    // Align initially to surface radial up
     const alignQuat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
     this.group.quaternion.copy(alignQuat);
     this.localUp.copy(dir);
     this.velocity.set(0, 0, 0);
-    this.landed = true;
-    this.currentBody = body;
+
+    // Resolve 5-point ground contact for zero clipping
+    const contact = this._resolveGroundContact(body, dir);
+    this.group.position.copy(bPos).addScaledVector(dir, contact.elevation);
+
+    const currentUp = new THREE.Vector3(0, 1, 0).applyQuaternion(this.group.quaternion).normalize();
+    const align = new THREE.Quaternion().setFromUnitVectors(currentUp, contact.groundNormal);
+    this.group.quaternion.premultiply(align);
+    this.localUp.copy(contact.groundNormal);
+
     if (this.beaconRing) this.beaconRing.visible = true;
+  }
+
+  updateParked(dt, bodies) {
+    if (!this.landed || !this.landedBody) return;
+    const body = this.landedBody;
+    this.currentBody = body;
+    this.velocity.set(0, 0, 0);
+    this.throttle = 0.0;
+
+    // Anchor securely to the orbiting moon/planet surface with 5-point ground resolution
+    const bPos = getBodyWorldPos(body);
+    const contact = this._resolveGroundContact(body, this.landedDir);
+    this.group.position.copy(bPos).addScaledVector(this.landedDir, contact.elevation);
+
+    const currentUp = new THREE.Vector3(0, 1, 0).applyQuaternion(this.group.quaternion).normalize();
+    const align = new THREE.Quaternion().setFromUnitVectors(currentUp, contact.groundNormal);
+    this.group.quaternion.premultiply(align);
+    this.localUp.copy(contact.groundNormal);
+
+    // Ensure engine flames are off while parked
+    for (let i = 0; i < this.engineFlames.length; i++) {
+      this.engineFlames[i].visible = false;
+    }
+    if (this.beaconRing) {
+      this.beaconRing.visible = true;
+    }
   }
 
   cycleSASMode(onNotice) {
@@ -403,7 +533,7 @@ export class Ship {
   calculateOrbitParameters(body, grav) {
     if (!body || !grav || grav.altitude < 0) return null;
     const mu = grav.mu || (body.surfaceGravity * body.radius * body.radius);
-    const bPos = body.getWorldPosition();
+    const bPos = getBodyWorldPos(body);
     const rVec = this.group.position.clone().sub(bPos);
     const r = rVec.length();
     const v = this.velocity.length();
@@ -599,6 +729,16 @@ export class Ship {
     const newUp = new THREE.Vector3(grav.up.x, grav.up.y, grav.up.z).normalize();
     this.localUp.copy(newUp);
 
+    // Calculate body-relative velocity & kinematics inside moon/planet SOI
+    const bVel = (body && body.isMoon && body.deltaPosition && dt > 0)
+      ? body.deltaPosition.clone().divideScalar(dt)
+      : new THREE.Vector3();
+
+    this.relativeVelocity = this.velocity.clone().sub(bVel);
+    this.relativeSpeed = this.relativeVelocity.length();
+    this.vRelVert = this.relativeVelocity.dot(newUp);
+    this.vRelHoriz = this.relativeVelocity.clone().sub(newUp.clone().multiplyScalar(this.vRelVert)).length();
+
     // Keep orbiting moon position delta inside its SOI
     if (body && body.isMoon && body.deltaPosition && this.altitude < body.soiRadius) {
       this.group.position.add(body.deltaPosition);
@@ -699,7 +839,7 @@ export class Ship {
     const shipRight = new THREE.Vector3(1, 0, 0).applyQuaternion(this.group.quaternion).normalize();
     const shipUp = new THREE.Vector3(0, 1, 0).applyQuaternion(this.group.quaternion).normalize();
 
-    // Thrust controls
+    // Thrust & Throttle controls
     let thrustForward = input.moveY || 0;
     let thrustRight = (input.moveX || 0) * 0.75;
     let thrustUp = 0;
@@ -711,12 +851,50 @@ export class Ship {
     const isAscend = (input.isActionDown ? input.isActionDown('flightAscend') : false) || input.isDown('Space');
     const isDescend = (input.isActionDown ? input.isActionDown('flightDescend') : false) || input.isDown('ControlLeft') || input.isDown('KeyC');
 
-    if (isThrustFwd) thrustForward += 1;
-    if (isThrustBwd) thrustForward -= 0.7;
+    if (this.throttleMode === 'persistent') {
+      const isThrottleUp = input.isDown('KeyZ') || (input.isActionDown ? input.isActionDown('flightThrottleUp') : false);
+      const isThrottleDown = input.isDown('KeyX') || (input.isActionDown ? input.isActionDown('flightThrottleDown') : false);
+      const isThrottleCut = input.wasPressed('Backspace') || (input.wasActionPressed ? input.wasActionPressed('flightThrottleCut') : false);
+
+      if (isThrottleCut) {
+        this.throttle = 0.0;
+      } else if (isThrottleUp) {
+        this.throttle = Math.min(1.0, this.throttle + 0.45 * dt);
+      } else if (isThrottleDown) {
+        this.throttle = Math.max(0.0, this.throttle - 0.45 * dt);
+      }
+
+      if (isThrustFwd) thrustForward = Math.max(this.throttle, 1.0);
+      else if (isThrustBwd) thrustForward = -0.7;
+      else thrustForward = this.throttle;
+    } else {
+      if (isThrustFwd) thrustForward += 1;
+      if (isThrustBwd) thrustForward -= 0.7;
+      this.throttle = isThrustFwd ? 1.0 : (this.isBoosting ? 1.0 : 0.0);
+    }
+
     if (isStrafeR) thrustRight += 0.65;
     if (isStrafeL) thrustRight -= 0.65;
     if (isAscend) thrustUp += 1;
     if (isDescend) thrustUp -= 0.85;
+
+    // Auto-Safe Landing Assist: regulates descent rate and cancels lateral drift below 70m
+    if (this.autoLandingAssist && body && this.altitude < 70 && !this.landed && thrustUp <= 0.1) {
+      // Dampen horizontal drift over the surface
+      const horizVec = this.relativeVelocity.clone().sub(newUp.clone().multiplyScalar(this.vRelVert));
+      if (horizVec.length() > 0.1) {
+        this.velocity.sub(horizVec.multiplyScalar(Math.min(1, 3.8 * dt)));
+      }
+      // Regulate descent rate to gentle touchdown (< 4 m/s)
+      if (this.vRelVert < -3.8) {
+        const brakeAccel = Math.min(65, Math.abs(this.vRelVert - (-3.0)) * 14.0);
+        this.velocity.addScaledVector(newUp, brakeAccel * dt);
+      }
+      // Gently level upright with surface normal
+      const shipUpVector = new THREE.Vector3(0, 1, 0).applyQuaternion(this.group.quaternion).normalize();
+      const levelQuat = new THREE.Quaternion().setFromUnitVectors(shipUpVector, newUp);
+      this.group.quaternion.slerp(this.group.quaternion.clone().premultiply(levelQuat), Math.min(1, 4.0 * dt));
+    }
 
     // Afterburner Boost (Shift, touch BOOST, or flightBoost action)
     const isBoostDown = (input.isActionDown ? input.isActionDown('flightBoost') : false) || input.isDown('ShiftLeft') || input.isDown('ShiftRight');
@@ -741,10 +919,12 @@ export class Ship {
       if (this.visualRoot.position.z !== 0) this.visualRoot.position.set(0, 0, 0);
     }
 
-    // Takeoff from landed state
+    // Takeoff from landed state (inherits body orbital velocity for zero discontinuity)
     if (this.landed && (thrustUp > 0 || thrustForward > 0)) {
       this.landed = false;
-      this.velocity.addScaledVector(newUp, 22);
+      this.landedBody = null;
+      this.landedDir = null;
+      this.velocity.copy(bVel).addScaledVector(newUp, 22);
     }
 
     // Hide landing beacon ring when in flight
@@ -802,42 +982,62 @@ export class Ship {
       this.velocity.set(0, 0, 0);
     }
 
-    // Terrain collision & landing check on dominant body
+    // Terrain collision & landing check on dominant body with 5-point footprint
     if (body) {
-      const bPos = body.getWorldPosition();
+      const bPos = getBodyWorldPos(body);
       const rel = this.group.position.clone().sub(bPos);
       const dist = rel.length() || 1;
       const dir = rel.divideScalar(dist);
-      const terrainR = body.getSurfaceRadiusAtDir(dir.x, dir.y, dir.z);
-      const surfaceLimit = Math.max(terrainR, body.seaLevelRadius || 0) + 0.4;
 
-      if (dist <= surfaceLimit) {
-        const impactSpeed = Math.abs(this.velocity.dot(dir));
+      const contact = this._resolveGroundContact(body, dir);
+      const surfaceLimit = contact.elevation;
+
+      if (dist <= surfaceLimit + 0.15) {
         this.group.position.copy(bPos).addScaledVector(dir, surfaceLimit);
 
-        if (impactSpeed > 95) {
-          // Hard impact
-          this.hullIntegrity = Math.max(20, this.hullIntegrity - 25);
-          this.velocity.reflect(dir).multiplyScalar(0.35);
-          if (onNotice) onNotice(`Hard Impact (${Math.round(impactSpeed)} m/s)! Slow down below 95 m/s to land.`);
-        } else if (thrustUp <= 0) {
-          // Touchdown
+        const impactSpeed = Math.abs(this.vRelVert) + 0.35 * this.vRelHoriz;
+        const shipUpVector = new THREE.Vector3(0, 1, 0).applyQuaternion(this.group.quaternion).normalize();
+        const tiltAngle = Math.acos(THREE.MathUtils.clamp(shipUpVector.dot(contact.groundNormal), -1, 1)) * (180 / Math.PI);
+
+        // Safe landing criteria: relative impact speed <= 12 m/s and surface tilt <= 25 deg
+        const isSafeLanding = impactSpeed <= 12.0 && tiltAngle <= 25.0;
+
+        if (isSafeLanding && thrustUp <= 0) {
+          // Clean Touchdown
           this.landed = true;
+          this.landedBody = body;
+          this.landedDir = dir.clone();
           this.orbitAssist = false;
           this.sasMode = 'STABILITY';
           this.velocity.set(0, 0, 0);
-          this.hullIntegrity = 100;
-          const align = new THREE.Quaternion().setFromUnitVectors(
-            new THREE.Vector3(0, 1, 0).applyQuaternion(this.group.quaternion).normalize(),
-            dir
-          );
+          this.throttle = 0.0;
+
+          // Align cleanly to footprint ground normal
+          const currentUp = new THREE.Vector3(0, 1, 0).applyQuaternion(this.group.quaternion).normalize();
+          const align = new THREE.Quaternion().setFromUnitVectors(currentUp, contact.groundNormal);
           this.group.quaternion.premultiply(align);
+          this.localUp.copy(contact.groundNormal);
+
           if (this.beaconRing) this.beaconRing.visible = true;
 
           if (body.isMoon && !this.visitedMoons.has(body.id)) {
             this.visitedMoons.add(body.id);
-            if (onNotice) onNotice(`LANDED ON ${body.name.toUpperCase()}! (${this.visitedMoons.size}/3 Moons Explored)`);
+            if (onNotice) onNotice(`TOUCHDOWN ON ${body.name.toUpperCase()}! (${this.visitedMoons.size}/3 Moons Explored)`);
+          } else {
+            if (onNotice) onNotice(`Touchdown confirmed on ${body.name}. Safe landing!`);
           }
+        } else if (thrustUp <= 0) {
+          // Unsafe Touchdown / Hard Impact
+          const excessSpeed = Math.max(0, impactSpeed - 12.0);
+          const tiltDamage = tiltAngle > 25.0 ? Math.round((tiltAngle - 25.0) * 0.8) : 0;
+          const speedDamage = Math.round(excessSpeed * 1.85);
+          const dmg = Math.min(65, Math.max(8, speedDamage + tiltDamage));
+
+          this.hullIntegrity = Math.max(10, this.hullIntegrity - dmg);
+          this.velocity.reflect(contact.groundNormal).multiplyScalar(0.38);
+
+          const reason = impactSpeed > 12.0 ? `Too Fast (${Math.round(impactSpeed)} m/s)` : `Excessive Tilt (${Math.round(tiltAngle)}°)`;
+          if (onNotice) onNotice(`Hard Impact: ${reason}! Hull -${dmg}% (Integrity: ${this.hullIntegrity}%). Gather minerals to repair.`);
         }
       }
     }

@@ -25,6 +25,11 @@ export class HUD {
     this.elSasMode = document.getElementById('hud-sas-mode');
     this.elOxygenBlock = document.getElementById('hud-oxygen-block');
     this.elOxygenBar = document.getElementById('hud-oxygen-bar');
+    this.elMinerals = document.getElementById('hud-minerals');
+    this.elHullBlock = document.getElementById('hud-hull-block');
+    this.elHullBar = document.getElementById('hud-hull-bar');
+    this.elVertSpd = document.getElementById('hud-vert-spd');
+    this.elLandingStatus = document.getElementById('hud-landing-status');
     this.radarCanvas = document.getElementById('radar-canvas');
     this.radarCtx = this.radarCanvas ? this.radarCanvas.getContext('2d') : null;
 
@@ -108,20 +113,68 @@ export class HUD {
         this.elOxygenBar.style.background = ox < 25 ? '#ff4d6d' : '#00f5d4';
       }
     }
+    if (this.elMinerals && explorer.inventory) {
+      this.elMinerals.textContent = `${explorer.inventory.titanium} Ti • ${explorer.inventory.crystal} Cry`;
+    }
+
+    if (this.elHullBlock && this.elHullBar) {
+      const showHull = mode === 'PILOTING' || ship.hullIntegrity < 99.5;
+      this.elHullBlock.style.display = showHull ? 'block' : 'none';
+      if (showHull) {
+        const hPct = Math.round(ship.hullIntegrity);
+        this.elHullBar.style.width = `${hPct}%`;
+        this.elHullBar.style.background = hPct < 35 ? '#ff4d6d' : (hPct < 70 ? '#ffbe0b' : '#00f5d4');
+      }
+    }
+
     if (this.elCrosshair) {
       this.elCrosshair.style.display = mode === 'PILOTING' ? 'block' : 'none';
     }
 
-    // Keplerian Orbital Telemetry Readouts
+    // Keplerian Orbital & Flight Landing Telemetry Readouts
     if (this.elOrbitTelemetry) {
       const showOrbit = (mode === 'PILOTING' && !ship.landed);
       this.elOrbitTelemetry.style.display = showOrbit ? 'block' : 'none';
 
-      if (showOrbit && ship.orbitalData) {
-        if (this.elAp) this.elAp.textContent = `${ship.orbitalData.ap}${typeof ship.orbitalData.ap === 'number' ? ' m' : ''}`;
-        if (this.elPe) this.elPe.textContent = `${ship.orbitalData.pe} m`;
-        if (this.elEcc) this.elEcc.textContent = `${ship.orbitalData.eccentricity}`;
-        if (this.elSasMode) this.elSasMode.textContent = ship.sasMode || 'STABILITY';
+      if (showOrbit) {
+        if (ship.orbitalData) {
+          if (this.elAp) this.elAp.textContent = `${ship.orbitalData.ap}${typeof ship.orbitalData.ap === 'number' ? ' m' : ''}`;
+          if (this.elPe) this.elPe.textContent = `${ship.orbitalData.pe} m`;
+          if (this.elEcc) this.elEcc.textContent = `${ship.orbitalData.eccentricity}`;
+          if (this.elSasMode) this.elSasMode.textContent = ship.sasMode || 'STABILITY';
+        }
+
+        if (this.elVertSpd) {
+          const vVert = ship.vRelVert || 0;
+          const vHoriz = ship.vRelHoriz || 0;
+          const arrow = vVert < -0.2 ? '↓' : (vVert > 0.2 ? '↑' : '•');
+          const sign = vVert >= 0 ? '+' : '';
+          this.elVertSpd.textContent = `${sign}${vVert.toFixed(1)} m/s ${arrow} (H:${Math.round(vHoriz)})`;
+          this.elVertSpd.style.color = Math.abs(vVert) > 12.0 ? '#ff4d6d' : (Math.abs(vVert) > 6.0 ? '#ffd166' : '#00f5d4');
+        }
+
+        if (this.elLandingStatus) {
+          if (ship.landed) {
+            this.elLandingStatus.textContent = 'TOUCHDOWN CONFIRMED';
+            this.elLandingStatus.style.color = '#00f5d4';
+          } else if (ship.altitude < 120) {
+            const vVert = Math.abs(ship.vRelVert || 0);
+            const vHoriz = ship.vRelHoriz || 0;
+            if (vVert <= 12.0 && vHoriz <= 14.0) {
+              this.elLandingStatus.textContent = 'SAFE TOUCHDOWN (APPROACH)';
+              this.elLandingStatus.style.color = '#00f5d4';
+            } else if (vVert > 12.0) {
+              this.elLandingStatus.textContent = `CAUTION: FAST (${Math.round(vVert)} m/s)`;
+              this.elLandingStatus.style.color = '#ff4d6d';
+            } else {
+              this.elLandingStatus.textContent = 'CAUTION: REDUCE DRIFT';
+              this.elLandingStatus.style.color = '#ffd166';
+            }
+          } else {
+            this.elLandingStatus.textContent = 'CRUISE / ORBIT';
+            this.elLandingStatus.style.color = 'var(--hud-text)';
+          }
+        }
       }
     }
 

@@ -43,6 +43,7 @@
     import { createSolarSystem } from '../src/world/body.js';
     import { createDeepOceanMesh } from '../src/world/ocean.js';
     import { NavMarkerSystem } from '../src/ui/navMarkers.js';
+    import { MineralDeposit, MineralSystem } from '../src/world/minerals.js';
     import * as THREE from 'three';
 
     const logs = [];
@@ -89,7 +90,7 @@
         surfaceGravity: 26,
         soiRadius: 1150,
         isMoon: false,
-        getWorldPosition: () => ({ x: 0, y: 0, z: 0 }),
+        getWorldPosition: () => new THREE.Vector3(0, 0, 0),
         getSurfaceRadiusAtDir: () => 360
       },
       {
@@ -98,7 +99,7 @@
         surfaceGravity: 9.5,
         soiRadius: 230,
         isMoon: true,
-        getWorldPosition: () => ({ x: 980, y: 0, z: 0 }),
+        getWorldPosition: () => new THREE.Vector3(980, 0, 0),
         getSurfaceRadiusAtDir: () => 65
       }
     ];
@@ -533,6 +534,111 @@
     navSys.selectTarget(system.moons[0]);
     assert(Boolean(targetSelected && targetSelected.id === 'lumen'), 'NavMarkerSystem selecting marker triggers onSelectTarget');
     assert(Boolean(navSys.activeTarget && navSys.activeTarget.id === 'lumen'), 'NavMarkerSystem marks activeTarget');
+
+    // 19. Moon Landing Orbit-Lock, 5-Point Footprint, Flight Mechanics & Minerals
+    // Test A: Parked Starfighter Moon Orbit Tracking (Zero Drift)
+    const moonLumen = system.moons[0];
+    const parkedShip = new Ship(mockScene);
+    const landingNormal = new THREE.Vector3(0.25, 0.95, 0.15).normalize();
+    parkedShip.placeOnBody(moonLumen, landingNormal);
+
+    assert(parkedShip.landed === true, 'Ship placeOnBody establishes landed state');
+    assert(parkedShip.landedBody === moonLumen, 'Ship placeOnBody binds landedBody to moon');
+
+    const initMoonDist = parkedShip.group.position.distanceTo(moonLumen.getWorldPosition());
+    assert(Math.abs(initMoonDist - (moonLumen.radius + 0.42)) < 5.0, 'Ship rests cleanly at moon radius + clearance');
+
+    // Simulate 60 frames of Moon orbiting Aurelia Prime while ship is parked
+    for (let f = 0; f < 60; f++) {
+      moonLumen.updateOrbit(0.05);
+      parkedShip.updateParked(0.05, system.allBodies);
+    }
+    const finalMoonDist = parkedShip.group.position.distanceTo(moonLumen.getWorldPosition());
+    assert(Math.abs(finalMoonDist - initMoonDist) < 0.05, 'Parked ship maintains zero altitude drift over 60 orbital frames on moving moon');
+
+    // Test B: 5-Point Footprint Contact Resolution
+    const contactRes = parkedShip._resolveGroundContact(moonLumen, landingNormal);
+    assert(typeof contactRes.elevation === 'number' && contactRes.elevation >= moonLumen.radius, '_resolveGroundContact returns valid surface elevation');
+    assert(contactRes.groundNormal instanceof THREE.Vector3, '_resolveGroundContact calculates surface groundNormal');
+    assert(typeof contactRes.tiltAngle === 'number', '_resolveGroundContact computes terrain tiltAngle');
+
+    // Test C: Explorer-Ship Hull Collision Repulsion
+    const flightShip = new Ship(mockScene);
+    flightShip.placeOnBody(system.planet, new THREE.Vector3(0, 1, 0));
+    const collExplorer = new Explorer(mockScene);
+    collExplorer.spawnOnBody(system.planet, new THREE.Vector3(0, 1, 0));
+    // Intentionally place explorer inside ship fuselage bounding volume
+    collExplorer.group.position.copy(flightShip.group.position).add(new THREE.Vector3(0.5, 0.8, -1.0));
+    collExplorer.resolveShipCollision(flightShip);
+    const localAfterColl = flightShip.group.worldToLocal(collExplorer.group.position.clone());
+    const isOutsideHull = Math.abs(localAfterColl.x) >= 2.6 || localAfterColl.y >= 2.4 || Math.abs(localAfterColl.z) >= 4.0;
+    assert(isOutsideHull, 'resolveShipCollision repels explorer outside starfighter bounding box');
+
+    // Test D: Auto-Safe Landing Assist vs Hard Impact Damage
+    settingsMgr.setShip(flightShip);
+    settingsMgr.applyAutoLandingAssist(true);
+    assert(flightShip.autoLandingAssist === true, 'SettingsManager configures autoLandingAssist to true');
+    settingsMgr.applyAutoLandingAssist(false);
+    assert(flightShip.autoLandingAssist === false, 'SettingsManager configures autoLandingAssist to false');
+    settingsMgr.applyAutoLandingAssist(true); // Restore default
+
+    // Test E: Persistent Throttle Mode
+    settingsMgr.applyThrottleMode('persistent');
+    assert(flightShip.throttleMode === 'persistent', 'SettingsManager sets throttleMode to persistent');
+    testInput.endFrame();
+    testInput.setVirtualKey('KeyZ', true);
+    flightShip.landed = false;
+    flightShip.group.position.set(0, 950, 0);
+    flightShip.updateFlight(0.5, testInput, { dx: 0, dy: 0, wheel: 0 }, system.allBodies);
+    testInput.setVirtualKey('KeyZ', false);
+    assert(flightShip.throttle > 0.1, 'KeyZ in persistent throttle mode increases engine throttle');
+    testInput.setVirtualKey('Backspace', true);
+    flightShip.updateFlight(0.1, testInput, { dx: 0, dy: 0, wheel: 0 }, system.allBodies);
+    testInput.setVirtualKey('Backspace', false);
+    assert(flightShip.throttle === 0, 'Backspace in persistent throttle mode cuts engine throttle to zero');
+    settingsMgr.applyThrottleMode('direct'); // Restore direct mode
+
+    // Test F: Mineral Deposits and Gauntlet Mining Tool
+    const tiDeposit = new MineralDeposit({
+      id: 'test_ti_node',
+      type: 'titanium',
+      body: system.planet,
+      localDir: new THREE.Vector3(0, 1, 0)
+    });
+    assert(tiDeposit.type === 'titanium', 'MineralDeposit initializes titanium ore vein');
+    assert(tiDeposit.health === 80, 'Titanium deposit has 80 max health');
+    const mineResult = tiDeposit.takeMiningDamage(45);
+    assert(tiDeposit.health === 35, 'takeMiningDamage decrements deposit health');
+    assert(mineResult.harvested === true, 'takeMiningDamage harvests ore yield');
+    const depleteResult = tiDeposit.takeMiningDamage(50);
+    assert(depleteResult.depleted === true, 'Depleting deposit marks depleted state');
+
+    const crystalDeposit = new MineralDeposit({
+      id: 'test_cry_node',
+      type: 'crystal',
+      body: moonLumen,
+      localDir: new THREE.Vector3(0, 1, 0)
+    });
+    assert(crystalDeposit.type === 'crystal', 'MineralDeposit initializes silica crystal node');
+
+    const testMiner = new Explorer(mockScene);
+    testMiner.setMiningTarget(tiDeposit.position, true);
+    assert(testMiner.isMining === true, 'setMiningTarget activates isMining flag');
+    assert(testMiner.miningBeamMesh.visible === true, 'Mining beam cylinder is visible when mining');
+    testMiner.setMiningTarget(null, false);
+    assert(testMiner.miningBeamMesh.visible === false, 'Mining beam hides when mining stops');
+
+    // Test G: Starfighter Hull Integrity & Mineral Repair
+    flightShip.hullIntegrity = 40;
+    assert(flightShip.hullIntegrity === 40, 'Starfighter hull integrity damaged to 40%');
+    flightShip.repairHull(25);
+    assert(flightShip.hullIntegrity === 65, 'repairHull restores 25% hull integrity');
+    flightShip.repairHull(50);
+    assert(flightShip.hullIntegrity === 100, 'repairHull caps at 100% max integrity');
+
+    // Test H: Prograde & Retrograde Vector Markers
+    assert(Boolean(navSys.progradeEl), 'NavMarkerSystem creates Prograde flight vector marker');
+    assert(Boolean(navSys.retrogradeEl), 'NavMarkerSystem creates Retrograde flight vector marker');
 
     const summary = `SUMMARY: ${passed} passed, ${failed} failed`;
     logs.push('', summary);

@@ -26,29 +26,33 @@ $MimeTypes = @{
 
 try {
   while ($Listener.IsListening) {
-    $Context = $Listener.GetContext()
-    $Request = $Context.Request
-    $Response = $Context.Response
+    try {
+      $Context = $Listener.GetContext()
+      $Request = $Context.Request
+      $Response = $Context.Response
 
-    $UrlPath = $Request.Url.LocalPath.TrimStart('/')
-    if ([string]::IsNullOrEmpty($UrlPath)) {
-      $UrlPath = "index.html"
-    }
+      $UrlPath = $Request.Url.LocalPath.TrimStart('/')
+      if ([string]::IsNullOrEmpty($UrlPath)) {
+        $UrlPath = "index.html"
+      }
 
-    $FilePath = Join-Path $Root ($UrlPath -replace '/', '\')
-    if ((Test-Path $FilePath) -and -not (Get-Item $FilePath).PSIsContainer) {
-      $Ext = [System.IO.Path]::GetExtension($FilePath).ToLower()
-      $Response.ContentType = if ($MimeTypes.ContainsKey($Ext)) { $MimeTypes[$Ext] } else { "application/octet-stream" }
-      $Bytes = [System.IO.File]::ReadAllBytes($FilePath)
-      $Response.ContentLength64 = $Bytes.Length
-      $Response.StatusCode = 200
-      $Response.OutputStream.Write($Bytes, 0, $Bytes.Length)
-    } else {
-      $Response.StatusCode = 404
-      $Msg = [System.Text.Encoding]::UTF8.GetBytes("404 Not Found: $UrlPath")
-      $Response.OutputStream.Write($Msg, 0, $Msg.Length)
+      $FilePath = Join-Path $Root ($UrlPath -replace '/', '\')
+      if ((Test-Path $FilePath) -and -not (Get-Item $FilePath).PSIsContainer) {
+        $Ext = [System.IO.Path]::GetExtension($FilePath).ToLower()
+        $Response.ContentType = if ($MimeTypes.ContainsKey($Ext)) { $MimeTypes[$Ext] } else { "application/octet-stream" }
+        $Bytes = [System.IO.File]::ReadAllBytes($FilePath)
+        $Response.ContentLength64 = $Bytes.Length
+        $Response.StatusCode = 200
+        $Response.OutputStream.Write($Bytes, 0, $Bytes.Length)
+      } else {
+        $Response.StatusCode = 404
+        $Msg = [System.Text.Encoding]::UTF8.GetBytes("404 Not Found: $UrlPath")
+        $Response.OutputStream.Write($Msg, 0, $Msg.Length)
+      }
+      $Response.OutputStream.Close()
+    } catch {
+      # Ignore individual request / client disconnect errors
     }
-    $Response.OutputStream.Close()
   }
 } finally {
   $Listener.Stop()
