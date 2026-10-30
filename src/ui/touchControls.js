@@ -1,10 +1,9 @@
 /**
- * Mobile & Touchscreen Controls Manager
- * Supports:
- * 1. Dual Virtual Joysticks ('dual-sticks')
- * 2. Floating Left Stick + Right Touch-Look Area ('floating-look')
- * 3. Virtual D-Pad + Right Touch-Look Area ('dpad-look')
- * Multi-touch PointerEvents with context-aware action clusters (On-Foot vs Starfighter).
+ * Mobile & Touchscreen Controls Manager with Inactivity Auto-Hide:
+ * - 3 Selectable Control Layouts (Dual Sticks, Floating Stick + Look, Virtual D-Pad + Look)
+ * - Context-aware action button clusters for On-Foot & Starfighter
+ * - 3-Second Idle Auto-Hide: smoothly fades controls out when untouched for 3s, wakes instantly on any touch
+ * - Robust Pointer Capture on hold buttons (Boost, Jump/Jet, Fire)
  */
 
 const STORAGE_SCHEME_KEY = 'aurelia_touch_scheme';
@@ -12,19 +11,18 @@ const STORAGE_VIS_KEY = 'aurelia_touch_visibility';
 const STORAGE_SENS_KEY = 'aurelia_touch_sensitivity';
 
 export class TouchControlsManager {
-  constructor(input, onNotice) {
-    this.input = input;
+  constructor(inputManager, onNotice = null) {
+    this.input = inputManager;
     this.onNotice = onNotice;
 
     this.scheme = localStorage.getItem(STORAGE_SCHEME_KEY) || 'dual-sticks';
     this.visibility = localStorage.getItem(STORAGE_VIS_KEY) || 'auto';
-    this.sensitivity = parseFloat(localStorage.getItem(STORAGE_SENS_KEY) || '1.0');
+    this.sensitivity = parseFloat(localStorage.getItem(STORAGE_SENS_KEY)) || 1.0;
     this.input.touchLookSensitivity = this.sensitivity;
 
     this.container = document.getElementById('touch-controls');
     this.leftZone = document.getElementById('touch-left-zone');
     this.rightZone = document.getElementById('touch-right-zone');
-
     this.leftStickBase = document.getElementById('left-stick-base');
     this.leftStickKnob = document.getElementById('left-stick-knob');
     this.rightStickBase = document.getElementById('right-stick-base');
@@ -58,8 +56,14 @@ export class TouchControlsManager {
     this.sprintLatched = false;
     this.currentMode = 'EXPLORING';
 
+    // 3-second inactivity auto-hide state
+    this.idleTimer = null;
+    this.activePointerCount = 0;
+    this.isIdleFade = false;
+
     this._setupPointerEvents();
     this._setupActionButtons();
+    this._setupIdleAutoHide();
     this.applyScheme(this.scheme);
     this.applyVisibility(this.visibility);
 
@@ -156,15 +160,64 @@ export class TouchControlsManager {
     }
   }
 
-  _setupPointerEvents() {
-    if (!this.container) return;
+  _setupIdleAutoHide() {
+    const onUserTouch = () => {
+      this.wakeFromIdle();
+      this.resetIdleTimer();
+    };
 
-    // Left Touch Zone (Movement)
+    window.addEventListener('pointerdown', onUserTouch, { passive: true });
+    window.addEventListener('touchstart', onUserTouch, { passive: true });
+    window.addEventListener('pointermove', () => {
+      if (this.activePointerCount > 0) {
+        this.resetIdleTimer();
+      }
+    }, { passive: true });
+
+    this.resetIdleTimer();
+  }
+
+  wakeFromIdle() {
+    if (this.isIdleFade) {
+      this.isIdleFade = false;
+      if (this.container) {
+        this.container.classList.remove('idle-fade');
+      }
+    }
+  }
+
+  resetIdleTimer() {
+    if (this.idleTimer) {
+      clearTimeout(this.idleTimer);
+      this.idleTimer = null;
+    }
+
+    // Do not auto-hide while active touches are held down
+    if (this.activePointerCount > 0) return;
+
+    this.idleTimer = setTimeout(() => {
+      if (this.activePointerCount === 0) {
+        const modal = document.getElementById('settings-modal');
+        if (!modal || !modal.classList.contains('open')) {
+          this.isIdleFade = true;
+          if (this.container && this.container.classList.contains('visible')) {
+            this.container.classList.add('idle-fade');
+          }
+        }
+      }
+    }, 3000);
+  }
+
+  _setupPointerEvents() {
+    // Left Touch Zone (Movement / Thrust)
     this.leftZone?.addEventListener('pointerdown', (e) => {
-      if (e.target.closest('#touch-dpad')) return; // D-Pad handled separately
+      if (e.target.closest('.dpad-btn') || e.target.closest('.touch-btn')) return;
       if (this.leftPointerId !== null) return;
       this.leftPointerId = e.pointerId;
-      this.leftZone.setPointerCapture(e.pointerId);
+      this.activePointerCount++;
+      this.wakeFromIdle();
+
+      try { this.leftZone.setPointerCapture(e.pointerId); } catch (_) {}
 
       const rect = this.leftZone.getBoundingClientRect();
       const clientX = e.clientX;
@@ -194,7 +247,10 @@ export class TouchControlsManager {
     const endLeft = (e) => {
       if (e.pointerId === this.leftPointerId) {
         this.leftPointerId = null;
+        this.activePointerCount = Math.max(0, this.activePointerCount - 1);
+        try { this.leftZone.releasePointerCapture(e.pointerId); } catch (_) {}
         this._resetLeftStick();
+        this.resetIdleTimer();
       }
     };
     this.leftZone?.addEventListener('pointerup', endLeft);
@@ -202,11 +258,13 @@ export class TouchControlsManager {
 
     // Right Touch Zone (Camera Look / Steering)
     this.rightZone?.addEventListener('pointerdown', (e) => {
-      // Ignore if clicking an action button
       if (e.target.closest('.touch-btn')) return;
       if (this.rightPointerId !== null) return;
       this.rightPointerId = e.pointerId;
-      this.rightZone.setPointerCapture(e.pointerId);
+      this.activePointerCount++;
+      this.wakeFromIdle();
+
+      try { this.rightZone.setPointerCapture(e.pointerId); } catch (_) {}
 
       if (this.scheme === 'dual-sticks') {
         const baseRect = this.rightStickBase.getBoundingClientRect();
@@ -216,7 +274,6 @@ export class TouchControlsManager {
         };
         this._updateRightStickPos(e.clientX, e.clientY);
       } else {
-        // Trackpad drag look
         this.rightPrevPos = { x: e.clientX, y: e.clientY };
       }
     });
@@ -237,13 +294,16 @@ export class TouchControlsManager {
     const endRight = (e) => {
       if (e.pointerId === this.rightPointerId) {
         this.rightPointerId = null;
+        this.activePointerCount = Math.max(0, this.activePointerCount - 1);
+        try { this.rightZone.releasePointerCapture(e.pointerId); } catch (_) {}
         this._resetRightStick();
+        this.resetIdleTimer();
       }
     };
     this.rightZone?.addEventListener('pointerup', endRight);
     this.rightZone?.addEventListener('pointercancel', endRight);
 
-    // D-Pad buttons
+    // Virtual D-Pad buttons
     if (this.dpadContainer) {
       const dirs = [
         { id: 'dpad-up', dx: 0, dy: 1 },
@@ -252,22 +312,26 @@ export class TouchControlsManager {
         { id: 'dpad-right', dx: 1, dy: 0 }
       ];
       dirs.forEach(({ id, dx, dy }) => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.addEventListener('pointerdown', (e) => {
+        const btn = document.getElementById(id);
+        if (!btn) return;
+        btn.addEventListener('pointerdown', (e) => {
           e.preventDefault();
+          this.activePointerCount++;
+          this.wakeFromIdle();
           this.input.moveX = dx;
           this.input.moveY = dy;
-          el.classList.add('active');
+          btn.classList.add('active');
         });
-        const release = (e) => {
+        const end = (e) => {
           e.preventDefault();
+          this.activePointerCount = Math.max(0, this.activePointerCount - 1);
           if (this.input.moveX === dx) this.input.moveX = 0;
           if (this.input.moveY === dy) this.input.moveY = 0;
-          el.classList.remove('active');
+          btn.classList.remove('active');
+          this.resetIdleTimer();
         };
-        el.addEventListener('pointerup', release);
-        el.addEventListener('pointercancel', release);
+        btn.addEventListener('pointerup', end);
+        btn.addEventListener('pointercancel', end);
       });
     }
   }
@@ -288,7 +352,7 @@ export class TouchControlsManager {
 
     const norm = clampedDist / this.maxStickRadius;
     this.input.moveX = Math.cos(angle) * norm;
-    this.input.moveY = -Math.sin(angle) * norm; // Screen Y is inverted from Forward (+Z)
+    this.input.moveY = -Math.sin(angle) * norm;
   }
 
   _updateRightStickPos(clientX, clientY) {
@@ -315,13 +379,19 @@ export class TouchControlsManager {
       if (!btn) return;
       btn.addEventListener('pointerdown', (e) => {
         e.preventDefault();
+        try { btn.setPointerCapture(e.pointerId); } catch (_) {}
+        this.activePointerCount++;
+        this.wakeFromIdle();
         this.input.setVirtualKey(code, true);
         btn.classList.add('active');
       });
       const end = (e) => {
         e.preventDefault();
+        try { btn.releasePointerCapture(e.pointerId); } catch (_) {}
+        this.activePointerCount = Math.max(0, this.activePointerCount - 1);
         this.input.setVirtualKey(code, false);
         btn.classList.remove('active');
+        this.resetIdleTimer();
       };
       btn.addEventListener('pointerup', end);
       btn.addEventListener('pointercancel', end);
@@ -331,30 +401,34 @@ export class TouchControlsManager {
       if (!btn) return;
       btn.addEventListener('pointerdown', (e) => {
         e.preventDefault();
+        this.wakeFromIdle();
         this.input.triggerVirtualPress(code);
         btn.classList.add('active');
       });
       const end = (e) => {
         e.preventDefault();
         btn.classList.remove('active');
+        this.resetIdleTimer();
       };
       btn.addEventListener('pointerup', end);
       btn.addEventListener('pointercancel', end);
     };
 
     // On-Foot actions
-    bindHold(this.btnJump, 'Space'); // Hold for jetpack, tap for jump
+    bindHold(this.btnJump, 'Space');
     bindTap(this.btnInteract, 'KeyE');
 
     // Sprint toggle button
     this.btnSprint?.addEventListener('pointerdown', (e) => {
       e.preventDefault();
+      this.wakeFromIdle();
       this.sprintLatched = !this.sprintLatched;
       this.input.setVirtualKey('ShiftLeft', this.sprintLatched);
       this.btnSprint.classList.toggle('active', this.sprintLatched);
       if (this.onNotice) {
         this.onNotice(this.sprintLatched ? 'Sprint Lock ON' : 'Sprint Lock OFF', 1.5);
       }
+      this.resetIdleTimer();
     });
 
     // Starfighter actions
@@ -368,17 +442,22 @@ export class TouchControlsManager {
       if (!btn) return;
       btn.addEventListener('pointerdown', (e) => {
         e.preventDefault();
+        try { btn.setPointerCapture(e.pointerId); } catch (_) {}
+        this.activePointerCount++;
+        this.wakeFromIdle();
         this.input.rollRate = rate;
         btn.classList.add('active');
       });
       const end = (e) => {
         e.preventDefault();
+        try { btn.releasePointerCapture(e.pointerId); } catch (_) {}
+        this.activePointerCount = Math.max(0, this.activePointerCount - 1);
         if (this.input.rollRate === rate) this.input.rollRate = 0;
         btn.classList.remove('active');
+        this.resetIdleTimer();
       };
       btn.addEventListener('pointerup', end);
       btn.addEventListener('pointercancel', end);
-      btn.addEventListener('pointerleave', end);
     };
 
     bindRoll(this.btnRollL, -1);
@@ -387,11 +466,13 @@ export class TouchControlsManager {
     bindTap(this.btnOrbit, 'KeyO');
     bindTap(this.btnExit, 'KeyE');
 
-    // Also clicking the center HUD prompt pill acts as [E]
+    // Center HUD prompt pill tap
     const centerPrompt = document.getElementById('hud-prompt');
     centerPrompt?.addEventListener('pointerdown', (e) => {
       e.preventDefault();
+      this.wakeFromIdle();
       this.input.triggerVirtualPress('KeyE');
+      this.resetIdleTimer();
     });
   }
 
@@ -407,14 +488,18 @@ export class TouchControlsManager {
     }
 
     if (isPiloting) {
-      // Highlight Orbit Assist button when active
+      // Highlight SAS / Orbit button when flight assist is engaged
       if (this.btnOrbit) {
-        this.btnOrbit.classList.toggle('latched', Boolean(state.ship.orbitAssist));
+        const sasActive = state.ship && state.ship.sasMode && state.ship.sasMode !== 'OFF';
+        this.btnOrbit.classList.toggle('latched', Boolean(sasActive));
+        const sasLabel = state.ship?.sasMode || 'SAS';
+        const labelEl = this.btnOrbit.querySelector('small');
+        if (labelEl) labelEl.textContent = sasLabel;
       }
       // Highlight Exit button when landed or hovering low
       if (this.btnExit) {
         const canExit = state.ship.landed || state.ship.altitude < 18;
-        this.btnExit.style.opacity = canExit ? '1' : '0.4';
+        this.btnExit.style.opacity = canExit ? '1' : '0.38';
       }
     } else {
       // Highlight Interact button if near a component or ship

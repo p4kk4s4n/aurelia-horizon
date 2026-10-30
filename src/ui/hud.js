@@ -18,6 +18,11 @@ export class HUD {
     this.elCompass = document.getElementById('hud-compass');
     this.elObjectiveText = document.getElementById('hud-objective-text');
     this.elCrosshair = document.getElementById('hud-crosshair');
+    this.elOrbitTelemetry = document.getElementById('hud-orbit-telemetry');
+    this.elAp = document.getElementById('hud-ap');
+    this.elPe = document.getElementById('hud-pe');
+    this.elEcc = document.getElementById('hud-ecc');
+    this.elSasMode = document.getElementById('hud-sas-mode');
     this.radarCanvas = document.getElementById('radar-canvas');
     this.radarCtx = this.radarCanvas ? this.radarCanvas.getContext('2d') : null;
 
@@ -87,6 +92,19 @@ export class HUD {
       this.elCrosshair.style.display = mode === 'PILOTING' ? 'block' : 'none';
     }
 
+    // Keplerian Orbital Telemetry Readouts
+    if (this.elOrbitTelemetry) {
+      const showOrbit = (mode === 'PILOTING' && !ship.landed);
+      this.elOrbitTelemetry.style.display = showOrbit ? 'block' : 'none';
+
+      if (showOrbit && ship.orbitalData) {
+        if (this.elAp) this.elAp.textContent = `${ship.orbitalData.ap}${typeof ship.orbitalData.ap === 'number' ? ' m' : ''}`;
+        if (this.elPe) this.elPe.textContent = `${ship.orbitalData.pe} m`;
+        if (this.elEcc) this.elEcc.textContent = `${ship.orbitalData.eccentricity}`;
+        if (this.elSasMode) this.elSasMode.textContent = ship.sasMode || 'STABILITY';
+      }
+    }
+
     // Objective guidance
     if (this.elObjectiveText) {
       if (!rep.repaired) {
@@ -98,7 +116,7 @@ export class HUD {
       } else if (mode !== 'PILOTING' && ship.visitedMoons.size === 0) {
         this.elObjectiveText.textContent = `3. Ship Repaired! Approach the Starfighter and press [E] to board and take off into orbit.`;
       } else if (ship.visitedMoons.size < moons.length) {
-        this.elObjectiveText.textContent = `4. Fly to orbit ([Space]/[W] + [Shift] Boost), toggle Orbit View [O], blast asteroids [Click/F], and land on all 3 Moons (${ship.visitedMoons.size}/3)!`;
+        this.elObjectiveText.textContent = `4. Newtonian Spaceflight: Prograde [W], Retro-Brake [S], Boost [Shift], Cycle SAS [O], Roll [Q/E], land on all 3 Moons (${ship.visitedMoons.size}/3)!`;
       } else {
         this.elObjectiveText.textContent = `MISSION COMPLETE! All 3 Moons explored! Free-fly, step out on any moon [E], or dogfight orbital drones.`;
       }

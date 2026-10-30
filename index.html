@@ -49,6 +49,12 @@
       <div class="stat-row"><span>Phase</span><strong id="hud-phase">SURFACE</strong></div>
       <div class="stat-row"><span>Altitude</span><strong id="hud-altitude">0 m</strong></div>
       <div class="stat-row"><span>Velocity</span><strong id="hud-speed">0 m/s</strong></div>
+      <div id="hud-orbit-telemetry" class="orbit-stats-block" style="display: none;">
+        <div class="stat-row"><span>Apoapsis (Ap)</span><strong id="hud-ap">--</strong></div>
+        <div class="stat-row"><span>Periapsis (Pe)</span><strong id="hud-pe">--</strong></div>
+        <div class="stat-row"><span>Eccentricity</span><strong id="hud-ecc">--</strong></div>
+        <div class="stat-row"><span>Flight Computer</span><strong id="hud-sas-mode">STABILITY ASSIST</strong></div>
+      </div>
       <div class="stat-row"><span>Ship Repair</span><strong id="hud-parts">0/5 Installed</strong></div>
       <div class="stat-row"><span>Moons Landed</span><strong id="hud-moons">0 / 3 Moons Landed</strong></div>
       <div class="stat-row"><span>Targets Blasted</span><strong id="hud-targets">0 Destroyed</strong></div>
@@ -120,7 +126,7 @@
     <div id="touch-foot-actions" class="touch-actions-cluster">
       <button id="btn-touch-sprint" class="touch-btn action-sprint" type="button">RUN</button>
       <button id="btn-touch-jump" class="touch-btn action-jump" type="button">JUMP<br><small>JET</small></button>
-      <button id="btn-touch-interact" class="touch-btn action-interact" type="button">ACT<br><small>[E]</small></button>
+      <button id="btn-touch-interact" class="touch-btn action-interact" type="button">ACT<br><small>INTERACT</small></button>
     </div>
 
     <!-- Context Actions: Starfighter Cluster -->
@@ -129,10 +135,10 @@
       <button id="btn-touch-ascend" class="touch-btn action-ascend" type="button">UP<br><small>▲</small></button>
       <button id="btn-touch-roll-l" class="touch-btn action-roll" type="button">ROLL<br><small>⟲</small></button>
       <button id="btn-touch-roll-r" class="touch-btn action-roll" type="button">ROLL<br><small>⟳</small></button>
-      <button id="btn-touch-orbit" class="touch-btn action-orbit" type="button">ORBIT<br><small>[O]</small></button>
+      <button id="btn-touch-orbit" class="touch-btn action-orbit" type="button">SAS<br><small>ORBIT</small></button>
       <button id="btn-touch-boost" class="touch-btn action-boost" type="button">BOOST<br><small>⚡</small></button>
       <button id="btn-touch-fire" class="touch-btn action-fire" type="button">FIRE<br><small>💥</small></button>
-      <button id="btn-touch-exit" class="touch-btn action-exit" type="button">EXIT<br><small>[E]</small></button>
+      <button id="btn-touch-exit" class="touch-btn action-exit" type="button">EXIT<br><small>DISEMBARK</small></button>
     </div>
   </div>
 
@@ -210,7 +216,7 @@
   <!-- Bottom Controls Guide -->
   <footer id="hud-controls">
     <div><strong>ON FOOT:</strong> [WASD] Move • [Shift] Sprint • [Space] Jump / Hold Jetpack • [Mouse] Look • [E] Collect / Install / Board</div>
-    <div><strong>STARFIGHTER:</strong> [W/S] Thrust • [A/D] Strafe • [Q/E] Roll • [Space/Ctrl] Ascend/Descend • [Shift] Boost • [O] Orbit Assist • [Click/F] Twin Pulse Cannons • [E] Disembark</div>
+    <div><strong>STARFIGHTER (NEWTONIAN):</strong> [W/S] Thrust • [A/D] Strafe • [Q/E] 6DoF Roll • [Space/Ctrl] Ascend/Descend • [Shift] Afterburner Boost • [O] Cycle SAS Flight Assist • [Click/F] Pulse Cannons • [E] Disembark (Landed)</div>
   </footer>
 
   <script type="module" src="./src/main.js"></script>

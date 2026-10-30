@@ -124,12 +124,18 @@ export const gameAPI = {
     gameMode = 'PILOTING';
     explorer.group.visible = false;
     ship.landed = false;
-    ship.group.position.set(0, planet.radius + 175, 220);
+    ship.group.position.set(0, planet.radius + 180, 220);
     ship.group.quaternion.setFromEuler(new THREE.Euler(-0.28, 0, 0));
-    ship.orbitAssist = true;
-    ship.velocity.set(0, 0, -95);
+    ship.sasMode = 'STABILITY';
+    ship.orbitAssist = false;
+    // Set exact circular orbital velocity for true Newtonian orbit: v_circ = sqrt(mu / r)
+    const r = ship.group.position.length();
+    const mu = planet.surfaceGravity * planet.radius * planet.radius;
+    const vCirc = Math.sqrt(mu / r);
+    // Tangent vector in YZ plane perpendicular to r = (0, 540, 220)
+    ship.velocity.set(0, -vCirc * (220 / r), -vCirc * ((planet.radius + 180) / r));
     cameraRig.initialized = false;
-    hud.showNotice('Entered High Orbit above Aurelia Prime! Orbit-Assist Active.');
+    hud.showNotice('Entered Stable Newtonian Orbit above Aurelia Prime! SAS: STABILITY ASSIST.');
   },
   landOnMoon: (moonIndex = 0) => {
     const moon = moons[moonIndex] || moons[0];
@@ -285,9 +291,10 @@ function animate(now) {
     cameraRig.updateForExplorer(explorer, dt);
 
     // Check proximity to uncollected repair parts
+    const isTouch = input.isTouchDevice || touchControls.visibility === 'always' || window.innerWidth <= 960;
     const nearest = repairSystem.getNearestUncollectedPart(explorer.group.position);
     if (nearest && nearest.distance < 9.5) {
-      promptText = `Press [E] to collect ${nearest.part.name}`;
+      promptText = isTouch ? `Tap ACT to collect ${nearest.part.name}` : `Press [E] to collect ${nearest.part.name}`;
       if (input.wasPressed('KeyE') || nearest.distance < 4.2) {
         repairSystem.tryPickupPart(nearest.part);
         const st = repairSystem.getStatus();
@@ -299,19 +306,21 @@ function animate(now) {
     const shipDist = explorer.group.position.distanceTo(ship.group.position);
     if (shipDist < 13.5) {
       if (repairSystem.carriedParts.length > 0) {
-        promptText = `Press [E] to install ${repairSystem.carriedParts.length} component(s) into Starfighter`;
+        promptText = isTouch
+          ? `Tap ACT to install ${repairSystem.carriedParts.length} component(s) into Starfighter`
+          : `Press [E] to install ${repairSystem.carriedParts.length} component(s) into Starfighter`;
         if (input.wasPressed('KeyE')) {
           const installedCount = repairSystem.installCarriedParts();
           const st = repairSystem.getStatus();
           if (st.repaired) {
             ship.setRepairedVisual(true);
-            hud.showNotice(`Installed ${installedCount} component(s)! Starfighter 100% Repaired — Press [E] to board!`);
+            hud.showNotice(`Installed ${installedCount} component(s)! Starfighter 100% Repaired — ${isTouch ? 'Tap ACT' : 'Press [E]'} to board!`);
           } else {
             hud.showNotice(`Installed ${installedCount} component(s) (${st.installed}/${st.total} installed). Find the remaining parts!`);
           }
         }
       } else if (repairSystem.isShipRepaired()) {
-        promptText = 'Press [E] to board Starfighter';
+        promptText = isTouch ? 'Tap ACT to board Starfighter' : 'Press [E] to board Starfighter';
         if (input.wasPressed('KeyE')) {
           boardShip();
         }
@@ -326,13 +335,18 @@ function animate(now) {
     ship.updateFlight(dt, input, mouseFrame, allBodies, (msg) => hud.showNotice(msg));
     cameraRig.updateForShip(ship, dt);
 
+    const isTouch = input.isTouchDevice || touchControls.visibility === 'always' || window.innerWidth <= 960;
     if (ship.landed || ship.altitude < 16) {
-      promptText = `Press [E] to disembark onto ${ship.currentBody ? ship.currentBody.name : 'surface'} | Hold [Space]+[W] to Launch`;
+      promptText = isTouch
+        ? `Tap EXIT to disembark onto ${ship.currentBody ? ship.currentBody.name : 'surface'} | Hold UP to Launch`
+        : `Press [E] to disembark onto ${ship.currentBody ? ship.currentBody.name : 'surface'} | Hold [Space]+[W] to Launch`;
       if (input.wasPressed('KeyE')) {
         disembarkShip();
       }
-    } else if (ship.altitude > 110 && !ship.orbitAssist) {
-      promptText = 'Press [O] to engage Arcade Orbit-Assist | [Shift] Boost | [Click/F] Twin Plasma Cannons';
+    } else if (ship.altitude > 100) {
+      promptText = isTouch
+        ? `Tap SAS to cycle Flight Computer (${ship.sasMode}) • BOOST for afterburners`
+        : `Press [O] to cycle SAS Flight Computer (${ship.sasMode}) • [Shift] Boost • [Q/E] 6DoF Roll`;
     }
   }
 

@@ -207,6 +207,65 @@
     testInput.rollRate = 0;
     assert(!testShip.group.quaternion.equals(midQuat), 'Mobile rollRate induces roll rotation on ship');
 
+    // 10. Full Newtonian Orbital Mechanics & Controls Fixes
+    // A) Newtonian Inverse-Square Gravity
+    const rTest = 720;
+    const gDist = evaluateGravity({ x: 0, y: rTest, z: 0 }, mockBodies);
+    const expectedG = 26 * Math.pow(360 / rTest, 2);
+    assert(Math.abs(Math.abs(gDist.acceleration.y) - expectedG) < 0.05, 'Gravity follows pure Newtonian inverse-square falloff: a = g0*(R/r)^2');
+    assert(gDist.mu === 26 * 360 * 360, 'evaluateGravity returns gravitational parameter mu');
+
+    // B) Vacuum Momentum Conservation (zero drag in vacuum)
+    const testVacuumShip = new Ship(mockScene);
+    testVacuumShip.landed = false;
+    testVacuumShip.altitude = 300;
+    testVacuumShip.group.position.set(0, 660, 0);
+    testVacuumShip.velocity.set(80, 0, 0);
+    testVacuumShip.updateFlight(0.1, testInput, { dx: 0, dy: 0 }, mockBodies);
+    assert(Math.abs(testVacuumShip.velocity.x - 80) < 0.01, 'Vacuum space has zero artificial drag (momentum conserved)');
+
+    // C) Boost Fix (Holding Shift activates afterburner forward thrust without needing W)
+    const testBoostShip = new Ship(mockScene);
+    testBoostShip.landed = false;
+    testBoostShip.group.position.set(0, 560, 0);
+    testBoostShip.altitude = 200;
+    testBoostShip.velocity.set(0, 0, 0);
+    testInput.setVirtualKey('ShiftLeft', true);
+    testBoostShip.updateFlight(0.1, testInput, { dx: 0, dy: 0 }, mockBodies);
+    testInput.setVirtualKey('ShiftLeft', false);
+    assert(testBoostShip.isBoosting, 'ShiftLeft immediately activates afterburner boost');
+    assert(testBoostShip.velocity.length() > 5.0, 'Boost immediately accelerates ship forward without requiring W key');
+
+    // D) SAS Flight Computer Modes
+    assert(testShip.sasMode === 'STABILITY', 'Ship initializes in STABILITY assist mode');
+    testShip.cycleSASMode();
+    assert(testShip.sasMode === 'PROGRADE', 'cycleSASMode switches to PROGRADE hold');
+    testShip.cycleSASMode();
+    assert(testShip.sasMode === 'RETROGRADE', 'cycleSASMode switches to RETROGRADE hold');
+    testShip.cycleSASMode();
+    assert(testShip.sasMode === 'CIRCULARIZE', 'cycleSASMode switches to CIRCULARIZE assist');
+    testShip.cycleSASMode();
+    assert(testShip.sasMode === 'OFF', 'cycleSASMode switches to OFF (Newtonian Drift)');
+    testShip.cycleSASMode();
+    assert(testShip.sasMode === 'STABILITY', 'cycleSASMode loops back to STABILITY');
+
+    // E) Keplerian Orbital Telemetry Calculator
+    const orbParams = testShip.calculateOrbitParameters(mockBodies[0], {
+      mu: 26 * 360 * 360,
+      dist: 500,
+      altitude: 140
+    });
+    assert(Boolean(orbParams && orbParams.vCirc > 0), 'calculateOrbitParameters computes circular orbital velocity');
+    assert(typeof orbParams.ap !== 'undefined' && typeof orbParams.pe !== 'undefined', 'calculateOrbitParameters computes Ap and Pe');
+
+    // F) Touch Controls 3-Second Idle Auto-Hide
+    assert(typeof touchMgr.wakeFromIdle === 'function', 'TouchControlsManager has wakeFromIdle method');
+    assert(typeof touchMgr.resetIdleTimer === 'function', 'TouchControlsManager has resetIdleTimer method');
+    touchMgr.isIdleFade = true;
+    touchOverlay.classList.add('idle-fade');
+    touchMgr.wakeFromIdle();
+    assert(!touchOverlay.classList.contains('idle-fade'), 'wakeFromIdle removes idle-fade class on touch');
+
     const summary = `SUMMARY: ${passed} passed, ${failed} failed`;
     logs.push('', summary);
     document.getElementById('test-output').textContent = logs.join('\n');

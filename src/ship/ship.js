@@ -2,14 +2,15 @@ import * as THREE from 'three';
 import { evaluateGravity } from '../world/gravity.js';
 
 /**
- * Sci-Fi Starfighter matching concept model sheet (SPPSHIP MODEL SHEET):
- * - Faceted off-white upper lifting-body wedge (#d8dad3)
- * - Dark slate perimeter chine & ventral boat-tail hull (#242e36) with twin ventral fins
- * - Elongated dark stealth cockpit canopy with beveled glass facets
- * - Flared shoulders with dual hovering outrigger canard fins (upper & lower stabilizers)
- * - Recessed spine power channel with cyan glowing conduits leading to 3 hexagonal crystal drives
- * - Underslung starboard chin gun turret pod with dual cyan optic sensors & twin pulse barrels
- * - 6DoF axial roll (Q/E keyboard, tactile mobile touch buttons) + dynamic aerodynamic banking into turns
+ * Sci-Fi Starfighter with Full Newtonian Orbital Mechanics:
+ * - True inverse-square spherical gravitational attraction: a = mu / r^2
+ * - Zero vacuum drag in space (h > 140m): total conservation of linear momentum
+ * - Quadratic aerodynamic drag within atmosphere (h < 140m)
+ * - Real-time Keplerian orbital parameters (Apoapsis, Periapsis, Eccentricity, v_circ)
+ * - 5-Mode SAS Flight Computer: STABILITY ASSIST, PROGRADE HOLD, RETROGRADE HOLD, CIRCULARIZE, and OFF (Drift)
+ * - Responsive Afterburner Boost: fires forward immediately on Shift or touch button
+ * - Underslung starboard chin gun turret pod with twin pulse cannon barrels & recoil
+ * - Full 6DoF axial roll (Q / E / touch roll buttons) + coordinated dynamic banking into turns
  */
 export class Ship {
   constructor(scene) {
@@ -31,8 +32,12 @@ export class Ship {
     this.speed = 0;
     this.landed = true;
     this.flightPhase = 'SURFACE (DOCKED)';
+
+    // Full Newtonian SAS flight computer modes:
+    // 'STABILITY' | 'PROGRADE' | 'RETROGRADE' | 'CIRCULARIZE' | 'OFF'
+    this.sasMode = 'STABILITY';
     this.orbitAssist = false;
-    this.autoLevel = true;
+    this.orbitalData = null;
 
     // Boost & Weapons state
     this.boostEnergy = 100;
@@ -110,7 +115,6 @@ export class Ship {
     this.visualRoot.add(noseCap);
 
     // Off-White Forward Upper Wedge Deck (Z = -4.6 to -1.0)
-    // Beveled faceted wedge tapering to nose
     const foreDeckGeo = new THREE.BoxGeometry(2.2, 0.68, 4.2);
     const foreDeck = new THREE.Mesh(foreDeckGeo, armorMat);
     foreDeck.position.set(0, 1.25, -2.8);
@@ -168,13 +172,11 @@ export class Ship {
     this.visualRoot.add(leftVFin, rightVFin);
 
     // 2. ELONGATED FACETED COCKPIT CANOPY
-    // Center windshield & roof
     const canopyGeo = new THREE.BoxGeometry(1.22, 0.64, 2.8);
     const canopy = new THREE.Mesh(canopyGeo, canopyMat);
     canopy.position.set(0, 1.76, -1.6);
     this.visualRoot.add(canopy);
 
-    // Slanted forward canopy facet
     const canopySlantGeo = new THREE.ConeGeometry(0.85, 2.0, 4);
     canopySlantGeo.rotateX(-Math.PI / 2);
     canopySlantGeo.rotateZ(Math.PI / 4);
@@ -183,14 +185,12 @@ export class Ship {
     canopySlant.position.set(0, 1.62, -3.2);
     this.visualRoot.add(canopySlant);
 
-    // Dark canopy frame border & roof ridge
     const canopyRidgeGeo = new THREE.BoxGeometry(0.2, 0.12, 3.2);
     const canopyRidge = new THREE.Mesh(canopyRidgeGeo, darkMat);
     canopyRidge.position.set(0, 2.1, -1.8);
     this.visualRoot.add(canopyRidge);
 
     // 3. RECESSED SPINE POWER CHANNEL & REAR 3-CRYSTAL PROPULSION ARRAY
-    // Recessed dark well along spine (Z = 0.6 to 3.8)
     const spineWellGeo = new THREE.BoxGeometry(1.65, 0.32, 3.4);
     const spineWell = new THREE.Mesh(spineWellGeo, darkMat);
     spineWell.position.set(0, 1.62, 2.1);
@@ -223,15 +223,13 @@ export class Ship {
 
     this.flameMat = new THREE.MeshBasicMaterial({ color: 0x00f5d4 });
 
-    thrusterLayout.forEach((pos, idx) => {
-      // Dark propulsion collar ring
+    thrusterLayout.forEach((pos) => {
       const collarGeo = new THREE.CylinderGeometry(0.48, 0.58, 0.65, 8);
       collarGeo.rotateX(Math.PI / 2);
       const collar = new THREE.Mesh(collarGeo, darkMat);
       collar.position.set(pos.x, pos.y, pos.z - 0.2);
       this.visualRoot.add(collar);
 
-      // Hexagonal Crystal Bipyramid
       const crystalGroup = new THREE.Group();
       crystalGroup.position.set(pos.x, pos.y, pos.z);
 
@@ -259,19 +257,16 @@ export class Ship {
       this.engineFlames.push(flame);
     });
 
-    // Backwards-compatible flame handles
     this.leftFlame = this.engineFlames[1];
     this.rightFlame = this.engineFlames[2];
 
     // 4. FLOATING OUTRIGGER CANARD FINS
-    // Concept design features detached floating fins on left and right flanks
     this.floatingFins = [];
 
     const createFloatingFinPair = (side) => {
       const finGroup = new THREE.Group();
       finGroup.position.set(side * 3.45, 1.3, 1.2);
 
-      // Upper stabilizer fin (angled outward/upward ~32°)
       const upperBladeGeo = new THREE.BoxGeometry(0.12, 0.65, 2.5);
       const upperBlade = new THREE.Mesh(upperBladeGeo, armorMat);
       upperBlade.position.set(side * 0.2, 0.28, 0);
@@ -279,14 +274,12 @@ export class Ship {
       upperBlade.rotation.y = side * -0.08;
       finGroup.add(upperBlade);
 
-      // Lower stabilizer fin (angled outward/downward ~28°)
       const lowerBladeGeo = new THREE.BoxGeometry(0.1, 0.48, 1.8);
       const lowerBlade = new THREE.Mesh(lowerBladeGeo, darkMat);
       lowerBlade.position.set(side * 0.15, -0.42, 0.2);
       lowerBlade.rotation.z = side * 0.32;
       finGroup.add(lowerBlade);
 
-      // Floating cyan hover energy nodes between hull and fins
       const nodeGeo = new THREE.SphereGeometry(0.12, 8, 8);
       const hoverNode = new THREE.Mesh(nodeGeo, crystalMat);
       hoverNode.position.set(-side * 0.32, 0, 0);
@@ -301,23 +294,19 @@ export class Ship {
     this.floatingFins.push(leftFin, rightFin);
 
     // 5. UNDERSLUNG STARBOARD CHIN GUN TURRET POD
-    // Forward-mounted turret pod with dual cyan optics and twin barrels under starboard chin
     this.chinGunPod = new THREE.Group();
     this.chinGunPod.position.set(0.72, 0.45, this.chinPodBaseZ);
 
-    // Streamlined pod housing
     const podBodyGeo = new THREE.BoxGeometry(0.68, 0.46, 2.2);
     const podBody = new THREE.Mesh(podBodyGeo, gunMetalMat);
     this.chinGunPod.add(podBody);
 
-    // Front beveled optic sensor face
     const opticFaceGeo = new THREE.ConeGeometry(0.36, 0.6, 4);
     opticFaceGeo.rotateX(-Math.PI / 2);
     const opticFace = new THREE.Mesh(opticFaceGeo, darkMat);
     opticFace.position.set(0, 0, -1.2);
     this.chinGunPod.add(opticFace);
 
-    // Dual Glowing Cyan Optic Sensor Eyes (as highlighted in concept sheet front view)
     const opticLensGeo = new THREE.CylinderGeometry(0.085, 0.085, 0.1, 8);
     opticLensGeo.rotateX(Math.PI / 2);
     const leftOptic = new THREE.Mesh(opticLensGeo, opticMat);
@@ -326,7 +315,6 @@ export class Ship {
     rightOptic.position.set(0.14, 0.08, -1.38);
     this.chinGunPod.add(leftOptic, rightOptic);
 
-    // Twin Projecting Pulse Cannon Barrels
     this.gunBarrels = [];
     const barrelGeo = new THREE.CylinderGeometry(0.075, 0.075, 1.8, 8);
     barrelGeo.rotateX(Math.PI / 2);
@@ -338,7 +326,6 @@ export class Ship {
       this.chinGunPod.add(barrel);
       this.gunBarrels.push(barrel);
 
-      // Glowing emitter optic tip
       const tipGeo = new THREE.CylinderGeometry(0.078, 0.078, 0.12, 8);
       tipGeo.rotateX(Math.PI / 2);
       const tip = new THREE.Mesh(tipGeo, opticMat);
@@ -346,7 +333,6 @@ export class Ship {
       this.chinGunPod.add(tip);
     }
 
-    // Muzzle Flash Burst Mesh
     const flashGeo = new THREE.OctahedronGeometry(0.42, 0);
     const flashMat = new THREE.MeshBasicMaterial({ color: 0x00f5d4, wireframe: true });
     this.muzzleFlash = new THREE.Mesh(flashGeo, flashMat);
@@ -356,7 +342,7 @@ export class Ship {
 
     this.visualRoot.add(this.chinGunPod);
 
-    // 6. LANDING BEACON RING (Docked state indicator)
+    // 6. LANDING BEACON RING
     const beaconGeo = new THREE.TorusGeometry(6.6, 0.14, 8, 36);
     beaconGeo.rotateX(Math.PI / 2);
     this.beaconMat = new THREE.MeshBasicMaterial({ color: 0xff595e });
@@ -384,12 +370,88 @@ export class Ship {
     if (this.beaconRing) this.beaconRing.visible = true;
   }
 
+  cycleSASMode(onNotice) {
+    const modes = ['STABILITY', 'PROGRADE', 'RETROGRADE', 'CIRCULARIZE', 'OFF'];
+    const idx = modes.indexOf(this.sasMode);
+    this.sasMode = modes[(idx + 1) % modes.length];
+    this.orbitAssist = (this.sasMode === 'CIRCULARIZE');
+
+    if (onNotice) {
+      const labels = {
+        'STABILITY': 'SAS: STABILITY ASSIST (Angular Damping)',
+        'PROGRADE': 'SAS: PROGRADE HOLD (Nose Aligned with Velocity)',
+        'RETROGRADE': 'SAS: RETROGRADE HOLD (Nose Aligned Opposite Velocity)',
+        'CIRCULARIZE': 'SAS: ORBIT CIRCULARIZE (Auto-burn engaged)',
+        'OFF': 'SAS: OFF (Full Newtonian Coast)'
+      };
+      onNotice(labels[this.sasMode] || `SAS: ${this.sasMode}`);
+    }
+  }
+
+  calculateOrbitParameters(body, grav) {
+    if (!body || !grav || grav.altitude < 0) return null;
+    const mu = grav.mu || (body.surfaceGravity * body.radius * body.radius);
+    const bPos = body.getWorldPosition();
+    const rVec = this.group.position.clone().sub(bPos);
+    const r = rVec.length();
+    const v = this.velocity.length();
+    if (r < 1) return null;
+
+    // Specific orbital energy: epsilon = v^2/2 - mu/r
+    const epsilon = (v * v) * 0.5 - mu / r;
+    const vCirc = Math.sqrt(mu / r);
+
+    let a = 0;
+    let e = 0;
+    let ap = 0;
+    let pe = 0;
+
+    if (Math.abs(epsilon) > 1e-4) {
+      a = -mu / (2 * epsilon);
+      const hVec = new THREE.Vector3().crossVectors(rVec, this.velocity);
+      const vCrossH = new THREE.Vector3().crossVectors(this.velocity, hVec);
+      const eVec = vCrossH.divideScalar(mu).sub(rVec.clone().divideScalar(r));
+      e = eVec.length();
+
+      if (e < 1.0 && a > 0) {
+        const rAp = a * (1 + e);
+        const rPe = a * (1 - e);
+        ap = Math.max(0, rAp - body.radius);
+        pe = rPe - body.radius;
+      } else {
+        pe = (a !== 0) ? (a * (1 - e) - body.radius) : (r - body.radius);
+        ap = Infinity;
+      }
+    }
+
+    let trajectory = 'SUB-ORBITAL TRAJECTORY';
+    const atmoH = body.atmosphereHeight || 0;
+    if (this.altitude < atmoH) {
+      trajectory = 'ATMOSPHERIC FLIGHT / RE-ENTRY';
+    } else if (e >= 1.0) {
+      trajectory = 'ESCAPE TRAJECTORY';
+    } else if (pe > atmoH) {
+      trajectory = e < 0.05 ? 'STABLE CIRCULAR ORBIT' : 'STABLE ELLIPTICAL ORBIT';
+    } else if (pe > 0) {
+      trajectory = 'DECAYING SUB-ORBIT';
+    }
+
+    return {
+      ap: isFinite(ap) ? Math.round(ap) : 'ESCAPE',
+      pe: Math.round(pe),
+      eccentricity: parseFloat(e.toFixed(3)),
+      vCirc: Math.round(vCirc),
+      speed: Math.round(v),
+      trajectory,
+      isOrbiting: pe > atmoH && e < 1.0 && this.altitude >= atmoH
+    };
+  }
+
   fireCannons() {
     if (this.fireCooldown > 0) return;
     this.fireCooldown = 0.13;
     this.weaponHeat = Math.min(100, this.weaponHeat + 7);
 
-    // Trigger chin pod recoil kick and muzzle flash
     if (this.chinGunPod) {
       this.chinGunPod.position.z = this.chinPodBaseZ + 0.15;
     }
@@ -406,11 +468,10 @@ export class Ship {
     boltGeo.scale(0.65, 0.65, 3.6);
     const boltMat = new THREE.MeshBasicMaterial({ color: 0x00f5d4 });
 
-    // Spawn twin plasma bolts directly from the two barrels of the underslung starboard chin turret pod
     const barrelOffsets = [-0.15, 0.15];
     const podX = 0.72;
     const podY = 0.45;
-    const muzzleZ = -5.65; // Chin pod position + barrel projection
+    const muzzleZ = -5.65;
 
     for (const bX of barrelOffsets) {
       const mesh = new THREE.Mesh(boltGeo, boltMat);
@@ -451,7 +512,6 @@ export class Ship {
     if (this.fireCooldown > 0) this.fireCooldown = Math.max(0, this.fireCooldown - dt);
     if (this.weaponHeat > 0) this.weaponHeat = Math.max(0, this.weaponHeat - 28 * dt);
 
-    // Update orbital asteroids & drones
     if (spaceTargets) {
       for (const t of spaceTargets) {
         if (t.destroyed) {
@@ -474,7 +534,6 @@ export class Ship {
       }
     }
 
-    // Update plasma bolts & hit detection
     for (let i = this.projectiles.length - 1; i >= 0; i--) {
       const p = this.projectiles[i];
       p.life -= dt;
@@ -507,7 +566,6 @@ export class Ship {
       }
     }
 
-    // Animate explosion bursts
     for (let i = this.explosions.length - 1; i >= 0; i--) {
       const ex = this.explosions[i];
       ex.age += dt;
@@ -529,17 +587,14 @@ export class Ship {
     const newUp = new THREE.Vector3(grav.up.x, grav.up.y, grav.up.z).normalize();
     this.localUp.copy(newUp);
 
-    // Move with orbiting moon when within its SOI
+    // Keep orbiting moon position delta inside its SOI
     if (body && body.isMoon && body.deltaPosition && this.altitude < body.soiRadius) {
       this.group.position.add(body.deltaPosition);
     }
 
-    // Toggle Orbit Assist (O)
+    // Toggle / Cycle Flight Computer / SAS Mode (Key O)
     if (input.wasPressed('KeyO')) {
-      this.orbitAssist = !this.orbitAssist;
-      if (onNotice) {
-        onNotice(this.orbitAssist ? 'Arcade Orbit-Assist ENGAGED' : 'Arcade Orbit-Assist OFF');
-      }
+      this.cycleSASMode(onNotice);
     }
 
     // Weapons fire (Left Mouse or F)
@@ -547,15 +602,12 @@ export class Ship {
       this.fireCannons();
     }
 
-    // Rotation controls:
-    // Pitch & Yaw via Mouse, Stick, and Arrow Keys
+    // Rotation controls: Pitch, Yaw, and 6DoF Axial Roll
     const stickPitch = (input.lookVelY || 0) * 1.8 * dt;
     const stickYaw = (input.lookVelX || 0) * 2.2 * dt;
     const pitchInput = -mouseFrame.dy * 0.0028 - stickPitch + ((input.isDown('ArrowDown') ? 1 : 0) - (input.isDown('ArrowUp') ? 1 : 0)) * 1.4 * dt;
     const yawInput = -mouseFrame.dx * 0.0028 - stickYaw + ((input.isDown('ArrowLeft') ? 1 : 0) - (input.isDown('ArrowRight') ? 1 : 0)) * 1.4 * dt;
 
-    // 6DoF Axial Roll:
-    // Q: roll left (+Z) | E: roll right (-Z) when airborne/in space | rollRate: mobile touch buttons / analog triggers
     let rollDir = 0;
     if (input.isDown('KeyQ')) rollDir += 1;
     if (!this.landed && (this.altitude >= 16 || !this.currentBody) && input.isDown('KeyE')) rollDir -= 1;
@@ -564,21 +616,40 @@ export class Ship {
     const rollSpeed = 2.5;
     const rollDelta = rollDir * rollSpeed * dt;
 
+    const pilotActive = Math.abs(rollDir) > 0.05 || Math.abs(yawInput) > 0.02 || Math.abs(pitchInput) > 0.02;
+
     if (!this.landed) {
+      // 1. Manual pilot angular rotation
       const rotDelta = new THREE.Quaternion().setFromEuler(
         new THREE.Euler(pitchInput, yawInput, rollDelta, 'YXZ')
       );
       this.group.quaternion.multiply(rotDelta);
 
-      // Decoupled horizon auto-level:
-      // Only gently levels when pilot is NOT actively performing rolls, pitches, or yaws
-      const pilotActive = Math.abs(rollDir) > 0.05 || Math.abs(yawInput) > 0.02 || Math.abs(pitchInput) > 0.02;
-      if ((this.altitude < 180 || this.orbitAssist) && !pilotActive) {
+      // 2. SAS Flight Computer Autopilot Alignments
+      const curSpeed = this.velocity.length();
+
+      if (this.sasMode === 'PROGRADE' && curSpeed > 2.0 && !pilotActive) {
+        // Smoothly point nose forward along velocity vector
+        const progradeDir = this.velocity.clone().normalize();
+        const shipForward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.group.quaternion).normalize();
+        const alignQuat = new THREE.Quaternion().setFromUnitVectors(shipForward, progradeDir);
+        const targetQuat = this.group.quaternion.clone().premultiply(alignQuat);
+        this.group.quaternion.slerp(targetQuat, Math.min(1, 4.0 * dt));
+      } else if (this.sasMode === 'RETROGRADE' && curSpeed > 2.0 && !pilotActive) {
+        // Smoothly point nose opposite to velocity vector
+        const retrogradeDir = this.velocity.clone().negate().normalize();
+        const shipForward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.group.quaternion).normalize();
+        const alignQuat = new THREE.Quaternion().setFromUnitVectors(shipForward, retrogradeDir);
+        const targetQuat = this.group.quaternion.clone().premultiply(alignQuat);
+        this.group.quaternion.slerp(targetQuat, Math.min(1, 4.0 * dt));
+      } else if (this.sasMode === 'STABILITY' && !pilotActive && this.altitude < 160) {
+        // Gentle surface leveling only near ground when hands off controls
         const shipUp = new THREE.Vector3(0, 1, 0).applyQuaternion(this.group.quaternion).normalize();
         const levelQuat = new THREE.Quaternion().setFromUnitVectors(shipUp, newUp);
         const slerpTarget = this.group.quaternion.clone().premultiply(levelQuat);
-        this.group.quaternion.slerp(slerpTarget, Math.min(1, dt * (this.orbitAssist ? 3.5 : 1.4)));
+        this.group.quaternion.slerp(slerpTarget, Math.min(1, dt * 1.5));
       }
+
       this.group.quaternion.normalize();
     } else {
       // While landed, align cleanly to surface normal and allow yaw turn
@@ -603,6 +674,18 @@ export class Ship {
     if (input.isDown('Space')) thrustUp += 1;
     if (input.isDown('ControlLeft') || input.isDown('KeyC')) thrustUp -= 0.85;
 
+    // Afterburner Boost (Shift or Touch Boost button)
+    // FIX: Engaging boost immediately fires forward thrust at full power!
+    const wantsBoost = (input.isDown('ShiftLeft') || input.isDown('ShiftRight')) && !this.landed;
+    if (wantsBoost && this.boostEnergy > 2) {
+      this.isBoosting = true;
+      this.boostEnergy = Math.max(0, this.boostEnergy - 32 * dt);
+      thrustForward = Math.max(thrustForward, 1.0); // Full forward afterburner!
+    } else {
+      this.isBoosting = false;
+      this.boostEnergy = Math.min(100, this.boostEnergy + 18 * dt);
+    }
+
     // Coordinated dynamic aerodynamic visual banking into strafe & yaw turns
     const targetBank = THREE.MathUtils.clamp(-thrustRight * 0.45 - yawInput * 6.5, -0.65, 0.65);
     this.visualBank = THREE.MathUtils.lerp(this.visualBank, targetBank, Math.min(1, 10 * dt));
@@ -625,45 +708,50 @@ export class Ship {
       this.beaconRing.visible = this.landed;
     }
 
-    // Afterburner Boost (Shift)
-    const wantsBoost = (input.isDown('ShiftLeft') || input.isDown('ShiftRight')) && !this.landed && (thrustForward > 0.1 || input.isDown('KeyW'));
-    if (wantsBoost && this.boostEnergy > 2) {
-      this.isBoosting = true;
-      this.boostEnergy = Math.max(0, this.boostEnergy - 28 * dt);
-    } else {
-      this.isBoosting = false;
-      this.boostEnergy = Math.min(100, this.boostEnergy + 18 * dt);
-    }
-
     if (!this.landed) {
-      const forwardAccel = this.isBoosting ? 240 : 105;
-      const verticalAccel = 82;
-      const strafeAccel = 55;
+      const forwardAccel = this.isBoosting ? 180 : 75;
+      const verticalAccel = 65;
+      const strafeAccel = 45;
 
+      // 1. Apply pilot thruster forces
       this.velocity.addScaledVector(shipForward, thrustForward * forwardAccel * dt);
       this.velocity.addScaledVector(shipUp, thrustUp * verticalAccel * dt);
       this.velocity.addScaledVector(shipRight, thrustRight * strafeAccel * dt);
 
-      if (this.orbitAssist && body) {
-        // Arcade Orbit Assist: hold altitude and cruise tangentially around the body
+      // 2. Full Newtonian Gravitational Acceleration (Inverse-square law)
+      this.velocity.x += grav.acceleration.x * dt;
+      this.velocity.y += grav.acceleration.y * dt;
+      this.velocity.z += grav.acceleration.z * dt;
+
+      // 3. SAS CIRCULARIZE ASSIST: computes exact circular velocity v_circ = sqrt(mu/r) and performs delta-v burn
+      if (this.sasMode === 'CIRCULARIZE' && body && grav.mu && this.altitude >= (body.atmosphereHeight || 0)) {
         const tangent = shipForward.clone().sub(newUp.clone().multiplyScalar(shipForward.dot(newUp)));
         if (tangent.lengthSq() > 0.001) {
           tangent.normalize();
-          const orbitSpeed = this.isBoosting ? 185 : 95;
-          const desiredVel = tangent.multiplyScalar(orbitSpeed);
-          this.velocity.lerp(desiredVel, Math.min(1, dt * 3.5));
-        }
-      } else {
-        // Apply reduced arcade gravity so hovering & orbital injection feel responsive
-        const gravScale = this.altitude > 140 ? 0.35 : 0.65;
-        this.velocity.x += grav.acceleration.x * gravScale * dt;
-        this.velocity.y += grav.acceleration.y * gravScale * dt;
-        this.velocity.z += grav.acceleration.z * gravScale * dt;
+          const targetSpeed = Math.sqrt(grav.mu / Math.max(1, grav.dist));
+          const desiredVel = tangent.multiplyScalar(targetSpeed);
+          const diff = desiredVel.clone().sub(this.velocity);
+          this.velocity.lerp(desiredVel, Math.min(1, dt * 2.8));
 
-        // Arcade space damping for tight control
-        const damping = Math.exp(-0.55 * dt);
-        this.velocity.multiplyScalar(damping);
+          if (diff.length() < 1.4) {
+            this.sasMode = 'STABILITY';
+            this.orbitAssist = false;
+            if (onNotice) onNotice('ORBIT CIRCULARIZED! SAS switched to STABILITY ASSIST.');
+          }
+        }
       }
+
+      // 4. Realistic Atmospheric Drag (Aurelia Prime h < 140m)
+      const atmoH = (body && !body.isMoon) ? (body.atmosphereHeight || 140) : 0;
+      if (atmoH > 0 && this.altitude < atmoH) {
+        const atmoDensity = Math.pow(Math.max(0, 1 - this.altitude / atmoH), 2);
+        const curSpd = this.velocity.length();
+        if (curSpd > 0.05) {
+          const dragAccel = 0.0085 * atmoDensity * curSpd * curSpd;
+          this.velocity.addScaledVector(this.velocity.clone().normalize(), -Math.min(curSpd, dragAccel * dt));
+        }
+      }
+      // In vacuum space (h > atmoH or near moons): ZERO DRAG (damping = 1.0)! Momentum is strictly conserved!
 
       this.group.position.addScaledVector(this.velocity, dt);
     } else {
@@ -684,14 +772,15 @@ export class Ship {
         this.group.position.copy(bPos).addScaledVector(dir, surfaceLimit);
 
         if (impactSpeed > 95) {
-          // Hard landing: shield absorbs impact, ship bounces slightly
+          // Hard impact
           this.hullIntegrity = Math.max(20, this.hullIntegrity - 25);
           this.velocity.reflect(dir).multiplyScalar(0.35);
           if (onNotice) onNotice(`Hard Impact (${Math.round(impactSpeed)} m/s)! Slow down below 95 m/s to land.`);
         } else if (thrustUp <= 0) {
-          // Successful touchdown!
+          // Touchdown
           this.landed = true;
           this.orbitAssist = false;
+          this.sasMode = 'STABILITY';
           this.velocity.set(0, 0, 0);
           this.hullIntegrity = 100;
           const align = new THREE.Quaternion().setFromUnitVectors(
@@ -711,8 +800,11 @@ export class Ship {
 
     this.speed = this.velocity.length();
 
+    // Calculate real-time Keplerian orbital telemetry
+    this.orbitalData = this.calculateOrbitParameters(body, grav);
+
     // Animate rear 3-crystal propulsion exhaust flames
-    const thrustActive = !this.landed && (Math.abs(thrustForward) > 0.05 || thrustUp > 0.05 || this.isBoosting || this.orbitAssist);
+    const thrustActive = !this.landed && (Math.abs(thrustForward) > 0.05 || thrustUp > 0.05 || this.isBoosting || this.sasMode === 'CIRCULARIZE');
     for (let i = 0; i < this.engineFlames.length; i++) {
       const flame = this.engineFlames[i];
       flame.visible = thrustActive;
@@ -741,17 +833,19 @@ export class Ship {
       }
     }
 
-    // Update Flight Phase label
+    // Update Flight Phase label based on Keplerian orbital trajectory
     if (this.landed) {
       this.flightPhase = body && body.isMoon ? `LANDED (${body.name})` : 'SURFACE (LANDED)';
     } else if (body && body.isMoon && this.altitude < 90) {
       this.flightPhase = `MOON APPROACH (${body.name})`;
-    } else if (body && !body.isMoon && this.altitude < body.atmosphereHeight) {
-      this.flightPhase = 'ATMOSPHERE FLIGHT';
-    } else if (this.orbitAssist) {
-      this.flightPhase = `STABLE ORBIT (${body ? body.name : 'SPACE'})`;
+    } else if (this.orbitalData) {
+      if (this.orbitalData.isOrbiting) {
+        this.flightPhase = `${this.orbitalData.trajectory} (Ap:${this.orbitalData.ap}m Pe:${this.orbitalData.pe}m)`;
+      } else {
+        this.flightPhase = `${this.orbitalData.trajectory} (v:${Math.round(this.speed)} m/s)`;
+      }
     } else {
-      this.flightPhase = 'DEEP SPACE / ORBITAL TRANSFER';
+      this.flightPhase = 'DEEP SPACE / NEWTONIAN COAST';
     }
   }
 }

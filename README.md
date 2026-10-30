@@ -10,9 +10,18 @@ A zero-build, web-based 3D space exploration prototype built with **Three.js (ES
 2. **Find & Install 5 Ship Components**
    - Follow the glowing vertical sky beacons and the top compass bar to collect all 5 scattered components (`Quantum Fusion Core`, `Plasma Thruster Manifold`, `Astronavigation Matrix`, `Graviton Hull Stabilizer`, `Pulse Cannon Capacitor`).
    - Return to your crashed Starfighter and press **`E`** to install the parts and bring the ship online.
-3. **Board, Take Off, Orbit, Boost & Fire Weapons**
-   - Press **`E`** to board the Starfighter, hold **`Space` + `W`** to lift off through the tropical atmosphere into space, and press **`O`** to engage **Arcade Orbit-Assist** for a smooth circular orbit viewing the planet below.
-   - Hold **`Shift`** for high-speed **Plasma Afterburner Boost** and click **`Left Mouse`** (or hold **`F`**) to fire **Twin Pulse Cannons** at orbital asteroids and rogue sentinel drones.
+3. **Board, Take Off, Full Newtonian Orbit, Boost & Fire Weapons**
+   - Press **`E`** (or tap **`ACT`** on touch) to board the Starfighter, hold **`Space` + `W`** to punch through the dense atmosphere into the vacuum of space ($h > 140\text{ m}$).
+   - **Full Newtonian Orbital Mechanics**: Gravity scales with pure inverse-square spherical physics ($g = \mu / r^2$), and space vacuum has zero artificial drag ($C_d = 0$). Momentum is fully conserved in orbit.
+   - **SAS Flight Computer Modes**: Press **`O`** (or tap **`SAS`** on touch) to cycle 5 SAS autopilot modes:
+     - `STABILITY`: Dampens angular rotational rates while preserving orbital velocity vector.
+     - `PROGRADE`: Automatically aligns starfighter nose along velocity vector ($\mathbf{v}$).
+     - `RETROGRADE`: Aligns engine nozzle along velocity vector ($-\mathbf{v}$) for de-orbit burns.
+     - `CIRCULARIZE`: Uses orbital telemetry ($Ap, Pe, v_{circ}$) to calculate and steer toward instantaneous circular velocity.
+     - `OFF`: Pure unassisted Newtonian drift.
+   - **Real-Time Keplerian Orbit Telemetry**: Live readouts of Apoapsis ($Ap$), Periapsis ($Pe$), Eccentricity ($e$), and Target Circular Velocity ($v_{circ}$) on the HUD.
+   - **Instant Afterburner Boost**: Hold **`Shift`** (or touch **`BOOST`**) to immediately unleash $180\text{ m/s}^2$ plasma afterburners without needing forward stick/W key.
+   - Click **`Left Mouse`** (or hold **`F`** / tap **`FIRE`**) to fire **Twin Under-Nose Pulse Cannons** at orbital asteroids and rogue sentinel drones.
 4. **Land on 3 Moons of Varying Size**
    - **Moon I — `Lumen` (Small, R=65)**: Low-gravity cyan-quartz & ice satellite.
    - **Moon II — `Pyra` (Medium, R=105)**: Amber-basalt volcanic ridges and craters.
@@ -23,34 +32,34 @@ A zero-build, web-based 3D space exploration prototype built with **Three.js (ES
 
 ## Controls
 
-| Mode | Action | Keys / Mouse |
-| :--- | :--- | :--- |
-| **On Foot (3rd Person)** | Move / Strafe | `W` `A` `S` `D` or Arrow Keys |
-| | Sprint | Hold `Shift` |
-| | Jump / Jetpack Boost | Tap `Space` to Jump, Hold `Space` in mid-air for Jetpack |
-| | Look / Zoom Camera | `Mouse` (click canvas to lock pointer, `Esc` to unlock) / `Scroll Wheel` |
-| | Collect Part / Install / Board Ship | `E` |
-| **Starfighter (Flight & Orbit)** | Forward / Reverse Thrust | `W` / `S` |
-| | Ascend (Takeoff) / Descend (Land) | `Space` / `Left Ctrl` or `C` |
-| | Strafe Left / Right | `A` / `D` |
-| | Pitch & Yaw Steering | `Mouse` (or Arrow Keys / Look Stick) |
-| | **6DoF Axial Roll** | `Q` (Roll Left) / `E` (Roll Right in flight) / Mobile Touch `ROLL` buttons |
-| | **Afterburner Boost** | Hold `Shift` + `W` |
-| | **Arcade Orbit-Assist Toggle** | `O` |
-| | **Fire Chin Pulse Cannons** | `Left Click` or `F` |
-| | Disembark onto Planet or Moon | `E` (when landed or hovering low < 16 m) |
-| **Quick Test Shortcuts** | Instant Repair + Board / Orbit / Moons | Keys `1`, `2`, `3`, `4`, `5` (or click left HUD buttons) |
-| **Settings & Updates** | Open UI Color Schemes, Touch Controls & GitHub Updater | Key `P` (or click `⚙ Settings & Updates [P]` on HUD) |
+| Mode | Action | Keys / Mouse | Touchscreen |
+| :--- | :--- | :--- | :--- |
+| **On Foot (3rd Person)** | Move / Strafe | `W` `A` `S` `D` or Arrow Keys | Left Virtual Thumbstick / D-Pad |
+| | Sprint | Hold `Shift` | `RUN` Toggle Button |
+| | Jump / Jetpack Boost | Tap `Space` to Jump, Hold `Space` for Jetpack | `JUMP / JET` Button |
+| | Look / Zoom Camera | `Mouse` / `Scroll Wheel` | Right Thumbstick / Look Touchpad |
+| | Collect Part / Install / Board Ship | `E` | `ACT` Button |
+| **Starfighter (Flight & Orbit)** | Forward / Reverse Thrust | `W` / `S` | Left Virtual Thumbstick (Y-axis) |
+| | Ascend (Takeoff) / Descend (Land) | `Space` / `Left Ctrl` or `C` | `UP ▲` / `DN ▼` Buttons |
+| | Strafe Left / Right | `A` / `D` | Left Virtual Thumbstick (X-axis) |
+| | Pitch & Yaw Steering | `Mouse` (or Arrow Keys) | Right Thumbstick / Look Touchpad |
+| | **6DoF Axial Roll** | `Q` (Roll Left) / `E` (Roll Right in flight) | `ROLL ⟲` / `ROLL ⟳` Buttons |
+| | **Instant Afterburner Boost** | Hold `Shift` | `BOOST` Button (fires forward immediately) |
+| | **SAS Flight Computer Toggle** | `O` | `SAS` Button (cycles Stability, Prograde, Retrograde, Circularize, Off) |
+| | **Fire Chin Pulse Cannons** | `Left Click` or `F` | `FIRE` Button |
+| | Disembark onto Planet or Moon | `E` (when landed or hovering low < 16 m) | `EXIT` Button |
+| **Quick Test Shortcuts** | Instant Repair + Board / Orbit / Moons | Keys `1`, `2`, `3`, `4`, `5` | Top-Left Quick Orbit & Moon Buttons |
+| **Settings & Updates** | Open UI Color Schemes, Touch Controls & GitHub Updater | Key `P` | `⚙ Settings & Updates` HUD Button |
 
 ### Mobile & Touchscreen Controls (Auto-detected on Touchscreens / WebAPK)
 
-- **3 Selectable Layouts** (in Settings `[P]`):
+- **Idle Auto-Hide**: All on-screen touchscreen buttons and joysticks automatically fade out after **3 seconds of inactivity**, offering an unobstructed panoramic view of space and planets. Any touch instantly wakes the controls up.
+- **Clean Mobile Prompts**: No confusing desktop keyboard key letters (`[E]`, `[O]`) on mobile buttons or in-game interaction prompts. Action buttons display clear names (`ACT`, `EXIT`, `SAS <mode>`, `BOOST`, `FIRE`).
+- **Pointer Capture & Reliable Hold**: Action buttons use pointer capture so rapid tapping or thumb drags do not lose contact or drop afterburner thrust.
+- **3 Selectable Touch Layouts** (in Settings `[P]`):
   1. **Dual Virtual Joysticks (Default)**: Left thumbstick for analog movement / thrust; Right thumbstick for smooth camera look / ship steering.
   2. **Floating Stick + Look Area**: Left half of screen spawns a floating stick dynamically under thumb; Right half is a touch-drag look trackpad.
   3. **Virtual D-Pad + Look Area**: Tactile 8-way directional pad on left; Touch-drag look trackpad on right.
-- **Context-Aware Action Buttons**:
-  - **On-Foot Exploration**: `RUN` (sprint lock toggle), `JUMP / JET` (tap jump / hold jetpack), `ACT [E]` (collect / install / board).
-  - **Starfighter Flight**: `FIRE` (chin pulse cannons), `BOOST` (afterburner), `UP ▲` / `DN ▼` (ascend/descend), `ROLL ⟲` / `ROLL ⟳` (axial barrel roll), `ORBIT [O]` (arcade orbit assist), `EXIT [E]` (disembark).
 - **Collapsible HUD**: Tap the `−`/`+` button on Telemetry and Radar panels on mobile screens to minimize HUD clutter.
 
 ---

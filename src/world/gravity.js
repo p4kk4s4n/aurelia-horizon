@@ -1,4 +1,4 @@
-// Spherical gravity & dominant celestial body solver
+// Full Newtonian spherical gravity & dominant celestial body solver
 
 export function evaluateGravity(worldPos, bodies) {
   let dominantBody = null;
@@ -6,6 +6,8 @@ export function evaluateGravity(worldPos, bodies) {
   let dominantAccelVec = { x: 0, y: 0, z: 0 };
   let altitude = Infinity;
   let upVec = { x: 0, y: 1, z: 0 };
+  let dominantMu = 0;
+  let dominantDist = 0;
 
   for (const body of bodies) {
     const bPos = body.getWorldPosition();
@@ -20,13 +22,16 @@ export function evaluateGravity(worldPos, bodies) {
     const uy = -dy / dist;
     const uz = -dz / dist;
 
-    // Effective gravity pull g * (R / d)^2, boosted inside SOI so moons cleanly take over near them
-    const ratio = body.radius / Math.max(dist, body.radius * 0.5);
-    const pull = body.surfaceGravity * ratio * ratio;
+    // True Newtonian gravitational parameter mu = g0 * R0^2
+    const mu = body.surfaceGravity * body.radius * body.radius;
 
-    // Give priority to a moon when inside its sphere of influence (SOI)
+    // True Newtonian inverse-square acceleration: a = mu / r^2 = g0 * (R0 / r)^2
+    const clampedDist = Math.max(dist, body.radius * 0.4);
+    const pureNewtonianPull = mu / (clampedDist * clampedDist);
+
+    // Patched-conics SOI priority: moons take over inside their SOI
     const inSOI = dist <= body.soiRadius;
-    const score = inSOI ? pull * (body.isMoon ? 4.5 : 1.0) : pull * 0.25;
+    const score = inSOI ? pureNewtonianPull * (body.isMoon ? 5.0 : 1.0) : pureNewtonianPull * 0.2;
 
     if (score > bestScore) {
       bestScore = score;
@@ -34,11 +39,13 @@ export function evaluateGravity(worldPos, bodies) {
       const surfaceR = body.getSurfaceRadiusAtDir(ux, uy, uz);
       altitude = dist - surfaceR;
       upVec = { x: ux, y: uy, z: uz };
-      const gMag = inSOI ? body.surfaceGravity * Math.min(1.0, Math.pow(body.radius / dist, 1.35)) : pull;
+      dominantDist = dist;
+      dominantMu = mu;
+
       dominantAccelVec = {
-        x: -ux * gMag,
-        y: -uy * gMag,
-        z: -uz * gMag
+        x: -ux * pureNewtonianPull,
+        y: -uy * pureNewtonianPull,
+        z: -uz * pureNewtonianPull
       };
     }
   }
@@ -47,6 +54,8 @@ export function evaluateGravity(worldPos, bodies) {
     body: dominantBody,
     acceleration: dominantAccelVec,
     up: upVec,
-    altitude
+    altitude,
+    mu: dominantMu,
+    dist: dominantDist
   };
 }
