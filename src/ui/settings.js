@@ -65,8 +65,9 @@ const GITHUB_REPO = 'p4kk4s4n/aurelia-horizon';
 const GITHUB_BRANCH = 'main';
 
 export class SettingsManager {
-  constructor(onNotice) {
+  constructor(onNotice, touchControls = null) {
     this.onNotice = onNotice;
+    this.touchControls = touchControls;
     this.isOpen = false;
     this.currentThemeId = localStorage.getItem(STORAGE_THEME_KEY) || 'cyan';
     if (!UI_COLOR_SCHEMES[this.currentThemeId]) {
@@ -77,6 +78,10 @@ export class SettingsManager {
     this.btnOpen = document.getElementById('btn-open-settings');
     this.btnClose = document.getElementById('btn-close-settings');
     this.themeContainer = document.getElementById('theme-options');
+    this.touchVisContainer = document.getElementById('touch-vis-options');
+    this.touchSchemeContainer = document.getElementById('touch-scheme-options');
+    this.touchSensSlider = document.getElementById('touch-sens-slider');
+    this.touchSensVal = document.getElementById('touch-sens-val');
     this.elInstalledVer = document.getElementById('settings-installed-version');
     this.elLatestVer = document.getElementById('settings-latest-version');
     this.elUpdateStatus = document.getElementById('settings-update-status');
@@ -84,9 +89,58 @@ export class SettingsManager {
     this.btnForceRecache = document.getElementById('btn-force-recache');
 
     this._renderThemeButtons();
+    this._renderTouchSettings();
     this.applyTheme(this.currentThemeId);
     this._bindEvents();
     this._initLocalVersionInfo();
+  }
+
+  setTouchControls(touchControls) {
+    this.touchControls = touchControls;
+    this._renderTouchSettings();
+  }
+
+  _renderTouchSettings() {
+    if (!this.touchControls) return;
+
+    // Visibility buttons
+    if (this.touchVisContainer) {
+      this.touchVisContainer.querySelectorAll('button').forEach((btn) => {
+        const vis = btn.dataset.vis;
+        btn.classList.toggle('active', vis === this.touchControls.visibility);
+        btn.onclick = () => {
+          this.touchControls.applyVisibility(vis);
+          this._renderTouchSettings();
+          if (this.onNotice) this.onNotice(`Touch Controls set to: ${vis.toUpperCase()}`);
+        };
+      });
+    }
+
+    // Scheme buttons
+    if (this.touchSchemeContainer) {
+      this.touchSchemeContainer.querySelectorAll('button').forEach((btn) => {
+        const scheme = btn.dataset.scheme;
+        btn.classList.toggle('active', scheme === this.touchControls.scheme);
+        btn.onclick = () => {
+          this.touchControls.applyScheme(scheme);
+          this._renderTouchSettings();
+          if (this.onNotice) this.onNotice(`Touch Layout set to: ${scheme.replace('-', ' ').toUpperCase()}`);
+        };
+      });
+    }
+
+    // Sensitivity slider
+    if (this.touchSensSlider) {
+      this.touchSensSlider.value = this.touchControls.sensitivity;
+      if (this.touchSensVal) {
+        this.touchSensVal.textContent = `${this.touchControls.sensitivity.toFixed(1)}x`;
+      }
+      this.touchSensSlider.oninput = (e) => {
+        const val = parseFloat(e.target.value);
+        this.touchControls.setSensitivity(val);
+        if (this.touchSensVal) this.touchSensVal.textContent = `${val.toFixed(1)}x`;
+      };
+    }
   }
 
   _renderThemeButtons() {

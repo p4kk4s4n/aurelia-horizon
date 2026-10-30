@@ -1,4 +1,4 @@
-// Keyboard & mouse input manager with pointer-lock + mouse-drag fallback
+// Keyboard, mouse & touchscreen input manager with pointer-lock + touch controls support
 
 export class InputManager {
   constructor(domElement) {
@@ -7,10 +7,23 @@ export class InputManager {
     this.justPressed = new Set();
     this.mouseDeltaX = 0;
     this.mouseDeltaY = 0;
+    this.touchLookDeltaX = 0;
+    this.touchLookDeltaY = 0;
+    this.touchLookSensitivity = 1.0;
     this.mouseDown = false;
     this.rightMouseDown = false;
     this.pointerLocked = false;
     this.wheelDelta = 0;
+
+    // Analog axes from touch / gamepad (range: -1 to 1)
+    this.moveX = 0;
+    this.moveY = 0;
+    // Continuous look rates from right joystick (yaw/pitch speed)
+    this.lookVelX = 0;
+    this.lookVelY = 0;
+
+    // Flag indicating if user recently touched the screen
+    this.isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 
     window.addEventListener('keydown', (e) => {
       const code = e.code;
@@ -27,7 +40,11 @@ export class InputManager {
       this.keys.delete(e.code);
     });
 
-    domElement.addEventListener('mousedown', (e) => {
+    domElement.addEventListener('pointerdown', (e) => {
+      if (e.pointerType === 'touch') {
+        this.isTouchDevice = true;
+        return; // Don't lock pointer for touch taps on canvas
+      }
       if (e.button === 0) this.mouseDown = true;
       if (e.button === 2) this.rightMouseDown = true;
       if (!this.pointerLocked && domElement.requestPointerLock) {
@@ -39,7 +56,8 @@ export class InputManager {
       }
     });
 
-    window.addEventListener('mouseup', (e) => {
+    window.addEventListener('pointerup', (e) => {
+      if (e.pointerType === 'touch') return;
       if (e.button === 0) this.mouseDown = false;
       if (e.button === 2) this.rightMouseDown = false;
     });
@@ -62,6 +80,26 @@ export class InputManager {
     }, { passive: true });
   }
 
+  setVirtualKey(code, isDown) {
+    if (isDown) {
+      if (!this.keys.has(code)) {
+        this.justPressed.add(code);
+      }
+      this.keys.add(code);
+    } else {
+      this.keys.delete(code);
+    }
+  }
+
+  triggerVirtualPress(code) {
+    this.justPressed.add(code);
+  }
+
+  addTouchLookDelta(dx, dy) {
+    this.touchLookDeltaX += dx * this.touchLookSensitivity;
+    this.touchLookDeltaY += dy * this.touchLookSensitivity;
+  }
+
   isDown(code) {
     return this.keys.has(code);
   }
@@ -71,11 +109,13 @@ export class InputManager {
   }
 
   consumeFrame() {
-    const dx = this.mouseDeltaX;
-    const dy = this.mouseDeltaY;
+    const dx = this.mouseDeltaX + this.touchLookDeltaX;
+    const dy = this.mouseDeltaY + this.touchLookDeltaY;
     const wheel = this.wheelDelta;
     this.mouseDeltaX = 0;
     this.mouseDeltaY = 0;
+    this.touchLookDeltaX = 0;
+    this.touchLookDeltaY = 0;
     this.wheelDelta = 0;
     this.justPressed.clear();
     return { dx, dy, wheel };

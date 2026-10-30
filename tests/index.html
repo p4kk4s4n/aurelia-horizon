@@ -26,6 +26,8 @@
     import { evaluateGravity } from '../src/world/gravity.js';
     import { ShipRepairSystem, SHIP_PART_DEFS } from '../src/ship/repair.js';
     import { UI_COLOR_SCHEMES } from '../src/ui/settings.js';
+    import { InputManager } from '../src/input.js';
+    import { TouchControlsManager } from '../src/ui/touchControls.js';
 
     const logs = [];
     let passed = 0;
@@ -119,6 +121,42 @@
     const verResp = await fetch('../version.json');
     const verJson = await verResp.json();
     assert(verJson.repo === 'p4kk4s4n/aurelia-horizon' && Boolean(verJson.version), 'version.json tracks p4kk4s4n/aurelia-horizon version');
+
+    // 7. InputManager & Touch Controls
+    const mockCanvas = document.createElement('canvas');
+    const testInput = new InputManager(mockCanvas);
+    testInput.setVirtualKey('Space', true);
+    assert(testInput.isDown('Space') && testInput.wasPressed('Space'), 'setVirtualKey marks key down and pressed');
+    const consumed = testInput.consumeFrame();
+    assert(testInput.isDown('Space') && !testInput.wasPressed('Space'), 'consumeFrame resets wasPressed while keeping isDown');
+    testInput.setVirtualKey('Space', false);
+    assert(!testInput.isDown('Space'), 'releasing virtual key unsets isDown');
+
+    testInput.addTouchLookDelta(10, -5);
+    const lookFrame = testInput.consumeFrame();
+    assert(lookFrame.dx === 10 && lookFrame.dy === -5, 'addTouchLookDelta provides delta in consumeFrame');
+
+    // Test TouchControlsManager
+    const touchOverlay = document.createElement('div');
+    touchOverlay.id = 'touch-controls';
+    document.body.appendChild(touchOverlay);
+
+    const touchMgr = new TouchControlsManager(testInput);
+    assert(['dual-sticks', 'floating-look', 'dpad-look'].includes(touchMgr.scheme), 'TouchControls initializes valid scheme');
+    touchMgr.applyScheme('floating-look');
+    assert(touchMgr.scheme === 'floating-look', 'applyScheme switches to floating-look');
+    touchMgr.applyScheme('dpad-look');
+    assert(touchMgr.scheme === 'dpad-look', 'applyScheme switches to dpad-look');
+    touchMgr.applyScheme('dual-sticks');
+    assert(touchMgr.scheme === 'dual-sticks', 'applyScheme switches to dual-sticks');
+
+    touchMgr.setSensitivity(1.5);
+    assert(testInput.touchLookSensitivity === 1.5, 'setSensitivity updates input look sensitivity');
+
+    touchMgr.applyVisibility('always');
+    assert(touchOverlay.classList.contains('visible'), 'applyVisibility always shows touch overlay');
+    touchMgr.applyVisibility('hidden');
+    assert(!touchOverlay.classList.contains('visible'), 'applyVisibility hidden hides touch overlay');
 
     const summary = `SUMMARY: ${passed} passed, ${failed} failed`;
     logs.push('', summary);

@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#00f5d4" />
   <meta name="application-name" content="Aurelia Horizon" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -39,45 +39,100 @@
 
   <!-- Left Telemetry & Ship Status Panel -->
   <aside id="hud-left">
-    <div class="panel-title">AURELIA TELEMETRY</div>
-    <div class="stat-row"><span>Mode</span><strong id="hud-mode">ON FOOT</strong></div>
-    <div class="stat-row"><span>Dominant Body</span><strong id="hud-body">Aurelia Prime</strong></div>
-    <div class="stat-row"><span>Phase</span><strong id="hud-phase">SURFACE</strong></div>
-    <div class="stat-row"><span>Altitude</span><strong id="hud-altitude">0 m</strong></div>
-    <div class="stat-row"><span>Velocity</span><strong id="hud-speed">0 m/s</strong></div>
-    <div class="stat-row"><span>Ship Repair</span><strong id="hud-parts">0/5 Installed</strong></div>
-    <div class="stat-row"><span>Moons Landed</span><strong id="hud-moons">0 / 3 Moons Landed</strong></div>
-    <div class="stat-row"><span>Targets Blasted</span><strong id="hud-targets">0 Destroyed</strong></div>
-
-    <div class="gauge-block">
-      <div class="gauge-label">BOOST / JETPACK ENERGY</div>
-      <div class="gauge-track"><div id="hud-boost-bar" class="gauge-fill"></div></div>
+    <div class="panel-header">
+      <div class="panel-title">AURELIA TELEMETRY</div>
+      <button id="btn-toggle-left" class="panel-toggle-btn" type="button" aria-label="Toggle Telemetry">−</button>
     </div>
+    <div class="panel-body">
+      <div class="stat-row"><span>Mode</span><strong id="hud-mode">ON FOOT</strong></div>
+      <div class="stat-row"><span>Dominant Body</span><strong id="hud-body">Aurelia Prime</strong></div>
+      <div class="stat-row"><span>Phase</span><strong id="hud-phase">SURFACE</strong></div>
+      <div class="stat-row"><span>Altitude</span><strong id="hud-altitude">0 m</strong></div>
+      <div class="stat-row"><span>Velocity</span><strong id="hud-speed">0 m/s</strong></div>
+      <div class="stat-row"><span>Ship Repair</span><strong id="hud-parts">0/5 Installed</strong></div>
+      <div class="stat-row"><span>Moons Landed</span><strong id="hud-moons">0 / 3 Moons Landed</strong></div>
+      <div class="stat-row"><span>Targets Blasted</span><strong id="hud-targets">0 Destroyed</strong></div>
 
-    <div class="quick-actions">
-      <div class="panel-subtitle">QUICK PHASE JUMP (OR KEYS 1-5)</div>
-      <button id="btn-quick-repair" type="button">[1] Repair &amp; Board Ship</button>
-      <button id="btn-quick-orbit" type="button">[2] Planet Orbit View</button>
-      <div class="moon-btn-row">
-        <button id="btn-moon-1" type="button">[3] Moon I</button>
-        <button id="btn-moon-2" type="button">[4] Moon II</button>
-        <button id="btn-moon-3" type="button">[5] Moon III</button>
+      <div class="gauge-block">
+        <div class="gauge-label">BOOST / JETPACK ENERGY</div>
+        <div class="gauge-track"><div id="hud-boost-bar" class="gauge-fill"></div></div>
       </div>
-      <button id="btn-open-settings" class="settings-trigger-btn" type="button">&#9881; Settings &amp; Updates [P]</button>
+
+      <div class="quick-actions">
+        <div class="panel-subtitle">QUICK PHASE JUMP (OR KEYS 1-5)</div>
+        <button id="btn-quick-repair" type="button">[1] Repair &amp; Board Ship</button>
+        <button id="btn-quick-orbit" type="button">[2] Planet Orbit View</button>
+        <div class="moon-btn-row">
+          <button id="btn-moon-1" type="button">[3] Moon I</button>
+          <button id="btn-moon-2" type="button">[4] Moon II</button>
+          <button id="btn-moon-3" type="button">[5] Moon III</button>
+        </div>
+        <button id="btn-open-settings" class="settings-trigger-btn" type="button">&#9881; Settings &amp; Updates [P]</button>
+      </div>
     </div>
   </aside>
 
   <!-- Right Orbital Radar Map -->
   <aside id="hud-right">
-    <div class="panel-title">ORBITAL SYSTEM RADAR</div>
-    <canvas id="radar-canvas" width="176" height="176"></canvas>
-    <div class="radar-legend">
-      <span><i class="dot planet"></i> Aurelia</span>
-      <span><i class="dot m1"></i> Lumen (S)</span>
-      <span><i class="dot m2"></i> Pyra (M)</span>
-      <span><i class="dot m3"></i> Goliath (L)</span>
+    <div class="panel-header">
+      <div class="panel-title">ORBITAL SYSTEM RADAR</div>
+      <button id="btn-toggle-right" class="panel-toggle-btn" type="button" aria-label="Toggle Radar">−</button>
+    </div>
+    <div class="panel-body">
+      <canvas id="radar-canvas" width="176" height="176"></canvas>
+      <div class="radar-legend">
+        <span><i class="dot planet"></i> Aurelia</span>
+        <span><i class="dot m1"></i> Lumen (S)</span>
+        <span><i class="dot m2"></i> Pyra (M)</span>
+        <span><i class="dot m3"></i> Goliath (L)</span>
+      </div>
     </div>
   </aside>
+
+  <!-- Mobile & Touchscreen Controls Overlay -->
+  <div id="touch-controls" class="touch-overlay">
+    <!-- Left Zone: Movement (Joystick or D-Pad) -->
+    <div id="touch-left-zone" class="touch-zone touch-left">
+      <div id="left-stick-base" class="stick-base">
+        <div id="left-stick-knob" class="stick-knob"></div>
+      </div>
+      <div id="touch-dpad" class="touch-dpad-grid" style="display: none;">
+        <div></div>
+        <button id="dpad-up" class="dpad-btn" type="button" aria-label="Up">▲</button>
+        <div></div>
+        <button id="dpad-left" class="dpad-btn" type="button" aria-label="Left">◀</button>
+        <div class="dpad-center"></div>
+        <button id="dpad-right" class="dpad-btn" type="button" aria-label="Right">▶</button>
+        <div></div>
+        <button id="dpad-down" class="dpad-btn" type="button" aria-label="Down">▼</button>
+        <div></div>
+      </div>
+    </div>
+
+    <!-- Right Zone: Camera Look / Starfighter Steering -->
+    <div id="touch-right-zone" class="touch-zone touch-right">
+      <div id="right-stick-base" class="stick-base">
+        <div id="right-stick-knob" class="stick-knob"></div>
+      </div>
+    </div>
+
+    <!-- Context Actions: On-Foot Cluster -->
+    <div id="touch-foot-actions" class="touch-actions-cluster">
+      <button id="btn-touch-sprint" class="touch-btn action-sprint" type="button">RUN</button>
+      <button id="btn-touch-jump" class="touch-btn action-jump" type="button">JUMP<br><small>JET</small></button>
+      <button id="btn-touch-interact" class="touch-btn action-interact" type="button">ACT<br><small>[E]</small></button>
+    </div>
+
+    <!-- Context Actions: Starfighter Cluster -->
+    <div id="touch-ship-actions" class="touch-actions-cluster" style="display: none;">
+      <button id="btn-touch-descend" class="touch-btn action-descend" type="button">DN<br><small>▼</small></button>
+      <button id="btn-touch-ascend" class="touch-btn action-ascend" type="button">UP<br><small>▲</small></button>
+      <button id="btn-touch-orbit" class="touch-btn action-orbit" type="button">ORBIT<br><small>[O]</small></button>
+      <button id="btn-touch-boost" class="touch-btn action-boost" type="button">BOOST<br><small>⚡</small></button>
+      <button id="btn-touch-fire" class="touch-btn action-fire" type="button">FIRE<br><small>💥</small></button>
+      <button id="btn-touch-exit" class="touch-btn action-exit" type="button">EXIT<br><small>[E]</small></button>
+    </div>
+  </div>
 
   <!-- Center Notifications & Interaction Prompt -->
   <div id="hud-notice"></div>
@@ -98,12 +153,43 @@
       </section>
 
       <section class="settings-section">
+        <h3>TOUCHSCREEN CONTROLS</h3>
+        <p class="section-desc">Configure mobile touchscreen layouts and visibility:</p>
+        
+        <div class="settings-subsection">
+          <span class="setting-label">Visibility Mode</span>
+          <div id="touch-vis-options" class="pill-group">
+            <button type="button" class="pill-btn" data-vis="auto">Auto-Detect</button>
+            <button type="button" class="pill-btn" data-vis="always">Always Show</button>
+            <button type="button" class="pill-btn" data-vis="hidden">Hide</button>
+          </div>
+        </div>
+
+        <div class="settings-subsection">
+          <span class="setting-label">Control Layout</span>
+          <div id="touch-scheme-options" class="pill-group">
+            <button type="button" class="pill-btn" data-scheme="dual-sticks">Dual Joysticks</button>
+            <button type="button" class="pill-btn" data-scheme="floating-look">Floating + Look Area</button>
+            <button type="button" class="pill-btn" data-scheme="dpad-look">D-Pad + Look Area</button>
+          </div>
+        </div>
+
+        <div class="settings-subsection">
+          <div class="slider-row">
+            <span class="setting-label">Touch Look Sensitivity</span>
+            <strong id="touch-sens-val">1.0x</strong>
+          </div>
+          <input id="touch-sens-slider" type="range" min="0.4" max="2.6" step="0.1" value="1.0" class="hud-slider" />
+        </div>
+      </section>
+
+      <section class="settings-section">
         <h3>GITHUB VERSION &amp; CACHE MANAGER</h3>
         <p class="section-desc">Check <code>p4kk4s4n/aurelia-horizon</code> on GitHub for new commits and recache all assets:</p>
         <div class="version-info-grid">
           <div class="version-box">
             <span>Installed Build</span>
-            <strong id="settings-installed-version">v1.1.0</strong>
+            <strong id="settings-installed-version">v1.1.1</strong>
           </div>
           <div class="version-box">
             <span>Latest GitHub Build</span>

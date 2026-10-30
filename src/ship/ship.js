@@ -288,9 +288,11 @@ export class Ship {
       this.fireCannons();
     }
 
-    // Rotation controls (Mouse Pitch/Yaw + Q/E Roll)
-    const pitchInput = -mouseFrame.dy * 0.0028 + ((input.isDown('ArrowDown') ? 1 : 0) - (input.isDown('ArrowUp') ? 1 : 0)) * 1.4 * dt;
-    const yawInput = -mouseFrame.dx * 0.0028 + ((input.isDown('ArrowLeft') ? 1 : 0) - (input.isDown('ArrowRight') ? 1 : 0)) * 1.4 * dt;
+    // Rotation controls (Mouse Pitch/Yaw + Stick Pitch/Yaw + Q/E Roll)
+    const stickPitch = (input.lookVelY || 0) * 1.8 * dt;
+    const stickYaw = (input.lookVelX || 0) * 2.2 * dt;
+    const pitchInput = -mouseFrame.dy * 0.0028 - stickPitch + ((input.isDown('ArrowDown') ? 1 : 0) - (input.isDown('ArrowUp') ? 1 : 0)) * 1.4 * dt;
+    const yawInput = -mouseFrame.dx * 0.0028 - stickYaw + ((input.isDown('ArrowLeft') ? 1 : 0) - (input.isDown('ArrowRight') ? 1 : 0)) * 1.4 * dt;
     const rollInput = ((input.isDown('KeyQ') ? 1 : 0) - (input.isDown('KeyR') ? 1 : 0)) * 2.1 * dt;
 
     if (!this.landed) {
@@ -319,8 +321,8 @@ export class Ship {
     const shipUp = new THREE.Vector3(0, 1, 0).applyQuaternion(this.group.quaternion).normalize();
 
     // Thrust controls
-    let thrustForward = 0;
-    let thrustRight = 0;
+    let thrustForward = input.moveY || 0;
+    let thrustRight = (input.moveX || 0) * 0.75;
     let thrustUp = 0;
 
     if (input.isDown('KeyW')) thrustForward += 1;
@@ -337,7 +339,7 @@ export class Ship {
     }
 
     // Afterburner Boost (Shift)
-    const wantsBoost = (input.isDown('ShiftLeft') || input.isDown('ShiftRight')) && !this.landed && thrustForward > 0;
+    const wantsBoost = (input.isDown('ShiftLeft') || input.isDown('ShiftRight')) && !this.landed && (thrustForward > 0.1 || input.isDown('KeyW'));
     if (wantsBoost && this.boostEnergy > 2) {
       this.isBoosting = true;
       this.boostEnergy = Math.max(0, this.boostEnergy - 28 * dt);

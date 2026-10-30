@@ -39,7 +39,18 @@ A zero-build, web-based 3D space exploration prototype built with **Three.js (ES
 | | **Fire Twin Plasma Cannons** | `Left Click` or `F` |
 | | Disembark onto Planet or Moon | `E` (when landed or hovering low) |
 | **Quick Test Shortcuts** | Instant Repair + Board / Orbit / Moons | Keys `1`, `2`, `3`, `4`, `5` (or click left HUD buttons) |
-| **Settings & Updates** | Open UI Color Schemes & GitHub Updater | Key `P` (or click `⚙ Settings & Updates [P]` on HUD) |
+| **Settings & Updates** | Open UI Color Schemes, Touch Controls & GitHub Updater | Key `P` (or click `⚙ Settings & Updates [P]` on HUD) |
+
+### Mobile & Touchscreen Controls (Auto-detected on Touchscreens / WebAPK)
+
+- **3 Selectable Layouts** (in Settings `[P]`):
+  1. **Dual Virtual Joysticks (Default)**: Left thumbstick for analog movement / thrust; Right thumbstick for smooth camera look / ship steering.
+  2. **Floating Stick + Look Area**: Left half of screen spawns a floating stick dynamically under thumb; Right half is a touch-drag look trackpad.
+  3. **Virtual D-Pad + Look Area**: Tactile 8-way directional pad on left; Touch-drag look trackpad on right.
+- **Context-Aware Action Buttons**:
+  - **On-Foot Exploration**: `RUN` (sprint lock toggle), `JUMP / JET` (tap jump / hold jetpack), `ACT [E]` (collect / install / board).
+  - **Starfighter Flight**: `FIRE` (twin plasma cannons), `BOOST` (afterburner), `UP ▲` / `DN ▼` (ascend/descend), `ORBIT [O]` (arcade orbit assist), `EXIT [E]` (disembark).
+- **Collapsible HUD**: Tap the `−`/`+` button on Telemetry and Radar panels on mobile screens to minimize HUD clutter.
 
 ---
 

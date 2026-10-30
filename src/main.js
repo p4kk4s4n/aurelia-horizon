@@ -8,6 +8,7 @@ import { ShipRepairSystem } from './ship/repair.js';
 import { Ship } from './ship/ship.js';
 import { HUD } from './ui/hud.js';
 import { SettingsManager } from './ui/settings.js';
+import { TouchControlsManager } from './ui/touchControls.js';
 
 const canvas = document.getElementById('game-canvas');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -37,7 +38,8 @@ const repairSystem = new ShipRepairSystem(scene, planet);
 const cameraRig = new CameraRig(camera);
 const input = new InputManager(canvas);
 const hud = new HUD();
-const settings = new SettingsManager((msg) => hud.showNotice(msg));
+const touchControls = new TouchControlsManager(input, (msg, dur) => hud.showNotice(msg, dur));
+const settings = new SettingsManager((msg) => hud.showNotice(msg), touchControls);
 
 let gameMode = 'EXPLORING'; // 'EXPLORING' | 'PILOTING'
 let elapsedTime = 0;
@@ -102,10 +104,14 @@ export const gameAPI = {
     visitedMoons: Array.from(ship.visitedMoons),
     targetsDestroyed: ship.targetsDestroyed,
     theme: settings.currentThemeId,
-    settingsOpen: settings.isOpen
+    settingsOpen: settings.isOpen,
+    touchScheme: touchControls.scheme,
+    touchVisibility: touchControls.visibility
   }),
   openSettings: (open = true) => settings.toggleModal(open),
   setTheme: (themeId) => settings.applyTheme(themeId),
+  setTouchScheme: (scheme) => touchControls.applyScheme(scheme),
+  setTouchVisibility: (vis) => touchControls.applyVisibility(vis),
   checkGitHubUpdate: (force = false) => settings.checkGitHubAndRecache(force),
   repairAndBoard: () => {
     repairSystem.giveAndInstallAll();
@@ -162,6 +168,24 @@ else if (urlPhase === 'moon2') gameAPI.landOnMoon(1);
 else if (urlPhase === 'moon3') gameAPI.landOnMoon(2);
 else if (urlPhase === 'settings') settings.toggleModal(true);
 if (params.get('theme')) settings.applyTheme(params.get('theme'));
+if (params.get('touch')) touchControls.applyVisibility(params.get('touch'));
+if (params.get('scheme')) touchControls.applyScheme(params.get('scheme'));
+
+// Collapsible HUD panels on small screens
+const panelLeft = document.getElementById('hud-left');
+const panelRight = document.getElementById('hud-right');
+document.getElementById('btn-toggle-left')?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  panelLeft?.classList.toggle('collapsed');
+  const btn = document.getElementById('btn-toggle-left');
+  if (btn) btn.textContent = panelLeft?.classList.contains('collapsed') ? '+' : '−';
+});
+document.getElementById('btn-toggle-right')?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  panelRight?.classList.toggle('collapsed');
+  const btn = document.getElementById('btn-toggle-right');
+  if (btn) btn.textContent = panelRight?.classList.contains('collapsed') ? '+' : '−';
+});
 
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
@@ -275,6 +299,12 @@ function animate(now) {
     moons,
     promptText,
     compassText: computeCompassText()
+  });
+
+  touchControls.update(gameMode, {
+    ship,
+    explorer,
+    promptText
   });
 
   renderer.render(scene, camera);

@@ -122,8 +122,9 @@ export class Explorer {
     this.group.quaternion.normalize();
     this.localUp.copy(newUp);
 
-    // 3. Mouse yaw (around localUp) + pitch + wheel zoom
-    const yawRate = -mouseFrame.dx * 0.0032;
+    // 3. Mouse yaw (around localUp) + pitch + wheel zoom + stick look
+    const stickYaw = (input.lookVelX || 0) * 2.4 * dt;
+    const yawRate = -mouseFrame.dx * 0.0032 - stickYaw;
     const keyTurn = (input.isDown('ArrowLeft') ? 1 : 0) - (input.isDown('ArrowRight') ? 1 : 0);
     const totalYaw = yawRate + keyTurn * 1.9 * dt;
     if (Math.abs(totalYaw) > 1e-6) {
@@ -131,22 +132,26 @@ export class Explorer {
       this.group.quaternion.premultiply(yawQuat);
     }
 
-    this.pitch = THREE.MathUtils.clamp(this.pitch + mouseFrame.dy * 0.0026, -0.45, 1.15);
+    const stickPitch = (input.lookVelY || 0) * 1.8 * dt;
+    this.pitch = THREE.MathUtils.clamp(this.pitch + mouseFrame.dy * 0.0026 + stickPitch, -0.45, 1.15);
     this.cameraDistance = THREE.MathUtils.clamp(this.cameraDistance + mouseFrame.wheel * 1.4, 6, 30);
 
     // 4. Local forward (-Z) and right (+X) tangent to the sphere
     const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(this.group.quaternion).normalize();
     const right = new THREE.Vector3(1, 0, 0).applyQuaternion(this.group.quaternion).normalize();
 
-    let moveF = 0;
-    let moveR = 0;
+    let moveF = input.moveY || 0;
+    let moveR = input.moveX || 0;
     if (input.isDown('KeyW') || input.isDown('ArrowUp')) moveF += 1;
     if (input.isDown('KeyS') || input.isDown('ArrowDown')) moveF -= 1;
     if (input.isDown('KeyD')) moveR += 1;
     if (input.isDown('KeyA')) moveR -= 1;
 
-    const isSprinting = input.isDown('ShiftLeft') || input.isDown('ShiftRight');
-    const moveSpeed = isSprinting ? 28 : 16;
+    const stickMag = Math.hypot(input.moveX || 0, input.moveY || 0);
+    const isSprinting = input.isDown('ShiftLeft') || input.isDown('ShiftRight') || stickMag > 0.88;
+    const baseSpeed = isSprinting ? 28 : 16;
+    const speedScale = stickMag > 0 ? Math.min(1.0, Math.max(0.4, stickMag)) : 1.0;
+    const moveSpeed = baseSpeed * speedScale;
 
     const moveDir = new THREE.Vector3()
       .addScaledVector(forward, moveF)

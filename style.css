@@ -13,6 +13,8 @@
   margin: 0;
   padding: 0;
   user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
 }
 
 html, body {
@@ -22,6 +24,7 @@ html, body {
   background: #040711;
   color: var(--hud-text);
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  touch-action: none;
 }
 
 #game-canvas {
@@ -29,6 +32,7 @@ html, body {
   width: 100vw;
   height: 100vh;
   cursor: crosshair;
+  touch-action: none;
 }
 
 /* Top Mission & Compass */
@@ -90,6 +94,16 @@ html, body {
   padding: 12px 14px;
   z-index: 10;
   backdrop-filter: blur(6px);
+  transition: width 0.2s, max-height 0.2s;
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--hud-border);
+  padding-bottom: 4px;
+  margin-bottom: 8px;
 }
 
 .panel-title {
@@ -97,9 +111,40 @@ html, body {
   font-weight: 800;
   letter-spacing: 0.1em;
   color: var(--hud-primary);
-  margin-bottom: 8px;
-  border-bottom: 1px solid var(--hud-border);
-  padding-bottom: 4px;
+}
+
+.panel-toggle-btn {
+  background: transparent;
+  border: 1px solid var(--hud-border);
+  color: var(--hud-text);
+  border-radius: 4px;
+  width: 20px;
+  height: 20px;
+  font-size: 14px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.panel-toggle-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+#hud-left.collapsed {
+  width: auto;
+  padding: 8px 10px;
+}
+
+#hud-left.collapsed .panel-body {
+  display: none;
+}
+
+#hud-left.collapsed .panel-header {
+  border-bottom: none;
+  margin-bottom: 0;
+  gap: 8px;
 }
 
 .stat-row {
@@ -203,6 +248,26 @@ html, body {
   display: flex;
   flex-direction: column;
   align-items: center;
+  transition: width 0.2s;
+}
+
+#hud-right .panel-header {
+  width: 100%;
+}
+
+#hud-right.collapsed {
+  width: auto;
+  padding: 8px 10px;
+}
+
+#hud-right.collapsed .panel-body {
+  display: none;
+}
+
+#hud-right.collapsed .panel-header {
+  border-bottom: none;
+  margin-bottom: 0;
+  gap: 8px;
 }
 
 .radar-legend {
@@ -289,9 +354,10 @@ html, body {
   font-size: 14px;
   padding: 8px 20px;
   border-radius: 8px;
-  pointer-events: none;
+  pointer-events: auto;
+  cursor: pointer;
   opacity: 0;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.2s ease, transform 0.1s;
   z-index: 12;
 }
 
@@ -299,7 +365,234 @@ html, body {
   opacity: 1;
 }
 
-/* Settings Modal */
+#hud-prompt:active {
+  transform: translateX(-50%) scale(0.96);
+}
+
+/* ---------------------------------------------------- */
+/* Mobile & Touchscreen Controls Overlay               */
+/* ---------------------------------------------------- */
+.touch-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 25;
+  display: none;
+}
+
+.touch-overlay.visible {
+  display: block;
+}
+
+.touch-zone {
+  position: absolute;
+  bottom: 0;
+  height: 60%;
+  width: 45%;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.touch-left {
+  left: 0;
+}
+
+.touch-right {
+  right: 0;
+}
+
+/* Virtual Joystick */
+.stick-base {
+  position: absolute;
+  bottom: 35px;
+  left: 35px;
+  width: 110px;
+  height: 110px;
+  background: rgba(8, 20, 36, 0.55);
+  border: 2px solid var(--hud-primary);
+  border-radius: 50%;
+  pointer-events: none;
+  box-shadow: 0 0 15px rgba(0, 245, 212, 0.25);
+  transition: opacity 0.15s ease;
+}
+
+.stick-base.floating {
+  position: absolute;
+  transform: translate(-50%, -50%);
+}
+
+.stick-knob {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 48px;
+  height: 48px;
+  margin-top: -24px;
+  margin-left: -24px;
+  background: radial-gradient(circle, var(--hud-primary) 20%, rgba(0, 187, 249, 0.85) 90%);
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 0 12px var(--hud-primary);
+  pointer-events: none;
+  will-change: transform;
+}
+
+.touch-right .stick-base {
+  left: auto;
+  right: 120px;
+}
+
+/* Virtual D-Pad */
+.touch-dpad-grid {
+  position: absolute;
+  bottom: 30px;
+  left: 30px;
+  width: 120px;
+  height: 120px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 3px;
+  pointer-events: auto;
+}
+
+.dpad-btn {
+  background: rgba(8, 20, 36, 0.7);
+  border: 1px solid var(--hud-primary);
+  color: var(--hud-primary);
+  font-size: 16px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  touch-action: none;
+  transition: background 0.1s;
+}
+
+.dpad-btn.active,
+.dpad-btn:active {
+  background: var(--hud-primary);
+  color: #04101e;
+  box-shadow: 0 0 10px var(--hud-primary);
+}
+
+.dpad-center {
+  background: rgba(0, 245, 212, 0.12);
+  border-radius: 4px;
+}
+
+/* Touch Action Buttons */
+.touch-actions-cluster {
+  position: absolute;
+  bottom: 25px;
+  right: 20px;
+  pointer-events: auto;
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  z-index: 26;
+}
+
+.touch-btn {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background: rgba(8, 20, 36, 0.75);
+  border: 2px solid var(--hud-primary);
+  color: var(--hud-text);
+  font-size: 11px;
+  font-weight: 800;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.1;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+  cursor: pointer;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+  touch-action: none;
+  transition: transform 0.08s ease, background 0.1s, border-color 0.1s;
+}
+
+.touch-btn small {
+  font-size: 9px;
+  opacity: 0.85;
+}
+
+.touch-btn.active,
+.touch-btn:active {
+  transform: scale(0.92);
+  background: var(--hud-primary);
+  color: #04101e;
+  box-shadow: 0 0 16px var(--hud-primary);
+}
+
+.action-jump {
+  border-color: var(--hud-primary);
+  width: 66px;
+  height: 66px;
+}
+
+.action-sprint.active {
+  background: var(--hud-secondary);
+  border-color: #ffffff;
+  color: #04101e;
+}
+
+.action-interact {
+  border-color: #9ef01a;
+  color: #9ef01a;
+}
+
+.action-interact.pulse {
+  animation: pulse-interact 1.2s infinite alternate;
+}
+
+@keyframes pulse-interact {
+  from {
+    box-shadow: 0 0 6px #9ef01a;
+    border-color: #9ef01a;
+  }
+  to {
+    box-shadow: 0 0 20px #9ef01a;
+    border-color: #ffffff;
+    transform: scale(1.06);
+  }
+}
+
+.action-fire {
+  border-color: #ff4d6d;
+  color: #ff8fa3;
+  width: 66px;
+  height: 66px;
+}
+
+.action-fire.active {
+  background: #ff4d6d !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 20px #ff4d6d !important;
+}
+
+.action-boost {
+  border-color: var(--hud-secondary);
+  color: var(--hud-secondary);
+}
+
+.action-boost.active {
+  background: var(--hud-secondary) !important;
+  color: #04101e !important;
+}
+
+.action-orbit.latched {
+  background: var(--hud-primary);
+  color: #04101e;
+  box-shadow: 0 0 12px var(--hud-primary);
+}
+
+/* ---------------------------------------------------- */
+/* Settings Modal & Sections                            */
+/* ---------------------------------------------------- */
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -317,7 +610,9 @@ html, body {
 }
 
 .settings-card {
-  width: min(520px, 95vw);
+  width: min(540px, 95vw);
+  max-height: 90vh;
+  overflow-y: auto;
   background: var(--hud-bg);
   border: 1.5px solid var(--hud-primary);
   border-radius: 14px;
@@ -325,7 +620,7 @@ html, body {
   box-shadow: 0 18px 50px rgba(0, 0, 0, 0.7);
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 16px;
 }
 
 .settings-header {
@@ -371,13 +666,68 @@ html, body {
 }
 
 .section-desc {
-  font-size: 12.5px;
+  font-size: 12px;
   color: var(--hud-muted);
+}
+
+.settings-subsection {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.setting-label {
+  font-size: 11.5px;
+  color: var(--hud-text);
+  font-weight: 600;
+}
+
+.slider-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.hud-slider {
+  width: 100%;
+  accent-color: var(--hud-primary);
+  cursor: pointer;
+}
+
+.pill-group {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.pill-btn {
+  flex: 1;
+  min-width: 90px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--hud-border);
+  color: var(--hud-text);
+  border-radius: 6px;
+  font-size: 11.5px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.pill-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.pill-btn.active {
+  background: var(--hud-primary);
+  color: #04101e;
+  border-color: var(--hud-primary);
+  font-weight: 700;
 }
 
 .theme-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 8px;
   margin-top: 4px;
 }
@@ -443,7 +793,7 @@ html, body {
 }
 
 .update-status {
-  font-size: 12.5px;
+  font-size: 12px;
   padding: 8px 12px;
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.06);
@@ -477,7 +827,7 @@ html, body {
   flex: 1;
   padding: 9px 12px;
   border-radius: 8px;
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 700;
   cursor: pointer;
   transition: opacity 0.15s, transform 0.1s;
@@ -525,4 +875,71 @@ html, body {
   z-index: 10;
   pointer-events: none;
   width: min(920px, 95vw);
+}
+
+/* ---------------------------------------------------- */
+/* Responsive Mobile Layout                             */
+/* ---------------------------------------------------- */
+@media (max-width: 900px), (max-height: 520px) {
+  #hud-top {
+    top: 6px;
+    width: 96vw;
+  }
+  .mission-banner {
+    padding: 4px 10px;
+    font-size: 12px;
+  }
+  .compass-bar {
+    font-size: 11px;
+    padding: 2px 10px;
+  }
+  #hud-left {
+    top: 55px;
+    left: 8px;
+    width: 210px;
+    padding: 8px 10px;
+  }
+  #hud-right {
+    top: 55px;
+    right: 8px;
+    width: 140px;
+    padding: 8px;
+  }
+  #radar-canvas {
+    width: 110px;
+    height: 110px;
+  }
+  .radar-legend {
+    font-size: 9.5px;
+    gap: 2px 4px;
+  }
+  .stat-row {
+    font-size: 11px;
+    margin: 3px 0;
+  }
+  .quick-actions button {
+    padding: 4px;
+    font-size: 10.5px;
+  }
+  .touch-btn {
+    width: 52px;
+    height: 52px;
+    font-size: 10px;
+  }
+  .action-jump, .action-fire {
+    width: 58px;
+    height: 58px;
+  }
+  .stick-base {
+    width: 96px;
+    height: 96px;
+    bottom: 25px;
+    left: 25px;
+  }
+  .stick-knob {
+    width: 42px;
+    height: 42px;
+    margin-top: -21px;
+    margin-left: -21px;
+  }
 }
