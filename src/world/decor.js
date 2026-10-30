@@ -183,23 +183,25 @@ function createKelpVariants(count = 4) {
 /**
  * Main decor population function for celestial bodies.
  */
-export function populatePlanetDecor(body, noise) {
+export function populatePlanetDecor(body, noise, qualityOverride = null) {
   const group = new THREE.Group();
   const dummy = new THREE.Object3D();
   const upDefault = new THREE.Vector3(0, 1, 0);
   const normal = new THREE.Vector3();
   const quat = new THREE.Quaternion();
 
-  // Read graphics quality setting from localStorage: 'low' (0.5), 'medium' (0.8), 'high' (1.0), 'ultra' (1.3)
-  let qualitySetting = 'high';
-  try {
-    qualitySetting = localStorage.getItem('aurelia_graphics_quality') || 'high';
-  } catch (e) {}
+  // Read graphics quality setting from override or localStorage: 'low' (0.5), 'medium' (0.8), 'high' (1.0), 'ultra' (1.4)
+  let qualitySetting = qualityOverride || 'high';
+  if (!qualityOverride) {
+    try {
+      qualitySetting = localStorage.getItem('aurelia_graphics_quality') || 'high';
+    } catch (e) {}
+  }
 
   let densityMult = 1.0;
   if (qualitySetting === 'low') densityMult = 0.5;
   else if (qualitySetting === 'medium') densityMult = 0.8;
-  else if (qualitySetting === 'ultra') densityMult = 1.35;
+  else if (qualitySetting === 'ultra') densityMult = 1.4;
 
   // Materials
   const trunkMat = new THREE.MeshStandardMaterial({

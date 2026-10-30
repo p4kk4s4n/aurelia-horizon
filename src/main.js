@@ -47,6 +47,7 @@ const hud = new HUD();
 const touchControls = new TouchControlsManager(input, (msg, dur) => hud.showNotice(msg, dur));
 const settings = new SettingsManager((msg) => hud.showNotice(msg), touchControls, input);
 settings.setRenderer(renderer);
+settings.setEnvironment(planet, moons);
 settings.setExplorer(explorer);
 settings.setShip(ship);
 
@@ -375,10 +376,10 @@ if (urlView === 'char_back') {
   explorer.visualRoot.rotation.y = Math.PI * 0.85;
   explorer.velocity.set(0, 8, -4);
   explorer.torso.rotation.x = 0.16;
-  explorer.leftLeg.rotation.x = -0.45;
-  explorer.rightLeg.rotation.x = -0.35;
-  explorer.leftLowerLegGroup.rotation.x = 0.85;
-  explorer.rightLowerLegGroup.rotation.x = 0.70;
+  explorer.leftLeg.rotation.x = 0.45;
+  explorer.rightLeg.rotation.x = 0.35;
+  explorer.leftLowerLegGroup.rotation.x = -0.85;
+  explorer.rightLowerLegGroup.rotation.x = -0.70;
   explorer.leftArm.rotation.x = -0.35;
   explorer.rightArm.rotation.x = -0.35;
   explorer.leftArm.rotation.z = -0.35;
@@ -394,8 +395,8 @@ if (urlView === 'char_back') {
   explorer.torso.rotation.x = 0.35;
   explorer.leftLeg.rotation.x = -0.75;
   explorer.rightLeg.rotation.x = 0.75;
-  explorer.leftLowerLegGroup.rotation.x = 1.35;
-  explorer.rightLowerLegGroup.rotation.x = 0.15;
+  explorer.leftLowerLegGroup.rotation.x = -1.35;
+  explorer.rightLowerLegGroup.rotation.x = -0.15;
   explorer.leftForearmGroup.rotation.x = 1.35;
   explorer.rightForearmGroup.rotation.x = 1.35;
   explorer.leftArm.rotation.x = 0.75;

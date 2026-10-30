@@ -333,7 +333,7 @@
     assert(!jumpExplorer.grounded, 'Pressing jump while grounded launches explorer into air');
     assert(jumpExplorer.velocity.y > 5.0, 'Jump gives upward vertical launch velocity');
     assert(jumpExplorer.jumpPhase === 'ascent', 'Jumping explorer enters ascent jump phase');
-    assert(jumpExplorer.leftLowerLegGroup.rotation.x > 0.4, 'Jumping explorer flexes knees upward during aerial ascent tuck');
+    assert(jumpExplorer.leftLowerLegGroup.rotation.x < -0.4, 'Jumping explorer flexes knees backward during aerial ascent tuck');
     assert(jumpExplorer.leftForearmGroup.rotation.x > 0.4, 'Jumping explorer articulates elbows for balance during jump');
 
     // Walking & Sprinting Kinematics (Articulated knees, elbows, torso lean)
@@ -344,7 +344,7 @@
     testInput.setVirtualKey('KeyW', true);
     walkExplorer.update(0.1, testInput, { dx: 0, dy: 0, wheel: 0 }, mockBodies);
     walkExplorer.update(0.1, testInput, { dx: 0, dy: 0, wheel: 0 }, mockBodies);
-    assert(walkExplorer.leftLowerLegGroup.rotation.x >= 0, 'Walking explorer articulates knees during gait cycle');
+    assert(walkExplorer.leftLowerLegGroup.rotation.x <= 0, 'Walking explorer articulates knees backward during gait cycle');
     assert(walkExplorer.torso.rotation.x < 0.15, 'Walking explorer maintains upright torso posture');
 
     // Sprint Kinematics (Forward lean, deep knee flex, 90 deg bent arms)
@@ -507,10 +507,14 @@
     settingsMgr.applyGraphicsQuality('high'); // reset to default
 
     settingsMgr.setExplorer(testExplorer);
+    settingsMgr.setEnvironment(system.planet, system.moons);
     settingsMgr.applyGraphicsQuality('low');
-    assert(testExplorer.currentDensity === 'low', 'SettingsManager sets Explorer polygon density to low');
-    settingsMgr.applyGraphicsQuality('high');
-    assert(testExplorer.currentDensity === 'high', 'SettingsManager sets Explorer polygon density to high (3x)');
+    assert(testExplorer.currentDensity === 'high', 'Graphics toggle does NOT decrease character polygon density (stays sculpted high fidelity)');
+    assert(system.planet.currentQuality === 'low', 'SettingsManager scales environment planet quality to low');
+    settingsMgr.applyGraphicsQuality('ultra');
+    assert(system.planet.currentQuality === 'ultra', 'SettingsManager scales environment planet quality to ultra');
+    settingsMgr.applyGraphicsQuality('high'); // reset to default
+    assert(system.planet.currentQuality === 'high', 'SettingsManager restores environment quality to high default');
 
     assert(typeof settingsMgr.setInstallPrompt === 'function', 'SettingsManager provides setInstallPrompt method');
     assert(typeof settingsMgr.triggerInstallPrompt === 'function', 'SettingsManager provides triggerInstallPrompt method');

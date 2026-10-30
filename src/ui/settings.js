@@ -116,6 +116,9 @@ export class SettingsManager {
     this.applyUIScale(this.uiScale, false);
 
     this.currentQuality = localStorage.getItem('aurelia_graphics_quality') || 'high';
+    this.planet = null;
+    this.moons = [];
+    this.allBodies = [];
     this._renderThemeButtons();
     this._renderTouchSettings();
     this._renderGraphicsSettings();
@@ -302,12 +305,39 @@ export class SettingsManager {
     this.applyGraphicsQuality(this.currentQuality, false);
   }
 
-  setExplorer(explorer) {
-    this.explorer = explorer;
-    if (this.explorer && typeof this.explorer.setPolygonDensity === 'function') {
-      this.explorer.setPolygonDensity(this.currentQuality);
+  setEnvironment(planet, moons) {
+    this.planet = planet;
+    this.moons = Array.isArray(moons) ? moons : [];
+    this.allBodies = [this.planet, ...this.moons].filter(Boolean);
+    if (this.allBodies.length > 0) {
+      for (const body of this.allBodies) {
+        if (typeof body.setQuality === 'function') {
+          body.setQuality(this.currentQuality);
+        }
+      }
     }
     this._renderGraphicsSettings();
+  }
+
+  setExplorer(explorer) {
+    this.explorer = explorer;
+    // Explorer character model stays at constant sculpted high-fidelity mesh (~12,600+ tris)
+    this._renderGraphicsSettings();
+  }
+
+  getEnvironmentPolygonCount() {
+    let triangles = 0;
+    let vertices = 0;
+    if (this.allBodies && this.allBodies.length > 0) {
+      for (const body of this.allBodies) {
+        if (typeof body.getPolygonCount === 'function') {
+          const counts = body.getPolygonCount();
+          triangles += counts.triangles;
+          vertices += counts.vertices;
+        }
+      }
+    }
+    return { triangles, vertices };
   }
 
   setShip(ship) {
@@ -377,23 +407,23 @@ export class SettingsManager {
       btn.onclick = () => {
         this.applyGraphicsQuality(q, true);
         if (this.onNotice) {
-          const desc = q === 'high' ? 'HIGH (3X TRIPLE DENSITY)' : q.toUpperCase();
-          this.onNotice(`Graphics Fidelity set to ${desc}.`);
+          const desc = q === 'high' ? 'HIGH (88-seg Terrain • 1.0x Flora)' : q.toUpperCase();
+          this.onNotice(`Environment Graphics Quality set to ${desc}.`);
         }
       };
     });
 
     const densityNote = document.getElementById('settings-poly-density');
     if (densityNote) {
-      const polyInfo = this.explorer?.getPolygonCount ? this.explorer.getPolygonCount() : null;
-      const countStr = polyInfo ? ` (~${polyInfo.triangles.toLocaleString()} Polygons)` : '';
+      const envPoly = this.getEnvironmentPolygonCount();
+      const countStr = envPoly && envPoly.triangles > 0 ? ` (~${envPoly.triangles.toLocaleString()} Polygons)` : '';
       const labels = {
-        low: `Character Mesh: Low (1x Baseline${countStr})`,
-        medium: `Character Mesh: Medium (2x Density${countStr})`,
-        high: `Character Mesh: High (3x Triple Density • Sculpted${countStr})`,
-        ultra: `Character Mesh: Ultra (4x Cinematic Density${countStr})`
+        low: `Environment Mesh: Low (${countStr} • 52-seg Terrain & 0.5x Flora)`,
+        medium: `Environment Mesh: Medium (${countStr} • 68-seg Terrain & 0.8x Flora)`,
+        high: `Environment Mesh: High (${countStr} • 88-seg Terrain & 1.0x Flora • Default)`,
+        ultra: `Environment Mesh: Ultra (${countStr} • 108-seg Terrain & 1.4x Flora • Cinematic)`
       };
-      densityNote.textContent = labels[this.currentQuality] || `Character Mesh: ${this.currentQuality.toUpperCase()}`;
+      densityNote.textContent = labels[this.currentQuality] || `Environment Mesh: ${this.currentQuality.toUpperCase()}`;
     }
   }
 
@@ -411,69 +441,15 @@ export class SettingsManager {
       this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, maxPr));
       this.renderer.setSize(window.innerWidth, window.innerHeight);
     }
-    if (this.explorer && typeof this.explorer.setPolygonDensity === 'function') {
-      this.explorer.setPolygonDensity(this.currentQuality);
+    // Scale polygon density for the ENVIRONMENT (planet and moons), NOT the character
+    if (this.allBodies && this.allBodies.length > 0) {
+      for (const body of this.allBodies) {
+        if (typeof body.setQuality === 'function') {
+          body.setQuality(this.currentQuality);
+        }
+      }
     }
     this._renderGraphicsSettings();
-  }
-
-  setShip(ship) {
-    this.ship = ship;
-    if (this.ship) {
-      this.ship.autoLandingAssist = this.autoLandingAssist;
-      this.ship.throttleMode = this.throttleMode;
-    }
-    this._renderFlightSettings();
-  }
-
-  applyAutoLandingAssist(enabled, save = true) {
-    this.autoLandingAssist = !!enabled;
-    if (save) {
-      localStorage.setItem('aurelia_auto_landing_assist', this.autoLandingAssist ? 'true' : 'false');
-    }
-    if (this.ship) {
-      this.ship.autoLandingAssist = this.autoLandingAssist;
-    }
-    this._renderFlightSettings();
-  }
-
-  applyThrottleMode(mode, save = true) {
-    this.throttleMode = mode === 'persistent' ? 'persistent' : 'direct';
-    if (save) {
-      localStorage.setItem('aurelia_throttle_mode', this.throttleMode);
-    }
-    if (this.ship) {
-      this.ship.throttleMode = this.throttleMode;
-    }
-    this._renderFlightSettings();
-  }
-
-  _renderFlightSettings() {
-    if (this.landingAssistContainer) {
-      this.landingAssistContainer.querySelectorAll('button').forEach((btn) => {
-        const val = btn.dataset.assist === 'true';
-        btn.classList.toggle('active', val === this.autoLandingAssist);
-        btn.onclick = () => {
-          this.applyAutoLandingAssist(val, true);
-          if (this.onNotice) {
-            this.onNotice(`Auto-Safe Landing Assist: ${val ? 'ENABLED (Dampens drift & brakes descent)' : 'DISABLED (Manual touchdown)'}`);
-          }
-        };
-      });
-    }
-
-    if (this.throttleModeContainer) {
-      this.throttleModeContainer.querySelectorAll('button').forEach((btn) => {
-        const mode = btn.dataset.throttle;
-        btn.classList.toggle('active', mode === this.throttleMode);
-        btn.onclick = () => {
-          this.applyThrottleMode(mode, true);
-          if (this.onNotice) {
-            this.onNotice(`Throttle Mode: ${mode === 'persistent' ? 'PERSISTENT (Z/X to adjust, Backspace to cut)' : 'STANDARD (Hold W/S)'}`);
-          }
-        };
-      });
-    }
   }
 
   _renderThemeButtons() {

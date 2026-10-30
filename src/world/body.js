@@ -27,6 +27,7 @@ export class CelestialBody {
     this.description = config.description || '';
 
     this.noise = new SeededNoise(this.seed);
+    this.currentQuality = config.quality || 'high';
     this.group = new THREE.Group();
     this.group.name = this.name;
     this.oceanController = null;
@@ -132,6 +133,82 @@ export class CelestialBody {
     // Sci-fi flora & minerals
     this.decor = populatePlanetDecor(this, this.noise);
     this.group.add(this.decor.group);
+  }
+
+  setQuality(qualityKey = 'high') {
+    const SEGMENTS_BY_QUALITY = {
+      low: this.isMoon ? 28 : 52,
+      medium: this.isMoon ? 36 : 68,
+      high: this.isMoon ? 44 : 88,
+      ultra: this.isMoon ? 56 : 108
+    };
+    const targetSegments = SEGMENTS_BY_QUALITY[qualityKey] || this.segments;
+    if (this.currentQuality === qualityKey && this.terrainMesh) return;
+    this.currentQuality = qualityKey;
+    this.segments = targetSegments;
+    this._rebuildEnvironment();
+  }
+
+  _rebuildEnvironment() {
+    // 1. Terrain Mesh
+    if (this.terrainMesh) {
+      this.group.remove(this.terrainMesh);
+      if (this.terrainMesh.geometry) this.terrainMesh.geometry.dispose();
+      this.terrainMesh = null;
+    }
+    this.terrainMesh = createCubeSphereMesh({
+      segments: this.segments,
+      heightSampler: (nx, ny, nz) => this.getSurfaceRadiusAtDir(nx, ny, nz),
+      colorSampler: (nx, ny, nz, r) => this.sampleBiomeColor(nx, ny, nz, r)
+    });
+    this.group.add(this.terrainMesh);
+
+    // 2. Deep Ocean Mesh
+    if (this.hasOcean) {
+      if (this.oceanMesh) {
+        this.group.remove(this.oceanMesh);
+        if (this.oceanMesh.geometry) this.oceanMesh.geometry.dispose();
+        this.oceanMesh = null;
+      }
+      const oceanSegs = { low: 44, medium: 56, high: 72, ultra: 96 }[this.currentQuality] || 72;
+      this.oceanController = createDeepOceanMesh(this, oceanSegs);
+      if (this.oceanController) {
+        this.oceanMesh = this.oceanController.mesh;
+        this.group.add(this.oceanMesh);
+      }
+    }
+
+    // 3. Decor (Flora, Palms, Crystals, Spores, Kelp)
+    if (this.decor && this.decor.group) {
+      this.group.remove(this.decor.group);
+      this.decor.group.traverse((obj) => {
+        if (obj.isMesh && obj.geometry) obj.geometry.dispose();
+      });
+      this.decor = null;
+    }
+    this.decor = populatePlanetDecor(this, this.noise, this.currentQuality);
+    if (this.decor && this.decor.group) {
+      this.group.add(this.decor.group);
+    }
+  }
+
+  getPolygonCount() {
+    let triangles = 0;
+    let vertices = 0;
+    this.group.traverse((obj) => {
+      if (obj.isMesh && obj.geometry) {
+        const count = obj.count !== undefined ? obj.count : 1;
+        if (obj.geometry.index) {
+          triangles += (obj.geometry.index.count / 3) * count;
+        } else if (obj.geometry.attributes.position) {
+          triangles += (obj.geometry.attributes.position.count / 3) * count;
+        }
+        if (obj.geometry.attributes.position) {
+          vertices += obj.geometry.attributes.position.count * count;
+        }
+      }
+    });
+    return { triangles: Math.round(triangles), vertices: Math.round(vertices) };
   }
 
   updateOcean(time) {

@@ -917,11 +917,11 @@ export class Explorer {
       this.torso.rotation.x = 0.58; // Horizontal swimming tilt
       this.torso.position.y = 1.55;
 
-      // Leg flutter kick with articulated knee flexion
+      // Leg flutter kick with articulated knee flexion (bending backward towards +Z)
       this.leftLeg.rotation.x = -0.35 + stroke * 0.32;
       this.rightLeg.rotation.x = -0.35 - stroke * 0.32;
-      this.leftLowerLegGroup.rotation.x = 0.30 + Math.max(0, -stroke) * 0.55;
-      this.rightLowerLegGroup.rotation.x = 0.30 + Math.max(0, stroke) * 0.55;
+      this.leftLowerLegGroup.rotation.x = -(0.25 + Math.max(0, -stroke) * 0.45);
+      this.rightLowerLegGroup.rotation.x = -(0.25 + Math.max(0, stroke) * 0.45);
 
       // Arm swimming breaststroke / crawl stroke with elbow pull-through
       this.leftArm.rotation.x = 0.65 + stroke * 0.65;
@@ -932,13 +932,13 @@ export class Explorer {
       this.rightForearmGroup.rotation.x = 0.55 + Math.max(0, -stroke) * 0.55;
       this.torso.rotation.y = stroke * 0.10;
     } else if (isBoosting) {
-      // Jetpack flight attitude: legs trailing back, knees slightly bent, arms forward/down
+      // Jetpack flight attitude: legs trailing back, knees soft backward, arms forward/down
       this.torso.rotation.x = 0.08;
       this.torso.position.y = 1.55;
-      this.leftLeg.rotation.x = -0.38;
-      this.rightLeg.rotation.x = -0.38;
-      this.leftLowerLegGroup.rotation.x = 0.25;
-      this.rightLowerLegGroup.rotation.x = 0.25;
+      this.leftLeg.rotation.x = -0.35;
+      this.rightLeg.rotation.x = -0.35;
+      this.leftLowerLegGroup.rotation.x = -0.25;
+      this.rightLowerLegGroup.rotation.x = -0.25;
       this.leftArm.rotation.x = 0.35;
       this.rightArm.rotation.x = 0.35;
       this.leftArm.rotation.z = -0.15;
@@ -950,12 +950,12 @@ export class Explorer {
       // In-Air Dynamic Jump Motion: ascent tuck vs descent reach
       this.torso.position.y = 1.55;
       if (this.jumpPhase === 'ascent') {
-        // High Jump Tuck: knees bent up, thighs forward, arms splayed outward for aerial balance
+        // High Jump Tuck: thighs drive forward/up, knees bend backward under thighs, arms splayed for balance
         this.torso.rotation.x = 0.16;
-        this.leftLeg.rotation.x = -0.45;
-        this.rightLeg.rotation.x = -0.35;
-        this.leftLowerLegGroup.rotation.x = 0.85; // Bending knees in jump
-        this.rightLowerLegGroup.rotation.x = 0.70;
+        this.leftLeg.rotation.x = 0.45;
+        this.rightLeg.rotation.x = 0.35;
+        this.leftLowerLegGroup.rotation.x = -0.85; // Knees flex backward tightly
+        this.rightLowerLegGroup.rotation.x = -0.70;
         this.leftArm.rotation.x = -0.35;
         this.rightArm.rotation.x = -0.35;
         this.leftArm.rotation.z = -0.35;
@@ -963,12 +963,12 @@ export class Explorer {
         this.leftForearmGroup.rotation.x = 0.65; // Bending elbows in jump
         this.rightForearmGroup.rotation.x = 0.65;
       } else {
-        // Descent Reach: legs extend downward reaching for terrain, arms raised for air braking
+        // Descent Reach: legs extend downward reaching for terrain, knees softly prepared, arms raised
         this.torso.rotation.x = 0.06;
-        this.leftLeg.rotation.x = -0.15;
-        this.rightLeg.rotation.x = -0.12;
-        this.leftLowerLegGroup.rotation.x = 0.25;
-        this.rightLowerLegGroup.rotation.x = 0.25;
+        this.leftLeg.rotation.x = 0.12;
+        this.rightLeg.rotation.x = 0.10;
+        this.leftLowerLegGroup.rotation.x = -0.20;
+        this.rightLowerLegGroup.rotation.x = -0.20;
         this.leftArm.rotation.x = -0.55;
         this.rightArm.rotation.x = -0.55;
         this.leftArm.rotation.z = -0.28;
@@ -995,11 +995,11 @@ export class Explorer {
         this.leftLeg.rotation.x = swing * 0.85;
         this.rightLeg.rotation.x = -swing * 0.85;
 
-        // Deep Knee Flexion on Backswing (heel kicks toward glutes up to 85° bend!)
-        const leftKneeBend = swing < 0 ? Math.min(1.5, Math.pow(-swing, 1.2) * 1.5) : Math.max(0.1, swing * 0.25);
-        const rightKneeBend = swing > 0 ? Math.min(1.5, Math.pow(swing, 1.2) * 1.5) : Math.max(0.1, -swing * 0.25);
-        this.leftLowerLegGroup.rotation.x = leftKneeBend;
-        this.rightLowerLegGroup.rotation.x = rightKneeBend;
+        // Deep Knee Flexion on Backswing (heel kicks backward toward glutes up to 85° bend!)
+        const leftKneeBend = swing < 0 ? Math.min(1.5, Math.pow(-swing, 1.2) * 1.5) : Math.max(0.1, (1.0 - swing) * 0.35);
+        const rightKneeBend = swing > 0 ? Math.min(1.5, Math.pow(swing, 1.2) * 1.5) : Math.max(0.1, (1.0 + swing) * 0.35);
+        this.leftLowerLegGroup.rotation.x = -leftKneeBend;
+        this.rightLowerLegGroup.rotation.x = -rightKneeBend;
 
         // 90° Bent Arm Pumping Carriage
         this.leftForearmGroup.rotation.x = 1.35 + Math.sin(this.walkCycle) * 0.15;
@@ -1022,11 +1022,11 @@ export class Explorer {
         this.leftLeg.rotation.x = swing * 0.45;
         this.rightLeg.rotation.x = -swing * 0.45;
 
-        // Natural knee flexion on backswing
+        // Natural knee flexion on backswing (heel kicks backward)
         const leftKneeBend = swing < 0 ? Math.min(0.75, -swing * 0.8) : 0.05;
         const rightKneeBend = swing > 0 ? Math.min(0.75, swing * 0.8) : 0.05;
-        this.leftLowerLegGroup.rotation.x = leftKneeBend;
-        this.rightLowerLegGroup.rotation.x = rightKneeBend;
+        this.leftLowerLegGroup.rotation.x = -leftKneeBend;
+        this.rightLowerLegGroup.rotation.x = -rightKneeBend;
 
         // Relaxed ~30° elbow carry with natural swing
         this.leftForearmGroup.rotation.x = 0.40 + Math.max(0, -swing) * 0.25;
@@ -1041,21 +1041,30 @@ export class Explorer {
       let targetY = 1.55;
       let extraKnee = 0;
       let extraPitch = 0;
+      let extraThigh = 0;
 
       if (this.landingCompression > 0) {
         targetY = 1.55 - this.landingCompression * 0.55;
         extraPitch = this.landingCompression * 0.45;
-        extraKnee = this.landingCompression * 2.2;
+        extraThigh = this.landingCompression * 0.65;
+        extraKnee = -this.landingCompression * 1.85; // Knees flex backward on crouch/landing!
       }
 
       this.torso.position.y = THREE.MathUtils.lerp(this.torso.position.y, targetY, 0.25);
       this.torso.rotation.x = THREE.MathUtils.lerp(this.torso.rotation.x, extraPitch, 0.25);
       this.torso.rotation.y *= 0.82;
 
-      this.leftLeg.rotation.x *= 0.82;
-      this.rightLeg.rotation.x *= 0.82;
+      this.leftLeg.rotation.x = THREE.MathUtils.lerp(this.leftLeg.rotation.x, extraThigh, 0.25);
+      this.rightLeg.rotation.x = THREE.MathUtils.lerp(this.rightLeg.rotation.x, extraThigh, 0.25);
       this.leftLowerLegGroup.rotation.x = THREE.MathUtils.lerp(this.leftLowerLegGroup.rotation.x, extraKnee, 0.25);
       this.rightLowerLegGroup.rotation.x = THREE.MathUtils.lerp(this.rightLowerLegGroup.rotation.x, extraKnee, 0.25);
+
+      this.leftArm.rotation.x *= 0.82;
+      this.rightArm.rotation.x *= 0.82;
+      this.leftArm.rotation.z = THREE.MathUtils.lerp(this.leftArm.rotation.z, -0.04, 0.15);
+      this.rightArm.rotation.z = THREE.MathUtils.lerp(this.rightArm.rotation.z, 0.04, 0.15);
+      this.leftForearmGroup.rotation.x = THREE.MathUtils.lerp(this.leftForearmGroup.rotation.x, 0.25, 0.15);
+      this.rightForearmGroup.rotation.x = THREE.MathUtils.lerp(this.rightForearmGroup.rotation.x, 0.25, 0.15);
 
       this.leftArm.rotation.x *= 0.82;
       this.rightArm.rotation.x *= 0.82;
