@@ -126,11 +126,16 @@
     repair.giveAndInstallAll();
     assert(repair.isShipRepaired() && repair.getStatus().installed === 5, 'Ship becomes repaired when all 5 parts are installed');
 
-    // 5. WebAPK / PWA Manifest unique identity check
+    // 5. WebAPK / PWA Manifest unique identity and raster icons check
     const manifestResp = await fetch('../manifest.webmanifest');
     const manifest = await manifestResp.json();
-    assert(manifest.id === 'p4kk4s4n-aurelia-horizon', 'WebAPK manifest id is uniquely set to p4kk4s4n-aurelia-horizon');
-    assert(manifest.scope === './' && manifest.start_url === './', 'WebAPK manifest scope and start_url are scoped to repo path');
+    assert(manifest.id === '/aurelia-horizon/', 'WebAPK manifest id is uniquely scoped to /aurelia-horizon/');
+    assert(manifest.scope === './' && manifest.start_url === './?source=pwa', 'WebAPK manifest scope and start_url are scoped to repo path with distinct parameter');
+    assert(
+      manifest.icons.some(i => i.sizes === '192x192' && i.type === 'image/png') &&
+      manifest.icons.some(i => i.sizes === '512x512' && i.type === 'image/png'),
+      'WebAPK manifest includes raster PNG icons (192 and 512) required for Google minting server'
+    );
 
     // 6. Settings UI Color Schemes & version.json check
     assert(Object.keys(UI_COLOR_SCHEMES).length >= 5, 'UI_COLOR_SCHEMES provides at least 5 color palettes');
@@ -445,7 +450,7 @@
     swimmer.update(0.5, testInput, { dx: 0, dy: 0, wheel: 0 }, system.allBodies);
     assert(swimmer.oxygen > 98, 'Surfacing explorer rapidly replenishes oxygen reserves');
 
-    // 17. Manual Graphics Quality Settings (settings.js)
+    // 17. Manual Graphics Quality Settings & WebAPK In-App Install
     assert(typeof settingsMgr.applyGraphicsQuality === 'function', 'SettingsManager provides applyGraphicsQuality method');
     settingsMgr.applyGraphicsQuality('low');
     assert(settingsMgr.currentQuality === 'low', 'applyGraphicsQuality sets quality to low');
@@ -453,6 +458,17 @@
     settingsMgr.applyGraphicsQuality('ultra');
     assert(settingsMgr.currentQuality === 'ultra', 'applyGraphicsQuality sets quality to ultra');
     settingsMgr.applyGraphicsQuality('high'); // reset to default
+
+    assert(typeof settingsMgr.setInstallPrompt === 'function', 'SettingsManager provides setInstallPrompt method');
+    assert(typeof settingsMgr.triggerInstallPrompt === 'function', 'SettingsManager provides triggerInstallPrompt method');
+    let fakePromptShown = false;
+    settingsMgr.setInstallPrompt({
+      prompt: () => { fakePromptShown = true; },
+      userChoice: Promise.resolve({ outcome: 'accepted' })
+    });
+    assert(settingsMgr.deferredInstallPrompt !== null, 'setInstallPrompt stores deferred prompt');
+    await settingsMgr.triggerInstallPrompt();
+    assert(fakePromptShown === true, 'triggerInstallPrompt invokes deferred prompt.prompt()');
 
     // 18. Screen-Space Planetary Navigation Markers & Reticles (navMarkers.js)
     const testCamera = new THREE.PerspectiveCamera(65, 1, 0.5, 10000);

@@ -46,6 +46,17 @@ const touchControls = new TouchControlsManager(input, (msg, dur) => hud.showNoti
 const settings = new SettingsManager((msg) => hud.showNotice(msg), touchControls, input);
 settings.setRenderer(renderer);
 
+// WebAPK / PWA installation event listener & prompt capture
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  settings.setInstallPrompt(e);
+});
+
+window.addEventListener('appinstalled', () => {
+  hud.showNotice('Aurelia Horizon WebAPK installed successfully!');
+  settings._checkStandaloneStatus();
+});
+
 const navMarkers = new NavMarkerSystem(camera);
 navMarkers.setBodies(allBodies);
 navMarkers.onSelectTarget = (targetBody) => {

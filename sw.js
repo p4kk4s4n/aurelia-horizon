@@ -1,4 +1,4 @@
-const CACHE_NAME = 'p4kk4s4n-aurelia-horizon-v9';
+const CACHE_NAME = 'p4kk4s4n-aurelia-horizon-v10';
 const ASSETS = [
   './',
   './index.html',
@@ -6,6 +6,8 @@ const ASSETS = [
   './manifest.webmanifest',
   './version.json',
   './icon.svg',
+  './icon-192.png',
+  './icon-512.png',
   './src/main.js',
   './src/input.js',
   './src/world/noise.js',

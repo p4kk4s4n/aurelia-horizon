@@ -100,6 +100,10 @@ export class SettingsManager {
     this.elUpdateStatus = document.getElementById('settings-update-status');
     this.btnCheckUpdate = document.getElementById('btn-check-update');
     this.btnForceRecache = document.getElementById('btn-force-recache');
+    this.btnInstallWebapk = document.getElementById('btn-install-webapk');
+    this.btnQuickInstall = document.getElementById('btn-quick-install-webapk');
+    this.elWebapkStatus = document.getElementById('webapk-install-status');
+    this.deferredInstallPrompt = null;
 
     this.autoScale = localStorage.getItem(STORAGE_AUTOSCALE_KEY) !== 'false';
     const savedScale = parseFloat(localStorage.getItem(STORAGE_SCALE_KEY));
@@ -113,6 +117,7 @@ export class SettingsManager {
     this._renderKeybindings();
     this.applyTheme(this.currentThemeId);
     this._bindEvents();
+    this._checkStandaloneStatus();
     this._initLocalVersionInfo();
 
     if (this.input) {
@@ -464,6 +469,81 @@ export class SettingsManager {
 
     this.btnCheckUpdate?.addEventListener('click', () => this.checkGitHubAndRecache(false));
     this.btnForceRecache?.addEventListener('click', () => this.checkGitHubAndRecache(true));
+    this.btnInstallWebapk?.addEventListener('click', () => this.triggerInstallPrompt());
+    this.btnQuickInstall?.addEventListener('click', () => this.triggerInstallPrompt());
+  }
+
+  _checkStandaloneStatus() {
+    const isStandalone = (typeof window !== 'undefined') &&
+      ((window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator?.standalone === true);
+    if (isStandalone) {
+      if (this.elWebapkStatus) {
+        this.elWebapkStatus.textContent = 'App is running in standalone WebAPK mode.';
+        this.elWebapkStatus.className = 'update-status updated';
+      }
+      if (this.btnInstallWebapk) {
+        this.btnInstallWebapk.textContent = '✓ Running as Installed WebAPK';
+        this.btnInstallWebapk.disabled = true;
+      }
+      if (this.btnQuickInstall) {
+        this.btnQuickInstall.style.display = 'none';
+      }
+    }
+  }
+
+  setInstallPrompt(promptEvent) {
+    this.deferredInstallPrompt = promptEvent;
+    const isStandalone = (typeof window !== 'undefined') &&
+      ((window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator?.standalone === true);
+    if (isStandalone) return;
+
+    if (this.elWebapkStatus) {
+      this.elWebapkStatus.textContent = 'WebAPK installation prompt ready! Tap "Install WebAPK App" to add to your device.';
+      this.elWebapkStatus.className = 'update-status ready';
+    }
+    if (this.btnInstallWebapk) {
+      this.btnInstallWebapk.disabled = false;
+      this.btnInstallWebapk.textContent = '⬇ Install WebAPK App';
+    }
+    if (this.btnQuickInstall) {
+      this.btnQuickInstall.style.display = 'block';
+    }
+    if (this.onNotice) {
+      this.onNotice('WebAPK install prompt ready! Open Settings [P] or tap "Install WebAPK App" to add to home screen.', 6000);
+    }
+  }
+
+  async triggerInstallPrompt() {
+    if (this.deferredInstallPrompt) {
+      try {
+        this.deferredInstallPrompt.prompt();
+        const choice = await this.deferredInstallPrompt.userChoice;
+        if (choice && choice.outcome === 'accepted') {
+          if (this.onNotice) this.onNotice('WebAPK installation accepted! Android will install Aurelia Horizon.');
+          if (this.elWebapkStatus) {
+            this.elWebapkStatus.textContent = 'WebAPK installation accepted! Android is installing the app.';
+            this.elWebapkStatus.className = 'update-status updated';
+          }
+          this.deferredInstallPrompt = null;
+          if (this.btnQuickInstall) this.btnQuickInstall.style.display = 'none';
+        } else {
+          if (this.onNotice) this.onNotice('Installation dismissed.');
+        }
+      } catch (err) {
+        console.warn('triggerInstallPrompt error:', err);
+      }
+    } else {
+      const isStandalone = (typeof window !== 'undefined') &&
+        ((window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator?.standalone === true);
+      if (isStandalone) {
+        if (this.onNotice) this.onNotice('Aurelia Horizon is already running in standalone WebAPK mode!');
+      } else {
+        if (this.onNotice) this.onNotice('In Android Chrome, tap ⋮ -> "Add to Home screen" or "Install App".');
+        if (this.elWebapkStatus) {
+          this.elWebapkStatus.textContent = 'Browser install prompt pending. In Chrome, tap menu (⋮) -> "Add to Home screen" or "Install app".';
+        }
+      }
+    }
   }
 
   toggleModal(open) {

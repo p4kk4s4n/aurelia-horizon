@@ -9,6 +9,9 @@
   <meta name="apple-mobile-web-app-title" content="Aurelia Horizon" />
   <title>Aurelia Horizon — 3D Tropical Alien Planet &amp; Moon Explorer</title>
   <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
+  <link rel="icon" type="image/png" sizes="512x512" href="./icon-512.png" />
+  <link rel="apple-touch-icon" href="./icon-192.png" />
   <link rel="icon" type="image/svg+xml" href="./icon.svg" />
   <link rel="stylesheet" href="./style.css" />
   <script type="importmap">
@@ -79,6 +82,7 @@
           <button id="btn-moon-3" type="button">[5] Moon III</button>
         </div>
         <button id="btn-open-settings" class="settings-trigger-btn" type="button">&#9881; Settings &amp; Updates [P]</button>
+        <button id="btn-quick-install-webapk" type="button" style="display: none; border-color: var(--hud-primary); color: var(--hud-primary);">⬇ Install WebAPK App</button>
       </div>
     </div>
   </aside>
@@ -258,6 +262,18 @@
             <button type="button" class="pill-btn" data-quality="ultra">Ultra</button>
           </div>
         </div>
+      </section>
+
+      <section class="settings-section">
+        <h3>WEBAPK &amp; MOBILE APP INSTALL</h3>
+        <p class="section-desc">Install Aurelia Horizon as a standalone WebAPK on your Android device (or PWA on iOS/Desktop):</p>
+        <div id="webapk-install-status" class="update-status">Ready. Tap Install WebAPK below to add Aurelia Horizon to your device.</div>
+        <div class="update-btn-row">
+          <button id="btn-install-webapk" class="primary-action-btn" type="button">⬇ Install WebAPK App</button>
+        </div>
+        <p class="section-desc" style="margin-top: 10px; font-size: 0.82em; color: var(--hud-muted);">
+          <strong>Note for GitHub Pages users:</strong> If Android Chrome's browser menu claims &quot;Already installed&quot; because you have other apps from <code>p4kk4s4n.github.io</code>, tapping this Install button triggers Android's direct WebAPK minting dialog for Aurelia Horizon.
+        </p>
       </section>
 
       <section class="settings-section">
