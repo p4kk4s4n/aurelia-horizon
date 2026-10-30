@@ -33,11 +33,12 @@ A zero-build, web-based 3D space exploration prototype built with **Three.js (ES
 | **Starfighter (Flight & Orbit)** | Forward / Reverse Thrust | `W` / `S` |
 | | Ascend (Takeoff) / Descend (Land) | `Space` / `Left Ctrl` or `C` |
 | | Strafe Left / Right | `A` / `D` |
-| | Pitch & Yaw / Roll | `Mouse` (or Arrow Keys) / `Q` & `R` |
+| | Pitch & Yaw Steering | `Mouse` (or Arrow Keys / Look Stick) |
+| | **6DoF Axial Roll** | `Q` (Roll Left) / `E` (Roll Right in flight) / Mobile Touch `ROLL` buttons |
 | | **Afterburner Boost** | Hold `Shift` + `W` |
 | | **Arcade Orbit-Assist Toggle** | `O` |
-| | **Fire Twin Plasma Cannons** | `Left Click` or `F` |
-| | Disembark onto Planet or Moon | `E` (when landed or hovering low) |
+| | **Fire Chin Pulse Cannons** | `Left Click` or `F` |
+| | Disembark onto Planet or Moon | `E` (when landed or hovering low < 16 m) |
 | **Quick Test Shortcuts** | Instant Repair + Board / Orbit / Moons | Keys `1`, `2`, `3`, `4`, `5` (or click left HUD buttons) |
 | **Settings & Updates** | Open UI Color Schemes, Touch Controls & GitHub Updater | Key `P` (or click `⚙ Settings & Updates [P]` on HUD) |
 
@@ -49,7 +50,7 @@ A zero-build, web-based 3D space exploration prototype built with **Three.js (ES
   3. **Virtual D-Pad + Look Area**: Tactile 8-way directional pad on left; Touch-drag look trackpad on right.
 - **Context-Aware Action Buttons**:
   - **On-Foot Exploration**: `RUN` (sprint lock toggle), `JUMP / JET` (tap jump / hold jetpack), `ACT [E]` (collect / install / board).
-  - **Starfighter Flight**: `FIRE` (twin plasma cannons), `BOOST` (afterburner), `UP ▲` / `DN ▼` (ascend/descend), `ORBIT [O]` (arcade orbit assist), `EXIT [E]` (disembark).
+  - **Starfighter Flight**: `FIRE` (chin pulse cannons), `BOOST` (afterburner), `UP ▲` / `DN ▼` (ascend/descend), `ROLL ⟲` / `ROLL ⟳` (axial barrel roll), `ORBIT [O]` (arcade orbit assist), `EXIT [E]` (disembark).
 - **Collapsible HUD**: Tap the `−`/`+` button on Telemetry and Radar panels on mobile screens to minimize HUD clutter.
 
 ---
