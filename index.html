@@ -41,122 +41,149 @@
     <div id="hud-target-info" class="reticle-target-info"></div>
   </div>
 
-  <!-- Hostile Fauna Proximity Threat Warning -->
-  <div id="hud-threat-warning" class="threat-warning" style="display: none;">&#9888; HOSTILE FAUNA APPROACHING</div>
-
-  <!-- Top Mission & Compass Bar -->
-  <header id="hud-top">
-    <div class="mission-banner">
-      <span id="hud-mission-badge" class="badge">MISSION</span>
-      <span id="hud-objective-text">Explore Aurelia Prime &amp; collect 5 ship components.</span>
-      <div class="top-quick-btns">
-        <button id="btn-toggle-view" class="top-pill-btn" type="button" title="Toggle First-Person / Third-Person View [V]">1P/3P [V]</button>
-        <button id="btn-open-inventory" class="top-pill-btn" type="button" title="Open Exosuit Inventory, Crafting &amp; Xenology Codex [I]">INV [I]</button>
-      </div>
-    </div>
-    <div id="hud-objective-tasks" class="objective-tasks-bar"></div>
-    <div id="hud-compass" class="compass-bar">Locating beacons...</div>
-  </header>
-
-  <!-- Standalone Vitals HUD Panel (Health/Shield, Starfighter Hull, Boost Energy, Oxygen) -->
-  <section id="hud-vitals" class="vitals-panel pos-top-center" aria-label="Explorer &amp; Ship Vitals">
-    <div id="hud-suit-health-block" class="vitals-block">
-      <div class="vitals-header">
-        <span class="vitals-label">EXOSUIT SHIELD</span>
-        <strong id="hud-suit-health-val" class="vitals-val">100%</strong>
-      </div>
-      <div class="gauge-track"><div id="hud-suit-health-bar" class="gauge-fill" style="background: #00f5d4; width: 100%;"></div></div>
-    </div>
-
-    <div id="hud-ammo-block" class="vitals-block">
-      <div class="vitals-header">
-        <span class="vitals-label">PLASMA AMMO</span>
-        <strong id="hud-ammo-val" class="vitals-val">40 / 60</strong>
-      </div>
-      <div class="gauge-track"><div id="hud-ammo-bar" class="gauge-fill" style="background: #00f5d4; width: 66%;"></div></div>
-    </div>
-
-    <div id="hud-hull-block" class="vitals-block" style="display: none;">
-      <div class="vitals-header">
-        <span class="vitals-label">STARFIGHTER HULL</span>
-        <strong id="hud-hull-val" class="vitals-val">100%</strong>
-      </div>
-      <div class="gauge-track"><div id="hud-hull-bar" class="gauge-fill" style="background: #00f5d4; width: 100%;"></div></div>
-    </div>
-
-    <div id="hud-boost-block" class="vitals-block">
-      <div class="vitals-header">
-        <span class="vitals-label">BOOST / JETPACK</span>
-        <strong id="hud-boost-val" class="vitals-val">100%</strong>
-      </div>
-      <div class="gauge-track"><div id="hud-boost-bar" class="gauge-fill" style="width: 100%;"></div></div>
-    </div>
-
-    <div id="hud-oxygen-block" class="vitals-block" style="display: none;">
-      <div class="vitals-header">
-        <span class="vitals-label">SUIT OXYGEN</span>
-        <strong id="hud-oxygen-val" class="vitals-val">100%</strong>
-      </div>
-      <div class="gauge-track"><div id="hud-oxygen-bar" class="gauge-fill" style="background: #00f5d4; width: 100%;"></div></div>
-    </div>
-  </section>
-
-  <!-- Left Telemetry & Ship Status Panel -->
-  <aside id="hud-left">
-    <div class="panel-header">
-      <div class="panel-title">AURELIA TELEMETRY</div>
-      <button id="btn-toggle-left" class="panel-toggle-btn" type="button" aria-label="Toggle Telemetry">−</button>
-    </div>
-    <div class="panel-body">
-      <div class="stat-row"><span>Mode</span><strong id="hud-mode">ON FOOT</strong></div>
-      <div class="stat-row"><span>Dominant Body</span><strong id="hud-body">Aurelia Prime</strong></div>
-      <div class="stat-row"><span>Phase</span><strong id="hud-phase">SURFACE</strong></div>
-      <div class="stat-row"><span>Altitude</span><strong id="hud-altitude">0 m</strong></div>
-      <div class="stat-row"><span>Velocity</span><strong id="hud-speed">0 m/s</strong></div>
-      <div id="hud-orbit-telemetry" class="orbit-stats-block" style="display: none;">
-        <div class="stat-row"><span>Apoapsis (Ap)</span><strong id="hud-ap">--</strong></div>
-        <div class="stat-row"><span>Periapsis (Pe)</span><strong id="hud-pe">--</strong></div>
-        <div class="stat-row"><span>Eccentricity</span><strong id="hud-ecc">--</strong></div>
-        <div class="stat-row"><span>Flight Computer</span><strong id="hud-sas-mode">STABILITY ASSIST</strong></div>
-        <div class="stat-row"><span>Vertical Speed</span><strong id="hud-vert-spd">--</strong></div>
-        <div class="stat-row"><span>Touchdown Advisory</span><strong id="hud-landing-status">--</strong></div>
-      </div>
-      <div class="stat-row"><span>Minerals Harvested</span><strong id="hud-minerals">0 Ti • 0 Cry</strong></div>
-      <div class="stat-row"><span>Ship Repair</span><strong id="hud-parts">0/5 Installed</strong></div>
-      <div class="stat-row"><span>Moons Landed</span><strong id="hud-moons">0 / 3 Moons Landed</strong></div>
-      <div class="stat-row"><span>Targets Blasted</span><strong id="hud-targets">0 Destroyed</strong></div>
-
-      <div class="quick-actions">
-        <div class="panel-subtitle">FAST TRAVEL &amp; PHASES (KEYS 1-5)</div>
-        <div class="fast-travel-grid">
-          <button id="btn-quick-repair" type="button" title="[1] Aurelia Base Camp (On-Foot)">[1] Base</button>
-          <button id="btn-quick-orbit" type="button" title="[2] Stable Planet Orbit (Flight)">[2] Orbit</button>
-          <button id="btn-moon-1" type="button" title="[3] Moon I — Lumen">[3] M-I</button>
-          <button id="btn-moon-2" type="button" title="[4] Moon II — Pyra">[4] M-II</button>
-          <button id="btn-moon-3" type="button" title="[5] Moon III — Goliath">[5] M-III</button>
+  <!-- Unified Responsive HUD Zone Layer -->
+  <div id="hud-layer">
+    <!-- Top Center Flow Zone (Banner, Tasks, Compass, Center Vitals, Toast Stack, Threat Warning) -->
+    <div id="zone-top-center" class="hud-zone zone-top-center">
+      <!-- Top Mission & Compass Bar -->
+      <header id="hud-top">
+        <div class="mission-banner">
+          <span id="hud-mission-badge" class="badge">MISSION</span>
+          <span id="hud-objective-text">Explore Aurelia Prime &amp; collect 5 ship components.</span>
+          <div class="top-quick-btns">
+            <button id="btn-toggle-view" class="top-pill-btn" type="button" title="Toggle First-Person / Third-Person View [V]">1P/3P [V]</button>
+            <button id="btn-open-inventory" class="top-pill-btn" type="button" title="Open Exosuit Inventory, Crafting &amp; Xenology Codex [I]">INV [I]</button>
+          </div>
         </div>
-        <button id="btn-open-settings" class="settings-trigger-btn" type="button">&#9881; Settings &amp; Updates [P]</button>
-        <button id="btn-quick-install-webapk" type="button" style="display: none; border-color: var(--hud-primary); color: var(--hud-primary);">⬇ Install WebAPK App</button>
-      </div>
-    </div>
-  </aside>
+        <div id="hud-objective-tasks" class="objective-tasks-bar"></div>
+        <div id="hud-compass" class="compass-bar">Locating beacons...</div>
+      </header>
 
-  <!-- Right Orbital Radar Map -->
-  <aside id="hud-right">
-    <div class="panel-header">
-      <div class="panel-title">ORBITAL SYSTEM RADAR</div>
-      <button id="btn-toggle-right" class="panel-toggle-btn" type="button" aria-label="Toggle Radar">−</button>
+      <!-- Standalone Vitals HUD Panel (Mounts here when pos-top-center) -->
+      <section id="hud-vitals" class="vitals-panel pos-top-center" aria-label="Explorer &amp; Ship Vitals">
+        <div id="hud-suit-health-block" class="vitals-block">
+          <div class="vitals-header">
+            <span class="vitals-label">EXOSUIT SHIELD</span>
+            <strong id="hud-suit-health-val" class="vitals-val">100%</strong>
+          </div>
+          <div class="gauge-track"><div id="hud-suit-health-bar" class="gauge-fill" style="background: #00f5d4; width: 100%;"></div></div>
+        </div>
+
+        <div id="hud-ammo-block" class="vitals-block">
+          <div class="vitals-header">
+            <span class="vitals-label">PLASMA AMMO</span>
+            <strong id="hud-ammo-val" class="vitals-val">40 / 60</strong>
+          </div>
+          <div class="gauge-track"><div id="hud-ammo-bar" class="gauge-fill" style="background: #00f5d4; width: 66%;"></div></div>
+        </div>
+
+        <div id="hud-hull-block" class="vitals-block" style="display: none;">
+          <div class="vitals-header">
+            <span class="vitals-label">STARFIGHTER HULL</span>
+            <strong id="hud-hull-val" class="vitals-val">100%</strong>
+          </div>
+          <div class="gauge-track"><div id="hud-hull-bar" class="gauge-fill" style="background: #00f5d4; width: 100%;"></div></div>
+        </div>
+
+        <div id="hud-boost-block" class="vitals-block">
+          <div class="vitals-header">
+            <span class="vitals-label">BOOST / JETPACK</span>
+            <strong id="hud-boost-val" class="vitals-val">100%</strong>
+          </div>
+          <div class="gauge-track"><div id="hud-boost-bar" class="gauge-fill" style="width: 100%;"></div></div>
+        </div>
+
+        <div id="hud-oxygen-block" class="vitals-block" style="display: none;">
+          <div class="vitals-header">
+            <span class="vitals-label">SUIT OXYGEN</span>
+            <strong id="hud-oxygen-val" class="vitals-val">100%</strong>
+          </div>
+          <div class="gauge-track"><div id="hud-oxygen-bar" class="gauge-fill" style="background: #00f5d4; width: 100%;"></div></div>
+        </div>
+      </section>
+
+      <!-- Center Notifications Toast Stack -->
+      <div id="hud-notice" class="toast-stack"></div>
+
+      <!-- Hostile Fauna Proximity Threat Warning -->
+      <div id="hud-threat-warning" class="threat-warning" style="display: none;">&#9888; HOSTILE FAUNA APPROACHING</div>
     </div>
-    <div class="panel-body">
-      <canvas id="radar-canvas" width="176" height="176"></canvas>
-      <div class="radar-legend">
-        <span><i class="dot planet"></i> Aurelia</span>
-        <span><i class="dot m1"></i> Lumen (S)</span>
-        <span><i class="dot m2"></i> Pyra (M)</span>
-        <span><i class="dot m3"></i> Goliath (L)</span>
-      </div>
+
+    <!-- Left Rail Flow Zone (Left Vitals when docked, Telemetry Panel) -->
+    <div id="zone-left" class="hud-zone zone-left">
+      <!-- Left Telemetry & Ship Status Panel -->
+      <aside id="hud-left">
+        <div class="panel-header">
+          <div class="panel-title">AURELIA TELEMETRY</div>
+          <button id="btn-toggle-left" class="panel-toggle-btn" type="button" aria-label="Toggle Telemetry">−</button>
+        </div>
+        <div class="panel-body">
+          <div class="stat-row"><span>Mode</span><strong id="hud-mode">ON FOOT</strong></div>
+          <div class="stat-row"><span>Dominant Body</span><strong id="hud-body">Aurelia Prime</strong></div>
+          <div class="stat-row"><span>Phase</span><strong id="hud-phase">SURFACE</strong></div>
+          <div class="stat-row"><span>Altitude</span><strong id="hud-altitude">0 m</strong></div>
+          <div class="stat-row"><span>Velocity</span><strong id="hud-speed">0 m/s</strong></div>
+          <div id="hud-orbit-telemetry" class="orbit-stats-block" style="display: none;">
+            <div class="stat-row"><span>Apoapsis (Ap)</span><strong id="hud-ap">--</strong></div>
+            <div class="stat-row"><span>Periapsis (Pe)</span><strong id="hud-pe">--</strong></div>
+            <div class="stat-row"><span>Eccentricity</span><strong id="hud-ecc">--</strong></div>
+            <div class="stat-row"><span>Flight Computer</span><strong id="hud-sas-mode">STABILITY ASSIST</strong></div>
+            <div class="stat-row"><span>Vertical Speed</span><strong id="hud-vert-spd">--</strong></div>
+            <div class="stat-row"><span>Touchdown Advisory</span><strong id="hud-landing-status">--</strong></div>
+          </div>
+          <div class="stat-row"><span>Minerals Harvested</span><strong id="hud-minerals">0 Ti • 0 Cry</strong></div>
+          <div class="stat-row"><span>Ship Repair</span><strong id="hud-parts">0/5 Installed</strong></div>
+          <div class="stat-row"><span>Moons Landed</span><strong id="hud-moons">0 / 3 Moons Landed</strong></div>
+          <div class="stat-row"><span>Targets Blasted</span><strong id="hud-targets">0 Destroyed</strong></div>
+
+          <div class="quick-actions">
+            <div class="panel-subtitle">FAST TRAVEL &amp; PHASES (KEYS 1-5)</div>
+            <div class="fast-travel-grid">
+              <button id="btn-quick-repair" type="button" title="[1] Aurelia Base Camp (On-Foot)">[1] Base</button>
+              <button id="btn-quick-orbit" type="button" title="[2] Stable Planet Orbit (Flight)">[2] Orbit</button>
+              <button id="btn-moon-1" type="button" title="[3] Moon I — Lumen">[3] M-I</button>
+              <button id="btn-moon-2" type="button" title="[4] Moon II — Pyra">[4] M-II</button>
+              <button id="btn-moon-3" type="button" title="[5] Moon III — Goliath">[5] M-III</button>
+            </div>
+            <button id="btn-open-settings" class="settings-trigger-btn" type="button">&#9881; Settings &amp; Updates [P]</button>
+            <button id="btn-quick-install-webapk" type="button" style="display: none; border-color: var(--hud-primary); color: var(--hud-primary);">⬇ Install WebAPK App</button>
+          </div>
+        </div>
+      </aside>
     </div>
-  </aside>
+
+    <!-- Right Rail Flow Zone (Right Vitals when docked, Radar Panel) -->
+    <div id="zone-right" class="hud-zone zone-right">
+      <!-- Right Orbital Radar Map -->
+      <aside id="hud-right">
+        <div class="panel-header">
+          <div class="panel-title">ORBITAL SYSTEM RADAR</div>
+          <button id="btn-toggle-right" class="panel-toggle-btn" type="button" aria-label="Toggle Radar">−</button>
+        </div>
+        <div class="panel-body">
+          <canvas id="radar-canvas" width="176" height="176"></canvas>
+          <div class="radar-legend">
+            <span><i class="dot planet"></i> Aurelia</span>
+            <span><i class="dot m1"></i> Lumen (S)</span>
+            <span><i class="dot m2"></i> Pyra (M)</span>
+            <span><i class="dot m3"></i> Goliath (L)</span>
+          </div>
+        </div>
+      </aside>
+    </div>
+
+    <!-- Bottom Center Flow Zone (Controls Guide, Interaction Prompt) -->
+    <div id="zone-bottom-center" class="hud-zone zone-bottom-center">
+      <!-- Bottom Controls Guide -->
+      <footer id="hud-controls">
+        <div><strong>ON FOOT:</strong> [WASD] Move • [Shift] Sprint • [Space] Jump / Hold Jetpack • [Mouse] Look • [E] Collect / Install / Board</div>
+        <div><strong>STARFIGHTER (NEWTONIAN):</strong> [W/S] Thrust • [A/D] Strafe • [Q/E] 6DoF Roll • [Space/Ctrl] Ascend/Descend • [Shift] Afterburner Boost • [O] Cycle SAS Flight Assist • [Click/F] Pulse Cannons • [E] Disembark (Landed)</div>
+      </footer>
+
+      <!-- Interaction Prompt (Elevated cleanly above controls) -->
+      <div id="hud-prompt"></div>
+    </div>
+  </div>
 
   <!-- Mobile & Touchscreen Controls Overlay -->
   <div id="touch-controls" class="touch-overlay">
@@ -208,10 +235,6 @@
       <button id="btn-touch-exit" class="touch-btn action-exit" type="button">EXIT<br><small>DISEMBARK</small></button>
     </div>
   </div>
-
-  <!-- Center Notifications & Interaction Prompt -->
-  <div id="hud-notice"></div>
-  <div id="hud-prompt"></div>
 
   <!-- Interactive Story Dialog & Transmission Comms Container -->
   <div id="story-dialog-container" class="story-dialog-container pos-mid-screen" style="display: none;"></div>
@@ -475,12 +498,6 @@
 
   <!-- Fullscreen 60fps Hyperspace Warp Jump Overlay -->
   <div id="warp-screen-overlay" class="warp-screen-overlay" style="display: none;"></div>
-
-  <!-- Bottom Controls Guide -->
-  <footer id="hud-controls">
-    <div><strong>ON FOOT:</strong> [WASD] Move • [Shift] Sprint • [Space] Jump / Hold Jetpack • [Mouse] Look • [E] Collect / Install / Board</div>
-    <div><strong>STARFIGHTER (NEWTONIAN):</strong> [W/S] Thrust • [A/D] Strafe • [Q/E] 6DoF Roll • [Space/Ctrl] Ascend/Descend • [Shift] Afterburner Boost • [O] Cycle SAS Flight Assist • [Click/F] Pulse Cannons • [E] Disembark (Landed)</div>
-  </footer>
 
   <script type="module" src="./src/main.js"></script>
   <script>

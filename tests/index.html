@@ -54,6 +54,7 @@
     import { EnemyFactionSystem, EnemyPodShip, BugAlienTrooper, EnemyOutpostBase } from '../src/world/enemyFaction.js';
     import { StoryDialogSystem } from '../src/ui/storyDialog.js';
     import { CompletionModal } from '../src/ui/completionModal.js';
+    import { HUD } from '../src/ui/hud.js';
     import { createBasaltNormalMap, createCarbonFiberNormalMap, createMetalPanelsNormalMap, createWaterNormalMap, createNoiseRoughnessMap } from '../src/world/procTextures.js';
     import { PostProcessingManager } from '../src/world/postprocessing.js';
     import { createSkyAndSpaceTargets } from '../src/world/sky.js';
@@ -829,6 +830,8 @@
 
     // Dynamic boost flames
     flightShip.landed = false;
+    flightShip.group.position.set(0, 950, 0);
+    flightShip.velocity.set(0, 0, 0);
     flightShip.boostEnergy = 100;
     testInput.setVirtualKey('ShiftLeft', true);
     testInput.setVirtualKey('KeyW', true);
@@ -1312,10 +1315,10 @@
 
     // 24. v1.18.0 Hard-Surface Space Sim Realism & GitHub Version Manager
     // 24A: Version Resolution & Semantic Versioning Utilities
-    assert(APP_VERSION === '1.18.0', 'APP_VERSION constant is updated to 1.18.0');
-    assert(compareSemver('1.18.0', '1.13.0') === 1, 'compareSemver detects 1.18.0 is newer than 1.13.0');
-    assert(compareSemver('1.13.0', '1.18.0') === -1, 'compareSemver detects 1.13.0 is older than 1.18.0');
-    assert(compareSemver('1.18.0', '1.18.0') === 0, 'compareSemver detects identical versions');
+    assert(APP_VERSION === '1.19.0', 'APP_VERSION constant is updated to 1.19.0');
+    assert(compareSemver('1.19.0', '1.13.0') === 1, 'compareSemver detects 1.19.0 is newer than 1.13.0');
+    assert(compareSemver('1.13.0', '1.19.0') === -1, 'compareSemver detects 1.13.0 is older than 1.19.0');
+    assert(compareSemver('1.19.0', '1.19.0') === 0, 'compareSemver detects identical versions');
     assert(extractVersionFromCommitMessage('feat: v1.18.0 Hard-Surface Realism') === '1.18.0', 'extractVersionFromCommitMessage extracts semver from commit title');
     assert(extractVersionFromCommitMessage('Release 1.17.2 bugfixes') === '1.17.2', 'extractVersionFromCommitMessage extracts version without leading v');
     assert(extractVersionFromCommitMessage('routine maintenance patch') === null, 'extractVersionFromCommitMessage returns null for version-less commits');
@@ -1336,6 +1339,99 @@
     assert(pOcean.material.uniforms.uDeepColor.value.getHexString() === '041524', 'Ocean wave shader utilizes dark oceanic navy (0x041524)');
     assert(system.moons[0].moonTheme.low[0] > 0.2, 'Moon I (Lumen) uses realistic Apollo silicate regolith grey palette');
     assert(system.moons[2].moonTheme.hasRing === true, 'Moon III (Goliath) maintains scarred ice-silicate titan planetary ring');
+
+    // 25. v1.19.0 Responsive HUD Overlap Elimination & Unified Flow Zones
+    // 25A: Toast Notification Stacking & De-duplication
+    const mockNoticeEl = document.createElement('div');
+    mockNoticeEl.id = 'hud-notice';
+    document.body.appendChild(mockNoticeEl);
+
+    const testHud = new HUD();
+    assert(Array.isArray(testHud.noticesList), 'HUD initializes noticesList array for multi-toast stacking');
+
+    testHud.showNotice('Component Found: Thruster Coil');
+    testHud.showNotice('Plasma Ammo Depleted');
+    assert(testHud.noticesList.length === 2, 'HUD stacks multiple distinct notifications simultaneously');
+    assert(mockNoticeEl.querySelectorAll('.toast-pill').length === 2, 'HUD renders corresponding .toast-pill elements in DOM');
+
+    // Duplicate message suppression
+    testHud.showNotice('Plasma Ammo Depleted');
+    assert(testHud.noticesList.length === 2, 'showNotice de-duplicates identical consecutive notification spam');
+
+    // Max 3 stack limit
+    testHud.showNotice('Hostile Bug Trooper approaching!');
+    testHud.showNotice('Shield Damaged -20%');
+    assert(testHud.noticesList.length === 3, 'HUD strictly caps stacked notifications to at most 3 items');
+
+    // Toast decay in update()
+    testHud.update(3.8, {
+      explorer: { velocity: new THREE.Vector3(), altitude: 0, grounded: true },
+      ship: { visitedMoons: new Set(), flightPhase: 'ORBIT', altitude: 100, speed: 0, targetsDestroyed: 0 },
+      repairSystem: { getStatus: () => ({ installed: 0, total: 5, carried: 0 }) }
+    });
+    assert(testHud.noticesList.some(n => n.fading === true || n.remaining <= 0.5), 'update() smoothly fades toasts near expiration');
+    testHud.update(2.0, {
+      explorer: { velocity: new THREE.Vector3(), altitude: 0, grounded: true },
+      ship: { visitedMoons: new Set(), flightPhase: 'ORBIT', altitude: 100, speed: 0, targetsDestroyed: 0 },
+      repairSystem: { getStatus: () => ({ installed: 0, total: 5, carried: 0 }) }
+    });
+    assert(testHud.noticesList.length === 0, 'Expired toast notifications are cleanly pruned from stack');
+
+    // 25B: Story Dialog Screen Clearance (dialog-open state)
+    assert(!document.body.classList.contains('dialog-open'), 'Body does not have dialog-open class when dialog is closed');
+    testStoryDialog.show(campaignSys.chapters[0]);
+    assert(document.body.classList.contains('dialog-open'), 'Showing story dialog toggles body.dialog-open class');
+    testStoryDialog.hide();
+    assert(!document.body.classList.contains('dialog-open'), 'Hiding story dialog removes body.dialog-open class');
+
+    // 25C: Modal Stash & Restore of Active Story Dialog
+    testStoryDialog.show(campaignSys.chapters[0]);
+    assert(testStoryDialog.isOpen === true, 'Story dialog is open');
+    settingsMgr.toggleModal(true);
+    assert(document.body.classList.contains('modal-open'), 'Opening Settings modal sets body.modal-open class');
+    assert(testStoryDialog.container.style.display === 'none', 'Opening Settings modal stashes and conceals active story dialog');
+    settingsMgr.toggleModal(false);
+    assert(!document.body.classList.contains('modal-open'), 'Closing Settings modal removes body.modal-open class');
+    assert(testStoryDialog.container.style.display === 'flex', 'Closing Settings modal restores active story dialog without loss');
+    testStoryDialog.hide();
+
+    // 25D: Inventory Modal Story Dialog Stashing
+    const testInvModal = new InventoryModal({ explorer: ammoExplorer, ship: flightShip });
+    testInvModal.setStoryDialog(testStoryDialog);
+    testStoryDialog.show(campaignSys.chapters[0]);
+    testInvModal.toggle(true);
+    assert(document.body.classList.contains('modal-open'), 'Opening Inventory sets body.modal-open class');
+    assert(testStoryDialog.container.style.display === 'none', 'Opening Inventory stashes active story dialog');
+    testInvModal.toggle(false);
+    assert(!document.body.classList.contains('modal-open'), 'Closing Inventory removes body.modal-open class');
+    assert(testStoryDialog.container.style.display === 'flex', 'Closing Inventory restores active story dialog');
+    testStoryDialog.hide();
+
+    // 25E: Vitals Reparenting into Designated Flow Zones
+    const zoneTop = document.createElement('div'); zoneTop.id = 'zone-top-center';
+    const zoneLeft = document.createElement('div'); zoneLeft.id = 'zone-left';
+    const zoneRight = document.createElement('div'); zoneRight.id = 'zone-right';
+    const hudVitals = document.createElement('div'); hudVitals.id = 'hud-vitals';
+    const leftPanel = document.createElement('div'); leftPanel.id = 'hud-left';
+    const rightPanel = document.createElement('div'); rightPanel.id = 'hud-right';
+    zoneTop.appendChild(mockNoticeEl);
+    zoneLeft.appendChild(leftPanel);
+    zoneRight.appendChild(rightPanel);
+    document.body.appendChild(zoneTop);
+    document.body.appendChild(zoneLeft);
+    document.body.appendChild(zoneRight);
+    document.body.appendChild(hudVitals);
+
+    settingsMgr.applyVitalsPosition('top-left');
+    assert(hudVitals.parentNode === zoneLeft, 'applyVitalsPosition(top-left) dynamically reparents vitals into #zone-left');
+    assert(zoneLeft.firstElementChild === hudVitals, 'In #zone-left, vitals panel precedes telemetry panel');
+
+    settingsMgr.applyVitalsPosition('top-right');
+    assert(hudVitals.parentNode === zoneRight, 'applyVitalsPosition(top-right) dynamically reparents vitals into #zone-right');
+    assert(zoneRight.firstElementChild === hudVitals, 'In #zone-right, vitals panel precedes radar panel');
+
+    settingsMgr.applyVitalsPosition('top-center');
+    assert(hudVitals.parentNode === zoneTop, 'applyVitalsPosition(top-center) dynamically reparents vitals into #zone-top-center');
 
     const summary = `SUMMARY: ${passed} passed, ${failed} failed`;
     logs.push('', summary);

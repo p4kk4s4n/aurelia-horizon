@@ -89,6 +89,7 @@ settings.setExplorer(explorer);
 settings.setShip(ship);
 settings.setStoryDialog(storyDialog);
 settings.setObjectiveSystem(objectiveSystem);
+inventoryModal.setStoryDialog(storyDialog);
 
 // Show introductory story mission dialog on start if not yet completed
 setTimeout(() => {
@@ -717,11 +718,16 @@ if (urlView === 'char_back') {
 const panelLeft = document.getElementById('hud-left');
 const panelRight = document.getElementById('hud-right');
 
-// Auto-collapse telemetry panel on mobile viewports for clean, open screen
+// Auto-collapse side panels on compact viewports for clean, open screen
 if (window.innerWidth <= 960 || window.innerHeight <= 540) {
   panelLeft?.classList.add('collapsed');
   const btn = document.getElementById('btn-toggle-left');
   if (btn) btn.textContent = '+';
+}
+if (window.innerWidth <= 600) {
+  panelRight?.classList.add('collapsed');
+  const btnR = document.getElementById('btn-toggle-right');
+  if (btnR) btnR.textContent = '+';
 }
 
 document.getElementById('btn-toggle-left')?.addEventListener('click', (e) => {

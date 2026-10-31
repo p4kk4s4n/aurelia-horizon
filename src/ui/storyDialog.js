@@ -155,6 +155,7 @@ export class StoryDialogSystem {
     this.container.style.display = 'flex';
     this.container.classList.add('visible');
     this.isOpen = true;
+    document.body.classList.add('dialog-open');
 
     this.playCommsChirp();
     this._startWaveAnimation();
@@ -164,9 +165,27 @@ export class StoryDialogSystem {
     this.container.classList.remove('visible');
     this.container.style.display = 'none';
     this.isOpen = false;
+    document.body.classList.remove('dialog-open');
     if (this.animFrameId) {
       cancelAnimationFrame(this.animFrameId);
       this.animFrameId = null;
+    }
+  }
+
+  stashForModal() {
+    if (this.isOpen) {
+      this.wasOpenBeforeModal = true;
+      this.container.style.display = 'none';
+      document.body.classList.remove('dialog-open');
+    }
+  }
+
+  restoreFromModal() {
+    if (this.wasOpenBeforeModal) {
+      this.wasOpenBeforeModal = false;
+      this.container.style.display = 'flex';
+      this.container.classList.add('visible');
+      document.body.classList.add('dialog-open');
     }
   }
 

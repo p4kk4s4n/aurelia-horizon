@@ -104,6 +104,10 @@ export class InventoryModal {
     });
   }
 
+  setStoryDialog(storyDialog) {
+    this.storyDialog = storyDialog;
+  }
+
   toggle(forceState) {
     this.isOpen = typeof forceState === 'boolean' ? forceState : !this.isOpen;
     if (this.modal) {
@@ -113,10 +117,18 @@ export class InventoryModal {
       if (document.pointerLockElement) {
         try { document.exitPointerLock(); } catch (_) {}
       }
+      document.body.classList.add('modal-open');
+      this.storyDialog?.stashForModal();
       if (this.objectiveSystem) {
         this.objectiveSystem.recordInventoryOpened();
       }
       this.render();
+    } else {
+      const settingsOpen = document.getElementById('settings-modal')?.classList.contains('open');
+      if (!settingsOpen) {
+        document.body.classList.remove('modal-open');
+        this.storyDialog?.restoreFromModal();
+      }
     }
     return this.isOpen;
   }

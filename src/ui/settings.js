@@ -68,7 +68,7 @@ const STORAGE_DIALOG_POS_KEY = 'aurelia_dialog_position';
 const GITHUB_REPO = 'p4kk4s4n/aurelia-horizon';
 const GITHUB_BRANCH = 'main';
 
-export const APP_VERSION = '1.18.0';
+export const APP_VERSION = '1.19.0';
 
 export function compareSemver(vA, vB) {
   if (!vA || !vB) return 0;
@@ -452,6 +452,39 @@ export class SettingsManager {
     if (vitalsEl) {
       vitalsEl.classList.remove('pos-top-center', 'pos-top-left', 'pos-top-right');
       vitalsEl.classList.add(`pos-${pos}`);
+
+      // Dynamically reparent vitals panel into its designated zone for natural, collision-free flex flow
+      if (pos === 'top-center') {
+        const zone = document.getElementById('zone-top-center');
+        const noticeStack = document.getElementById('hud-notice');
+        if (zone) {
+          if (noticeStack && noticeStack.parentNode === zone) {
+            zone.insertBefore(vitalsEl, noticeStack);
+          } else {
+            zone.appendChild(vitalsEl);
+          }
+        }
+      } else if (pos === 'top-left') {
+        const zone = document.getElementById('zone-left');
+        const hudLeft = document.getElementById('hud-left');
+        if (zone) {
+          if (hudLeft && hudLeft.parentNode === zone) {
+            zone.insertBefore(vitalsEl, hudLeft);
+          } else {
+            zone.prepend(vitalsEl);
+          }
+        }
+      } else if (pos === 'top-right') {
+        const zone = document.getElementById('zone-right');
+        const hudRight = document.getElementById('hud-right');
+        if (zone) {
+          if (hudRight && hudRight.parentNode === zone) {
+            zone.insertBefore(vitalsEl, hudRight);
+          } else {
+            zone.prepend(vitalsEl);
+          }
+        }
+      }
     }
     this._renderVitalsSettings();
   }
@@ -831,15 +864,30 @@ export class SettingsManager {
       this.listeningBinding = null;
       this._renderKeybindings();
     }
-    if (!this.modal) return;
+    if (!this.modal) {
+      this.modal = document.getElementById('settings-modal');
+    }
+    if (!this.modal) {
+      this.modal = document.createElement('div');
+      this.modal.id = 'settings-modal';
+      this.modal.className = 'modal-backdrop';
+      document.body.appendChild(this.modal);
+    }
     if (this.isOpen) {
       if (document.pointerLockElement && document.exitPointerLock) {
         try { document.exitPointerLock(); } catch (_) {}
       }
       this._renderKeybindings();
       this.modal.classList.add('open');
+      document.body.classList.add('modal-open');
+      this.storyDialog?.stashForModal();
     } else {
       this.modal.classList.remove('open');
+      const invOpen = document.getElementById('inventory-modal')?.classList.contains('open');
+      if (!invOpen) {
+        document.body.classList.remove('modal-open');
+        this.storyDialog?.restoreFromModal();
+      }
     }
   }
 

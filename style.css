@@ -1,5 +1,6 @@
 :root {
   --ui-scale: 1.0;
+  --touch-clearance: 0px;
   --hud-primary: #00f5d4;
   --hud-secondary: #ff9f1c;
   --hud-bg: rgba(8, 18, 34, 0.84);
@@ -7,6 +8,19 @@
   --hud-text: #e0fbfc;
   --hud-muted: #a9d6e5;
   --hud-compass: #9ef01a;
+
+  /* Global Hierarchical Z-Index Scale (Single Source of Truth) */
+  --z-world-markers: 8;   /* crosshair, 3D world nav markers, flight vectors */
+  --z-hud: 10;            /* permanent HUD layer & panels */
+  --z-toast: 20;          /* notifications toast stack & proximity warnings */
+  --z-touch: 30;          /* mobile touch controls (sticks, action buttons) */
+  --z-dialog: 40;         /* interactive story dialog & comms transmissions */
+  --z-modal: 50;          /* settings & inventory modals */
+  --z-completion: 100;    /* victory debrief modal & hyperspace warp jump */
+}
+
+body.touch-active {
+  --touch-clearance: calc(140px * var(--ui-scale, 1.0));
 }
 
 * {
@@ -36,19 +50,84 @@ html, body {
   touch-action: none;
 }
 
-/* Top Mission & Compass */
-#hud-top {
+/* ==========================================================================
+   Unified Responsive HUD Zone Layer & Flow Containers
+   ========================================================================== */
+#hud-layer {
   position: fixed;
-  top: calc(12px * var(--ui-scale, 1.0));
+  inset: 0;
+  pointer-events: none;
+  z-index: var(--z-hud);
+  overflow: hidden;
+}
+
+.hud-zone {
+  position: absolute;
+  box-sizing: border-box;
+}
+
+/* Top Center Flow: Banner -> Tasks -> Compass -> Vitals -> Toasts -> Threats */
+.zone-top-center {
+  top: max(8px, env(safe-area-inset-top));
   left: 50%;
   transform: translateX(-50%);
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: calc(6px * var(--ui-scale, 1.0));
+  width: min(calc(760px * var(--ui-scale, 1.0)), calc(100vw - 20px));
+  pointer-events: none;
+}
+
+/* Left Rail Flow: Left Vitals (when docked) -> Telemetry Panel */
+.zone-left {
+  top: max(12px, env(safe-area-inset-top));
+  left: max(12px, env(safe-area-inset-left));
+  display: flex;
+  flex-direction: column;
+  gap: calc(8px * var(--ui-scale, 1.0));
+  width: calc(268px * var(--ui-scale, 1.0));
+  max-height: calc(100vh - 24px);
+  pointer-events: none;
+}
+
+/* Right Rail Flow: Right Vitals (when docked) -> Radar Panel */
+.zone-right {
+  top: max(12px, env(safe-area-inset-top));
+  right: max(12px, env(safe-area-inset-right));
+  display: flex;
+  flex-direction: column;
+  gap: calc(8px * var(--ui-scale, 1.0));
+  width: calc(200px * var(--ui-scale, 1.0));
+  max-height: calc(100vh - 24px);
+  pointer-events: none;
+}
+
+/* Bottom Center Flow: Controls Guide -> Interaction Prompt */
+.zone-bottom-center {
+  bottom: max(8px, env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: calc(8px * var(--ui-scale, 1.0));
+  width: min(calc(840px * var(--ui-scale, 1.0)), 96vw);
+  pointer-events: none;
+}
+
+/* Top Mission & Compass */
+#hud-top {
+  position: relative;
+  top: auto;
+  left: auto;
+  transform: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   gap: calc(5px * var(--ui-scale, 1.0));
   pointer-events: none;
-  z-index: 10;
-  width: min(calc(760px * var(--ui-scale, 1.0)), 92vw);
+  width: 100%;
 }
 
 .mission-banner {
@@ -138,16 +217,15 @@ html, body {
 
 /* Left Telemetry Panel */
 #hud-left {
-  position: fixed;
-  top: calc(14px * var(--ui-scale, 1.0));
-  left: calc(14px * var(--ui-scale, 1.0));
-  width: calc(268px * var(--ui-scale, 1.0));
+  position: relative;
+  width: 100%;
   background: var(--hud-bg);
   border: 1px solid var(--hud-border);
   border-radius: 10px;
   padding: calc(10px * var(--ui-scale, 1.0)) calc(12px * var(--ui-scale, 1.0));
-  z-index: 10;
   backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  pointer-events: auto;
   transition: width 0.2s, max-height 0.2s;
 }
 
@@ -243,8 +321,7 @@ html, body {
 
 /* Standalone Vitals HUD Panel */
 .vitals-panel {
-  position: fixed;
-  z-index: 25;
+  position: relative;
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -256,8 +333,8 @@ html, body {
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   box-shadow: 0 4px 18px rgba(0, 0, 0, 0.45);
-  transition: top 0.25s ease, left 0.25s ease, right 0.25s ease, transform 0.25s ease;
   pointer-events: auto;
+  box-sizing: border-box;
 }
 
 .vitals-block {
@@ -299,37 +376,30 @@ html, body {
   overflow: hidden;
 }
 
-/* Position: Top Center */
+/* Position: Top Center (Flows naturally in #zone-top-center) */
 .vitals-panel.pos-top-center {
-  top: calc(56px * var(--ui-scale, 1.0));
-  left: 50%;
-  transform: translateX(-50%);
-  right: auto;
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  width: auto;
+  margin: 0 auto;
 }
 
-/* Position: Top Left */
-.vitals-panel.pos-top-left {
-  top: calc(14px * var(--ui-scale, 1.0));
-  left: calc(14px * var(--ui-scale, 1.0));
-  transform: none;
-  right: auto;
-}
-
-/* Position: Top Right */
+/* Position: Top Left / Top Right (Flows naturally in side rails above panels) */
+.vitals-panel.pos-top-left,
 .vitals-panel.pos-top-right {
-  top: calc(14px * var(--ui-scale, 1.0));
-  right: calc(14px * var(--ui-scale, 1.0));
-  left: auto;
-  transform: none;
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  width: 100%;
+  gap: calc(6px * var(--ui-scale, 1.0));
+  padding: calc(6px * var(--ui-scale, 1.0)) calc(8px * var(--ui-scale, 1.0));
 }
 
-/* Offset adjacent panels when vitals docked left or right */
-body[data-vitals-pos="top-left"] #hud-left {
-  top: calc(84px * var(--ui-scale, 1.0));
-}
-
-body[data-vitals-pos="top-right"] #hud-right {
-  top: calc(84px * var(--ui-scale, 1.0));
+.vitals-panel.pos-top-left .vitals-block,
+.vitals-panel.pos-top-right .vitals-block {
+  min-width: 0;
+  max-width: 100%;
 }
 
 .quick-actions {
@@ -396,18 +466,18 @@ body[data-vitals-pos="top-right"] #hud-right {
 
 /* Right Orbital Radar */
 #hud-right {
-  position: fixed;
-  top: calc(14px * var(--ui-scale, 1.0));
-  right: calc(14px * var(--ui-scale, 1.0));
-  width: calc(204px * var(--ui-scale, 1.0));
+  position: relative;
+  width: 100%;
   background: var(--hud-bg);
   border: 1px solid var(--hud-border);
   border-radius: 10px;
   padding: calc(10px * var(--ui-scale, 1.0));
-  z-index: 10;
   display: flex;
   flex-direction: column;
   align-items: center;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  pointer-events: auto;
   transition: width 0.2s;
 }
 
@@ -543,21 +613,26 @@ body[data-vitals-pos="top-right"] #hud-right {
   left: 50%;
   transform: translateX(-50%);
   white-space: nowrap;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: 11px;
   font-weight: 700;
-  background: rgba(4, 12, 24, 0.85);
+  background: rgba(4, 12, 24, 0.88);
   border: 1px solid var(--hud-border);
   border-radius: 4px;
   padding: 2px 8px;
   color: var(--hud-text);
+  pointer-events: none;
   display: none;
+  text-align: center;
 }
 
 .threat-warning {
-  position: fixed;
-  top: calc(118px * var(--ui-scale, 1.0));
-  left: 50%;
-  transform: translateX(-50%);
+  position: relative;
+  top: auto;
+  left: auto;
+  transform: none;
   background: rgba(217, 4, 41, 0.88);
   border: 1.5px solid #ffbe0b;
   color: #ffffff;
@@ -566,9 +641,10 @@ body[data-vitals-pos="top-right"] #hud-right {
   letter-spacing: 0.06em;
   padding: 5px 16px;
   border-radius: 999px;
-  z-index: 14;
+  z-index: var(--z-toast);
   pointer-events: none;
   box-shadow: 0 0 18px rgba(255, 77, 109, 0.75);
+  margin: 0 auto;
 }
 
 /* Navigation Markers & Off-Screen Edge Indicators */
@@ -576,7 +652,7 @@ body[data-vitals-pos="top-right"] #hud-right {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 9;
+  z-index: var(--z-world-markers);
 }
 
 .nav-marker {
@@ -682,36 +758,52 @@ body[data-vitals-pos="top-right"] #hud-right {
   filter: drop-shadow(0 0 6px #ff9f1c);
 }
 
-/* Center Notifications & Prompt */
+/* Center Notifications Toast Stack & Interaction Prompt */
 #hud-notice {
-  position: fixed;
-  top: calc(85px * var(--ui-scale, 1.0));
-  left: 50%;
-  transform: translateX(-50%);
+  position: relative;
+  top: auto;
+  left: auto;
+  transform: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(5px * var(--ui-scale, 1.0));
+  pointer-events: none;
+  z-index: var(--z-toast);
+  width: 100%;
+}
+
+.toast-pill {
   background: var(--hud-secondary);
   color: #050a14;
   font-weight: 700;
   font-size: calc(12.5px * var(--ui-scale, 1.0));
   padding: calc(6px * var(--ui-scale, 1.0)) calc(16px * var(--ui-scale, 1.0));
   border-radius: 999px;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.25s ease;
-  z-index: 12;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
   max-width: min(calc(600px * var(--ui-scale, 1.0)), 90vw);
   text-align: center;
+  opacity: 0;
+  transform: translateY(-8px) scale(0.95);
+  transition: opacity 0.22s ease, transform 0.22s ease;
 }
 
-#hud-notice.visible {
+.toast-pill.visible {
   opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.toast-pill.fade-out {
+  opacity: 0;
+  transform: translateY(-4px) scale(0.95);
+  transition: opacity 0.35s ease, transform 0.35s ease;
 }
 
 #hud-prompt {
-  position: fixed;
-  bottom: calc(72px * var(--ui-scale, 1.0));
-  left: 50%;
-  transform: translateX(-50%);
+  position: relative;
+  bottom: auto;
+  left: auto;
+  transform: none;
   background: var(--hud-primary);
   color: #04101e;
   font-weight: 700;
@@ -722,7 +814,7 @@ body[data-vitals-pos="top-right"] #hud-right {
   cursor: pointer;
   opacity: 0;
   transition: opacity 0.2s ease, transform 0.1s;
-  z-index: 12;
+  z-index: var(--z-hud);
   max-width: min(calc(620px * var(--ui-scale, 1.0)), 90vw);
   text-align: center;
 }
@@ -732,7 +824,7 @@ body[data-vitals-pos="top-right"] #hud-right {
 }
 
 #hud-prompt:active {
-  transform: translateX(-50%) scale(0.96);
+  transform: scale(0.96);
 }
 
 /* ---------------------------------------------------- */
@@ -742,7 +834,7 @@ body[data-vitals-pos="top-right"] #hud-right {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 25;
+  z-index: var(--z-touch);
   display: none;
   opacity: 1;
   transition: opacity 0.45s ease-out;
@@ -1012,7 +1104,7 @@ body[data-vitals-pos="top-right"] #hud-right {
   display: none;
   align-items: center;
   justify-content: center;
-  z-index: 50;
+  z-index: var(--z-modal);
   padding: 16px;
 }
 
@@ -1621,10 +1713,7 @@ body[data-vitals-pos="top-right"] #hud-right {
 
 /* Bottom Controls Footer */
 #hud-controls {
-  position: fixed;
-  bottom: 10px;
-  left: 50%;
-  transform: translateX(-50%);
+  position: relative;
   background: var(--hud-bg);
   border: 1px solid var(--hud-border);
   border-radius: 8px;
@@ -1635,13 +1724,22 @@ body[data-vitals-pos="top-right"] #hud-right {
   flex-direction: column;
   gap: 2px;
   text-align: center;
-  z-index: 10;
+  z-index: var(--z-hud);
   pointer-events: none;
-  width: min(920px, 95vw);
+  width: 100%;
 }
 
 .touch-overlay.visible ~ #hud-controls,
-body.touch-active #hud-controls {
+body.touch-active #hud-controls,
+body.dialog-open #hud-controls {
+  display: none !important;
+}
+
+body.dialog-open #hud-prompt {
+  display: none !important;
+}
+
+body.modal-open #story-dialog-container {
   display: none !important;
 }
 
@@ -1652,9 +1750,28 @@ body.touch-active #hud-controls {
   #hud-controls {
     display: none !important;
   }
-  #hud-top {
-    top: calc(5px * var(--ui-scale, 1.0));
-    width: min(calc(480px * var(--ui-scale, 1.0)), 96vw);
+  .zone-top-center {
+    width: min(calc(540px * var(--ui-scale, 1.0)), calc(100vw - 12px));
+    gap: calc(4px * var(--ui-scale, 1.0));
+  }
+  .zone-left {
+    top: max(8px, env(safe-area-inset-top));
+    left: max(6px, env(safe-area-inset-left));
+    width: min(calc(195px * var(--ui-scale, 1.0)), 46vw);
+    max-height: calc(100vh - 80px);
+  }
+  .zone-right {
+    top: max(8px, env(safe-area-inset-top));
+    right: max(6px, env(safe-area-inset-right));
+    width: calc(125px * var(--ui-scale, 1.0));
+    max-height: calc(100vh - 80px);
+  }
+  .zone-bottom-center {
+    width: min(calc(540px * var(--ui-scale, 1.0)), 96vw);
+  }
+  body.dialog-open #hud-left,
+  body.dialog-open #hud-right {
+    display: none !important;
   }
   .mission-banner {
     padding: calc(3px * var(--ui-scale, 1.0)) calc(8px * var(--ui-scale, 1.0));
@@ -1665,17 +1782,11 @@ body.touch-active #hud-controls {
     padding: calc(2px * var(--ui-scale, 1.0)) calc(8px * var(--ui-scale, 1.0));
   }
   #hud-left {
-    top: calc(48px * var(--ui-scale, 1.0));
-    left: calc(6px * var(--ui-scale, 1.0));
-    width: min(calc(195px * var(--ui-scale, 1.0)), 46vw);
     max-height: calc(100vh - 110px);
     overflow-y: auto;
     padding: calc(6px * var(--ui-scale, 1.0)) calc(8px * var(--ui-scale, 1.0));
   }
   #hud-right {
-    top: calc(48px * var(--ui-scale, 1.0));
-    right: calc(6px * var(--ui-scale, 1.0));
-    width: calc(125px * var(--ui-scale, 1.0));
     padding: calc(6px * var(--ui-scale, 1.0));
   }
   #radar-canvas {
@@ -1695,15 +1806,14 @@ body.touch-active #hud-controls {
     font-size: calc(9.5px * var(--ui-scale, 1.0));
   }
   #hud-prompt {
-    bottom: auto;
-    top: calc(72px * var(--ui-scale, 1.0));
     max-width: min(calc(420px * var(--ui-scale, 1.0)), 88vw);
     font-size: calc(11px * var(--ui-scale, 1.0));
     padding: calc(4px * var(--ui-scale, 1.0)) calc(12px * var(--ui-scale, 1.0));
   }
   #hud-notice {
-    top: calc(106px * var(--ui-scale, 1.0));
     max-width: min(calc(420px * var(--ui-scale, 1.0)), 88vw);
+  }
+  .toast-pill {
     font-size: calc(10.5px * var(--ui-scale, 1.0));
     padding: calc(4px * var(--ui-scale, 1.0)) calc(10px * var(--ui-scale, 1.0));
   }
@@ -1767,18 +1877,45 @@ body.touch-active #hud-controls {
 
 /* Specific Mobile Portrait Overrides */
 @media (max-width: 600px) and (orientation: portrait) {
-  #hud-top {
-    width: 95vw;
+  .zone-top-center {
+    width: calc(100vw - 12px);
   }
-  #hud-left {
-    top: calc(54px * var(--ui-scale, 1.0));
-    left: calc(6px * var(--ui-scale, 1.0));
-    width: min(calc(185px * var(--ui-scale, 1.0)), 48vw);
+  .vitals-panel.pos-top-center {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+    gap: calc(3px * var(--ui-scale, 1.0)) calc(6px * var(--ui-scale, 1.0));
+    padding: calc(4px * var(--ui-scale, 1.0)) calc(6px * var(--ui-scale, 1.0));
   }
-  #hud-right {
-    top: calc(54px * var(--ui-scale, 1.0));
-    right: calc(6px * var(--ui-scale, 1.0));
-    width: calc(115px * var(--ui-scale, 1.0));
+  .vitals-panel.pos-top-center .vitals-block {
+    min-width: 0;
+    max-width: 100%;
+  }
+  .zone-left {
+    top: auto;
+    bottom: calc(155px * var(--ui-scale, 1.0));
+    left: max(6px, env(safe-area-inset-left));
+    width: auto;
+    max-width: 50vw;
+    z-index: 22;
+  }
+  .zone-right {
+    top: auto;
+    bottom: calc(155px * var(--ui-scale, 1.0));
+    right: max(6px, env(safe-area-inset-right));
+    width: auto;
+    max-width: 45vw;
+    z-index: 22;
+  }
+  #hud-left.collapsed,
+  #hud-right.collapsed {
+    width: auto;
+    padding: 3px 8px;
+    font-size: 10px;
+  }
+  #hud-left.collapsed .panel-title,
+  #hud-right.collapsed .panel-title {
+    font-size: 9px;
   }
   #radar-canvas {
     width: calc(88px * var(--ui-scale, 1.0));
@@ -1803,7 +1940,7 @@ body.touch-active #hud-controls {
    ========================================================================== */
 .story-dialog-container {
   position: fixed;
-  z-index: 60;
+  z-index: var(--z-dialog);
   display: flex;
   flex-direction: column;
   transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
@@ -1813,26 +1950,26 @@ body.touch-active #hud-controls {
 /* Mid Screen (Cinematic Center Format) */
 .story-dialog-container.pos-mid-screen {
   left: 50%;
-  bottom: calc(16vh * var(--ui-scale, 1.0));
+  bottom: calc(16vh * var(--ui-scale, 1.0) + var(--touch-clearance));
   transform: translateX(-50%);
-  width: min(calc(660px * var(--ui-scale, 1.0)), 92vw);
+  width: min(calc(660px * var(--ui-scale, 1.0)), calc(100vw - 24px));
 }
 
 /* Bottom Left */
 .story-dialog-container.pos-bottom-left {
-  left: calc(20px * var(--ui-scale, 1.0));
-  bottom: calc(24px * var(--ui-scale, 1.0));
+  left: max(16px, env(safe-area-inset-left));
+  bottom: calc(max(20px, env(safe-area-inset-bottom)) + var(--touch-clearance));
   transform: none;
-  width: min(calc(460px * var(--ui-scale, 1.0)), 88vw);
+  width: min(calc(460px * var(--ui-scale, 1.0)), calc(100vw - 32px));
 }
 
 /* Bottom Right */
 .story-dialog-container.pos-bottom-right {
-  right: calc(20px * var(--ui-scale, 1.0));
-  bottom: calc(24px * var(--ui-scale, 1.0));
+  right: max(16px, env(safe-area-inset-right));
+  bottom: calc(max(20px, env(safe-area-inset-bottom)) + var(--touch-clearance));
   left: auto;
   transform: none;
-  width: min(calc(460px * var(--ui-scale, 1.0)), 88vw);
+  width: min(calc(460px * var(--ui-scale, 1.0)), calc(100vw - 32px));
 }
 
 .story-dialog-card {
@@ -1845,6 +1982,7 @@ body.touch-active #hud-controls {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  max-height: calc(85vh - var(--touch-clearance));
   animation: dialogCardIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -1913,6 +2051,8 @@ body.touch-active #hud-controls {
   display: flex;
   flex-direction: column;
   gap: calc(8px * var(--ui-scale, 1.0));
+  overflow-y: auto;
+  max-height: calc(65vh - var(--touch-clearance));
 }
 
 .speaker-row {
@@ -2158,7 +2298,7 @@ body.touch-active #hud-controls {
   left: 0;
   width: 100vw;
   height: 100vh;
-  z-index: 100;
+  z-index: var(--z-completion);
   background: #040711;
   display: flex;
   flex-direction: column;

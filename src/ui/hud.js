@@ -50,6 +50,7 @@ export class HUD {
 
     this.noticeTimer = 0;
     this.hitmarkerTimer = 0;
+    this.noticesList = [];
   }
 
   triggerHitmarker(duration = 0.22) {
@@ -67,9 +68,44 @@ export class HUD {
 
   showNotice(text, duration = 4.0) {
     if (!this.elNotice) return;
-    this.elNotice.textContent = text;
-    this.elNotice.classList.add('visible');
+
+    // Avoid duplicate spam: refresh remaining duration if identical to latest
+    if (this.noticesList.length > 0) {
+      const latest = this.noticesList[this.noticesList.length - 1];
+      if (latest.text === text && !latest.fading) {
+        latest.remaining = duration;
+        return;
+      }
+    }
+
+    // Limit maximum stacked toasts to 3: drop the oldest if at capacity
+    while (this.noticesList.length >= 3) {
+      const oldest = this.noticesList.shift();
+      if (oldest.el && oldest.el.parentNode) {
+        oldest.el.remove();
+      }
+    }
+
+    const pill = document.createElement('div');
+    pill.className = 'toast-pill';
+    pill.textContent = text;
+    this.elNotice.appendChild(pill);
+
+    // Trigger smooth entrance animation
+    requestAnimationFrame(() => {
+      pill.classList.add('visible');
+    });
+
+    this.noticesList.push({
+      text,
+      duration,
+      remaining: duration,
+      el: pill,
+      fading: false
+    });
+
     this.noticeTimer = duration;
+    this.elNotice.classList.add('visible');
   }
 
   update(dt, state) {
@@ -96,7 +132,29 @@ export class HUD {
       }
     }
 
-    if (this.noticeTimer > 0) {
+    if (this.noticesList.length > 0) {
+      for (let i = this.noticesList.length - 1; i >= 0; i--) {
+        const item = this.noticesList[i];
+        item.remaining -= dt;
+        if (item.remaining <= 0.35 && !item.fading) {
+          item.fading = true;
+          if (item.el) {
+            item.el.classList.add('fade-out');
+            item.el.classList.remove('visible');
+          }
+        }
+        if (item.remaining <= 0) {
+          if (item.el && item.el.parentNode) {
+            item.el.remove();
+          }
+          this.noticesList.splice(i, 1);
+        }
+      }
+      this.noticeTimer = this.noticesList.length > 0 ? this.noticesList[0].remaining : 0;
+      if (this.noticesList.length === 0 && this.elNotice) {
+        this.elNotice.classList.remove('visible');
+      }
+    } else if (this.noticeTimer > 0) {
       this.noticeTimer -= dt;
       if (this.noticeTimer <= 0 && this.elNotice) {
         this.elNotice.classList.remove('visible');
@@ -320,12 +378,15 @@ export class HUD {
       this.elCompass.textContent = compassText || '';
     }
 
-    this._drawOrbitalRadar(mode === 'PILOTING' ? ship.group.position : explorer.group.position, planet, moons, ship);
+    const actorPos = mode === 'PILOTING' ? ship?.group?.position : explorer?.group?.position;
+    if (actorPos && planet && moons) {
+      this._drawOrbitalRadar(actorPos, planet, moons, ship);
+    }
   }
 
   _drawOrbitalRadar(actorPos, planet, moons, ship) {
     const ctx = this.radarCtx;
-    if (!ctx) return;
+    if (!ctx || !actorPos || !planet || !moons) return;
     const w = this.radarCanvas.width;
     const h = this.radarCanvas.height;
     const cx = w / 2;
