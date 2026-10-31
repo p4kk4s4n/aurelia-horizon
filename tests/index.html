@@ -895,6 +895,122 @@
     const ch5 = objSys.chapters.find(c => c.id === 'ch5_crimson_hive');
     assert(ch5.tasks.every(t => t.isDone(objSys.stats)), 'Phase V tasks complete when 3 bug aliens defeated and 3 pods destroyed');
 
+    // 21G: v1.14.0 Wasp-Warrior Model, Animations & Solid Crater-Crystal Hive Base
+    // 1. Guaranteed Dry Highland Placement (never over water)
+    const outpost = enemySystem.outpost;
+    const outpostDir = outpost.direction;
+    const seaLevelR = system.planet.seaLevelRadius;
+    const centerElev = system.planet.getSurfaceRadiusAtDir(outpostDir.x, outpostDir.y, outpostDir.z);
+    assert(centerElev >= seaLevelR + 8.0, `Hive Base center is located on high dry land (${(centerElev - seaLevelR).toFixed(1)}m above sea level)`);
+
+    // Verify 24 perimeter sample points at radii 12m, 24m, and 38m are all strictly above sea level
+    const refUp = Math.abs(outpostDir.y) < 0.95 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0);
+    const rightTangent = new THREE.Vector3().crossVectors(outpostDir, refUp).normalize();
+    const fwdTangent = new THREE.Vector3().crossVectors(rightTangent, outpostDir).normalize();
+    let allPointsDry = true;
+    for (const rad of [12, 24, 38]) {
+      for (let i = 0; i < 8; i++) {
+        const a = (i * Math.PI * 2) / 8;
+        const offset = rightTangent.clone().multiplyScalar(Math.cos(a) * rad)
+          .add(fwdTangent.clone().multiplyScalar(Math.sin(a) * rad));
+        const samplePos = outpostDir.clone().multiplyScalar(system.planet.radius).add(offset);
+        const sDir = samplePos.clone().normalize();
+        const r = system.planet.getSurfaceRadiusAtDir(sDir.x, sDir.y, sDir.z);
+        if (r < seaLevelR + 6.0) allPointsDry = false;
+      }
+    }
+    assert(allPointsDry === true, 'All 24 sample points across base & patrol perimeter (radius 38m) are strictly on dry land (>6m above water)');
+
+    // 2. Walkable Multi-Tiered Floor Elevation (getFloorRadius)
+    const baseElev = outpost.baseSurfaceRadius;
+    // Front Ramp (local z = 22m)
+    const rampLocal = new THREE.Vector3(0, 0, 22);
+    const rampWorld = outpost.group.localToWorld(rampLocal.clone());
+    const rampFloorR = outpost.getFloorRadius(rampWorld);
+    assert(rampFloorR > baseElev && rampFloorR < baseElev + 2.0, 'Front Entry Ramp provides smooth slope elevation from ground to plaza');
+
+    // Lower Entry Plaza (local z = 12m)
+    const plazaLocal = new THREE.Vector3(0, 2.0, 12);
+    const plazaWorld = outpost.group.localToWorld(plazaLocal.clone());
+    const plazaFloorR = outpost.getFloorRadius(plazaWorld);
+    assert(Math.abs(plazaFloorR - (baseElev + 2.0)) < 1e-4, 'Lower Entry Plaza provides walkable deck elevation at y = +2.0m');
+
+    // Grand Central Staircase (local z = 3m)
+    const stairLocal = new THREE.Vector3(0, 5.0, 3);
+    const stairWorld = outpost.group.localToWorld(stairLocal.clone());
+    const stairFloorR = outpost.getFloorRadius(stairWorld);
+    assert(stairFloorR > baseElev + 2.0 && stairFloorR < baseElev + 8.5, 'Grand Central Staircase provides smooth ascending elevation (y = 2.0m to 8.5m)');
+
+    // Upper Sanctum Terrace (local z = -8m)
+    const terraceLocal = new THREE.Vector3(0, 8.5, -8);
+    const terraceWorld = outpost.group.localToWorld(terraceLocal.clone());
+    const terraceFloorR = outpost.getFloorRadius(terraceWorld);
+    assert(Math.abs(terraceFloorR - (baseElev + 8.5)) < 1e-4, 'Upper Sanctum Terrace provides walkable deck elevation at y = +8.5m');
+
+    // 3. Solid 3D Obstacle Collision (resolveCollision)
+    // Central Power Crystal collision
+    const insideCrystalLocal = new THREE.Vector3(0, 12.0, -6.5);
+    const insideCrystalWorld = outpost.group.localToWorld(insideCrystalLocal.clone());
+    const crystalCollided = outpost.resolveCollision(insideCrystalWorld, 0.55);
+    const pushedCrystalLocal = outpost.group.worldToLocal(insideCrystalWorld.clone());
+    const distToCrystalCenter = Math.hypot(pushedCrystalLocal.x - 0, pushedCrystalLocal.z - (-6.5));
+    assert(crystalCollided === true && distToCrystalCenter >= 4.9, 'resolveCollision pushes entities out of Giant Central Power Crystal');
+
+    // Conduit Pipe collision alongside stairs
+    const insidePipeLocal = new THREE.Vector3(3.7, 5.0, 3.0);
+    const insidePipeWorld = outpost.group.localToWorld(insidePipeLocal.clone());
+    const pipeCollided = outpost.resolveCollision(insidePipeWorld, 0.55);
+    const pushedPipeLocal = outpost.group.worldToLocal(insidePipeWorld.clone());
+    assert(pipeCollided === true && Math.abs(pushedPipeLocal.x - 3.7) >= 1.15, 'resolveCollision blocks entities from walking through staircase conduit pipes');
+
+    // Terrace Cliff Face collision (walking into cliff instead of stairs)
+    const insideCliffLocal = new THREE.Vector3(8.0, 4.0, 7.2);
+    const insideCliffWorld = outpost.group.localToWorld(insideCliffLocal.clone());
+    const cliffCollided = outpost.resolveCollision(insideCliffWorld, 0.55);
+    const pushedCliffLocal = outpost.group.worldToLocal(insideCliffWorld.clone());
+    assert(cliffCollided === true && pushedCliffLocal.z >= 7.95, 'resolveCollision blocks entities from walking through vertical terrace cliff face');
+
+    // 4. Explorer stands solidly on Outpost Platform without sinking
+    const outpostExplorer = new Explorer(mockScene);
+    outpostExplorer.spawnOnBody(system.planet, outpostDir);
+    // Move explorer onto lower plaza
+    outpostExplorer.group.position.copy(plazaWorld);
+    outpostExplorer.update(0.016, testInput, { dx: 0, dy: 0, wheel: 0 }, [system.planet]);
+    const explorerDist = outpostExplorer.group.position.distanceTo(system.planet.getWorldPosition());
+    assert(explorerDist >= baseElev + 2.0, 'Explorer stands firmly on Outpost lower plaza without sinking into terrain');
+
+    // 5. BugAlienTrooper Wasp-Warrior Model & Animations
+    const waspWarrior = new BugAlienTrooper('test_wasp', system.planet, outpostDir, 0, 18.0);
+    assert(waspWarrior.headGroup !== undefined, 'BugAlienTrooper has dedicated headGroup');
+    assert(waspWarrior.leftMandible !== undefined && waspWarrior.rightMandible !== undefined, 'BugAlienTrooper has articulated pincer mandibles');
+    assert(waspWarrior.leftAntenna !== undefined && waspWarrior.rightAntenna !== undefined, 'BugAlienTrooper has segmented curved antennae');
+    assert(waspWarrior.wings.length === 4, 'BugAlienTrooper has 4 translucent insectoid wings');
+    assert(waspWarrior.abdomenGroup !== undefined && waspWarrior.abdomenGroup.children.length >= 4, 'BugAlienTrooper has 4-ringed segmented wasp gaster');
+    assert(waspWarrior.leftLegGroup !== undefined && waspWarrior.rightLegGroup !== undefined, 'BugAlienTrooper has 2 reverse-jointed digitigrade legs');
+    assert(waspWarrior.weaponArm !== undefined && waspWarrior.crystalCannonCore !== undefined, 'BugAlienTrooper has left Crystal Shard Cannon with glowing crystalline core');
+    assert(waspWarrior.crystalSpikes.length >= 4, 'Crystal Shard Cannon features jagged protruding crystal spikes');
+    assert(waspWarrior.cannonProngLeft !== undefined && waspWarrior.cannonProngRight !== undefined, 'Crystal Shard Cannon features twin-pronged crystal lance muzzle');
+    assert(waspWarrior.lowerLeftArm !== undefined && waspWarrior.lowerRightArm !== undefined, 'BugAlienTrooper features pair of lower secondary grasping arms');
+
+    // Test Kinematics & Firing Animation
+    const prevAbdomenPitch = waspWarrior.abdomenGroup.rotation.x;
+    waspWarrior.walkCycle = 0;
+    waspWarrior.update(0.1, null, null);
+    assert(waspWarrior.abdomenGroup.rotation.x !== prevAbdomenPitch, 'Segmented wasp gaster articulates dynamically during stride');
+
+    // Test Hover-Lunge Wing Flutter Kinematics
+    waspWarrior.isHovering = true;
+    waspWarrior.update(0.1, null, null);
+    assert(waspWarrior.wings[0].rotation.z !== 0, 'Wings flutter with high-frequency buzz during hover-lunge');
+
+    // Test Targeting & Recoil Impulse
+    const intruderPos = waspWarrior.group.position.clone().add(new THREE.Vector3(12, 0, 0));
+    waspWarrior.fireCooldown = 0;
+    let boltSpur = false;
+    waspWarrior.update(0.016, intruderPos, () => { boltSpur = true; });
+    assert(boltSpur === true, 'Crystal Shard Cannon fires crystal bolt on sight at intruder');
+    assert(waspWarrior.recoilOffset > 0, 'Crystal Shard Cannon executes backward axial recoil impulse on firing');
+
     const summary = `SUMMARY: ${passed} passed, ${failed} failed`;
     logs.push('', summary);
     document.getElementById('test-output').textContent = logs.join('\n');

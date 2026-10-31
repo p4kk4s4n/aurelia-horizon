@@ -871,6 +871,12 @@ export class Explorer {
       const rel = this.group.position.clone().sub(bPos);
       const dirNorm = rel.clone().normalize();
       terrainHeight = body.getSurfaceRadiusAtDir(dirNorm.x, dirNorm.y, dirNorm.z);
+      if (body.outpostBase && typeof body.outpostBase.getFloorRadius === 'function') {
+        const outpostR = body.outpostBase.getFloorRadius(this.group.position);
+        if (outpostR > terrainHeight) {
+          terrainHeight = outpostR;
+        }
+      }
       seaR = body.seaLevelRadius || 0;
 
       if (body.hasOcean && seaR > 0) {
@@ -990,13 +996,23 @@ export class Explorer {
       if (typeof body.resolveFloraCollision === 'function') {
         body.resolveFloraCollision(this.group.position, 0.55);
       }
+      if (body.outpostBase && typeof body.outpostBase.resolveCollision === 'function') {
+        body.outpostBase.resolveCollision(this.group.position, 0.55);
+      }
 
       const bPos = body.getWorldPosition();
       const rel = this.group.position.clone().sub(bPos);
       const dist = rel.length() || 1;
       const dir = rel.divideScalar(dist);
       const terrainR = body.getSurfaceRadiusAtDir(dir.x, dir.y, dir.z);
-      const floorLimit = terrainR + 0.15;
+      let effectiveFloorR = terrainR;
+      if (body.outpostBase && typeof body.outpostBase.getFloorRadius === 'function') {
+        const outpostR = body.outpostBase.getFloorRadius(this.group.position);
+        if (outpostR > effectiveFloorR) {
+          effectiveFloorR = outpostR;
+        }
+      }
+      const floorLimit = effectiveFloorR + 0.15;
 
       if (dist <= floorLimit + 0.05) {
         this.group.position.copy(bPos).addScaledVector(dir, floorLimit);

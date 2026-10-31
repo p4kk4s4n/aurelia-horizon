@@ -641,7 +641,7 @@ if (urlView === 'char_back') {
   // Planetary Crimson Hive Outpost Base & Bug-Alien Troopers firing on sight
   const outpostDir = enemyFaction.outpost.direction;
   const perp = new THREE.Vector3(1, 0, 0).cross(outpostDir).normalize();
-  const playerDir = outpostDir.clone().multiplyScalar(planet.radius || 360).addScaledVector(perp, 24.0).normalize();
+  const playerDir = outpostDir.clone().multiplyScalar(planet.radius || 720).addScaledVector(perp, 24.0).normalize();
   explorer.spawnOnBody(planet, playerDir);
   explorer.cameraDistance = 9.5;
   explorer.pitch = 0.15;
