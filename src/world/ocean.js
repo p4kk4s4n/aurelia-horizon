@@ -97,7 +97,8 @@ export function createDeepOceanMesh(body, segments = 80) {
     uTime: { value: 0 },
     uShallowColor: { value: new THREE.Color(0x00f5d4) }, // Vivid alien cyan shallows
     uMidColor: { value: new THREE.Color(0x0077b6) },     // Rich tropical azure
-    uDeepColor: { value: new THREE.Color(0x03071e) },    // Abyssal trench navy
+    uDeepColor: { value: new THREE.Color(0x022b52) },    // Deep bathyal navy
+    uAbyssColor: { value: new THREE.Color(0x01040e) },   // Midnight Hadal trench abyss
     uFoamColor: { value: new THREE.Color(0xffffff) },
     uSunDir: { value: new THREE.Vector3(1, 0.65, 0.45).normalize() }
   };
@@ -140,16 +141,19 @@ export function createDeepOceanMesh(body, segments = 80) {
       uniform vec3 uShallowColor;
       uniform vec3 uMidColor;
       uniform vec3 uDeepColor;
+      uniform vec3 uAbyssColor;
       uniform vec3 uFoamColor;
       uniform vec3 uSunDir;
 
       void main() {
-        // Depth gradient: 0m (shore) -> 6m (shallows) -> 25m (mid) -> 60m+ (deep)
-        float shallowFactor = smoothstep(0.0, 7.0, vDepth);
-        float deepFactor = smoothstep(6.0, 48.0, vDepth);
+        // Multi-tier depth gradient: 0m (shore) -> 8m (shallows) -> 42m (bathyal) -> 125m+ (hadal abyss)
+        float shallowFactor = smoothstep(0.0, 9.0, vDepth);
+        float deepFactor = smoothstep(8.0, 52.0, vDepth);
+        float abyssFactor = smoothstep(48.0, 130.0, vDepth);
 
         vec3 waterColor = mix(uShallowColor, uMidColor, shallowFactor);
         waterColor = mix(waterColor, uDeepColor, deepFactor);
+        waterColor = mix(waterColor, uAbyssColor, abyssFactor);
 
         // Shoreline white foam pulse
         float foamNoise = sin(vWorldPos.x * 0.35 + uTime * 3.0) * cos(vWorldPos.z * 0.35 + uTime * 2.5);

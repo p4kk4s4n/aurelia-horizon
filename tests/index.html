@@ -44,6 +44,11 @@
     import { createDeepOceanMesh } from '../src/world/ocean.js';
     import { NavMarkerSystem } from '../src/ui/navMarkers.js';
     import { MineralDeposit, MineralSystem } from '../src/world/minerals.js';
+    import { FloraCollisionGrid } from '../src/world/decor.js';
+    import { FAUNA_SPECIES, FaunaEntity, FaunaSystem } from '../src/world/fauna.js';
+    import { CameraRig } from '../src/player/cameraRig.js';
+    import { ObjectiveSystem } from '../src/world/objectives.js';
+    import { InventoryModal, CRAFTING_RECIPES } from '../src/ui/inventoryModal.js';
     import * as THREE from 'three';
 
     const logs = [];
@@ -643,6 +648,113 @@
     // Test H: Prograde & Retrograde Vector Markers
     assert(Boolean(navSys.progradeEl), 'NavMarkerSystem creates Prograde flight vector marker');
     assert(Boolean(navSys.retrogradeEl), 'NavMarkerSystem creates Retrograde flight vector marker');
+
+    // 20. Deep Ocean Trenches, Solid Flora Collision, Alien Fauna, On-Foot Plasma Weapon, First-Person & Inventory
+    // Test 20A: Deep Hadal Ocean Trenches (>100m depth below sea level)
+    let minOceanSurfaceR = Infinity;
+    for (let u = -1; u <= 1; u += 0.2) {
+      for (let v = -1; v <= 1; v += 0.2) {
+        for (let w = -1; w <= 1; w += 0.2) {
+          const d = new THREE.Vector3(u, v, w);
+          if (d.lengthSq() < 0.05) continue;
+          d.normalize();
+          const sr = system.planet.getSurfaceRadiusAtDir(d.x, d.y, d.z);
+          if (sr < minOceanSurfaceR) minOceanSurfaceR = sr;
+        }
+      }
+    }
+    const maxOceanDepth = system.planet.seaLevelRadius - minOceanSurfaceR;
+    assert(maxOceanDepth > 100.0, `Aurelia Prime ocean trenches reach >100m depth (found ${Math.round(maxOceanDepth)}m)`);
+
+    // Test 20B: Solid Flora Spatial Hash Collision Grid
+    assert(Boolean(system.planet.floraCollisionGrid), 'Planet initializes FloraCollisionGrid for solid flora trunks');
+    const customGrid = new FloraCollisionGrid(24);
+    const trunkDir = new THREE.Vector3(0, 1, 0);
+    const trunkPos = new THREE.Vector3(0, 725, 0);
+    customGrid.addCollider(trunkPos, trunkDir, 1.5, 8.0);
+    const playerTestPos = new THREE.Vector3(0.8, 726, 0);
+    const hitFlora = customGrid.resolveCollision(playerTestPos, 0.6);
+    assert(hitFlora === true, 'FloraCollisionGrid detects overlap with solid flora trunk and pushes entity out');
+    const horizDistAfter = Math.hypot(playerTestPos.x, playerTestPos.z);
+    assert(horizDistAfter >= 2.09, 'FloraCollisionGrid resolves player position outside trunk radius + entityRadius');
+
+    // Test 20C: Alien Fauna System (Flying, Walking, Swimming & Aggressive Predators)
+    const testFaunaSys = new FaunaSystem(mockScene, system.planet, system.moons);
+    assert(testFaunaSys.entities.length >= 45, 'FaunaSystem populates planet and moons with diverse alien fauna');
+    const hasFlying = testFaunaSys.entities.some(e => e.locomotion === 'flying');
+    const hasWalking = testFaunaSys.entities.some(e => e.locomotion === 'walking');
+    const hasSwimming = testFaunaSys.entities.some(e => e.locomotion === 'swimming');
+    const hasAggressive = testFaunaSys.entities.some(e => e.temperament === 'aggressive');
+    assert(hasFlying && hasWalking && hasSwimming, 'FaunaSystem spawns flying, walking, and swimming fauna');
+    assert(hasAggressive, 'FaunaSystem spawns aggressive predators (Spined Stalker & Abyssal Maw)');
+
+    const stalkerEntity = testFaunaSys.entities.find(e => e.speciesKey === 'spined_stalker');
+    let playerAttacked = false;
+    stalkerEntity.update(0.1, stalkerEntity.group.position.clone().add(new THREE.Vector3(1.5, 0, 0)), () => {
+      playerAttacked = true;
+    });
+    assert(stalkerEntity.state === 'ATTACK' && playerAttacked, 'Aggressive Spined Stalker enters ATTACK state and damages nearby player');
+
+    // Test 20D: On-Foot Reticle & Plasma Blaster Weapon
+    const combatExplorer = new Explorer(mockScene);
+    combatExplorer.spawnOnBody(system.planet, new THREE.Vector3(0, 1, 0));
+    const targetCreature = new FaunaEntity({
+      id: 'target_stalker',
+      speciesKey: 'spined_stalker',
+      body: system.planet,
+      dirVector: new THREE.Vector3(0, 1, 0)
+    });
+    targetCreature.group.position.set(0, combatExplorer.group.position.y, -8);
+    testFaunaSys.entities.push(targetCreature);
+
+    const fired = combatExplorer.firePlasmaBlaster(
+      new THREE.Vector3(0, combatExplorer.group.position.y + 1.0, 0),
+      new THREE.Vector3(0, 0, -1)
+    );
+    assert(Boolean(fired) && combatExplorer.plasmaProjectiles.length === 1, 'Explorer firePlasmaBlaster spawns plasma bolt along reticle aim ray');
+
+    let creatureHit = false;
+    for (let step = 0; step < 10; step++) {
+      combatExplorer.updatePlasmaProjectiles(0.05, testFaunaSys, (res) => {
+        if (res && res.hit) creatureHit = true;
+      });
+    }
+    assert(creatureHit && targetCreature.health < targetCreature.maxHealth, 'Plasma bolt impacts fauna and reduces health');
+
+    // Defeat fauna and verify loot drop
+    const killRes = targetCreature.takeDamage(500);
+    assert(killRes.defeated === true && killRes.dropItem === 'apex_fang', 'Defeating Spined Stalker yields apex_fang organic loot');
+
+    // Test 20E: First-Person Camera View Toggle
+    const testCam = new THREE.PerspectiveCamera(65, 1.77, 0.5, 35000);
+    const testRig = new CameraRig(testCam);
+    assert(testRig.firstPerson === false, 'CameraRig defaults to 3rd-person view');
+    testRig.toggleFirstPerson(combatExplorer);
+    assert(testRig.firstPerson === true, 'toggleFirstPerson switches CameraRig to 1st-person view');
+    assert(combatExplorer.head.visible === false && combatExplorer.rightArm.visible === true, 'First-person mode hides explorer head/torso while keeping weapon arm visible');
+    testRig.updateForExplorer(combatExplorer, 0.016);
+    const aimRay = testRig.getAimRay(combatExplorer);
+    assert(aimRay.origin instanceof THREE.Vector3 && Math.abs(aimRay.direction.length() - 1.0) < 1e-4, 'CameraRig getAimRay returns normalized aim ray');
+    testRig.toggleFirstPerson(combatExplorer);
+    assert(testRig.firstPerson === false && combatExplorer.head.visible === true, 'Second toggleFirstPerson restores 3rd-person view and full character mesh');
+
+    // Test 20F: Multi-Chapter Objective System & Inventory Crafting Modal
+    const objSys = new ObjectiveSystem();
+    assert(objSys.getActiveChapter().id === 'ch1_salvage', 'ObjectiveSystem starts at Phase I Salvage & Mining');
+    objSys.updateLiveState({ repairStatus: { installed: 5 }, visitedMoonsCount: 0, waterDepth: 0 });
+    objSys.recordMineralHarvest(6);
+    assert(objSys.completedChapters.has('ch1_salvage'), 'ObjectiveSystem completes Phase I when 5 parts installed and 6 minerals mined');
+
+    const invModal = new InventoryModal({
+      explorer: combatExplorer,
+      ship: flightShip,
+      objectiveSystem: objSys
+    });
+    combatExplorer.inventory.titanium = 6;
+    combatExplorer.inventory.chitin_shell = 2;
+    assert(invModal.canCraft('exosuit') === true, 'InventoryModal canCraft returns true when resources are sufficient');
+    const crafted = invModal.craftUpgrade('exosuit');
+    assert(crafted === true && combatExplorer.maxSuitHealth === 150 && combatExplorer.craftedUpgrades.exosuit === true, 'Crafting Reinforced Exosuit upgrades maxSuitHealth to 150 HP');
 
     const summary = `SUMMARY: ${passed} passed, ${failed} failed`;
     logs.push('', summary);

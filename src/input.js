@@ -35,6 +35,9 @@ export const DEFAULT_KEYBINDINGS = {
   jump: { label: 'Jump / Jetpack Boost', category: 'on_foot', primary: 'Space', secondary: '' },
   dive: { label: 'Dive / Swim Down', category: 'on_foot', primary: 'KeyC', secondary: '' },
   interact: { label: 'Interact / Collect / Board', category: 'on_foot', primary: 'KeyE', secondary: '' },
+  fireWeapon: { label: 'Fire Plasma Blaster / Mining Laser', category: 'on_foot', primary: 'KeyF', secondary: '' },
+  toggleCameraView: { label: 'Toggle 1st-Person / 3rd-Person View', category: 'on_foot', primary: 'KeyV', secondary: '' },
+  openInventory: { label: 'Open Inventory & Xenology Codex', category: 'on_foot', primary: 'KeyI', secondary: 'Tab' },
 
   // Flight Controls
   flightThrustForward: { label: 'Forward Thrust', category: 'flight', primary: 'KeyW', secondary: 'ArrowUp' },

@@ -25,18 +25,34 @@
 <body>
   <canvas id="game-canvas"></canvas>
 
-  <!-- Center Crosshair (Active in Starfighter mode) -->
+  <!-- Center Crosshair (Active On-Foot & Starfighter mode) -->
   <div id="hud-crosshair">
     <div class="reticle-ring"></div>
+    <div class="reticle-ticks">
+      <span class="tick tick-top"></span>
+      <span class="tick tick-right"></span>
+      <span class="tick tick-bottom"></span>
+      <span class="tick tick-left"></span>
+    </div>
     <div class="reticle-dot"></div>
+    <div id="hud-hitmarker" class="hitmarker"></div>
+    <div id="hud-target-info" class="reticle-target-info"></div>
   </div>
+
+  <!-- Hostile Fauna Proximity Threat Warning -->
+  <div id="hud-threat-warning" class="threat-warning" style="display: none;">&#9888; HOSTILE FAUNA APPROACHING</div>
 
   <!-- Top Mission & Compass Bar -->
   <header id="hud-top">
     <div class="mission-banner">
-      <span class="badge">MISSION</span>
+      <span id="hud-mission-badge" class="badge">MISSION</span>
       <span id="hud-objective-text">Explore Aurelia Prime &amp; collect 5 ship components.</span>
+      <div class="top-quick-btns">
+        <button id="btn-toggle-view" class="top-pill-btn" type="button" title="Toggle First-Person / Third-Person View [V]">1P/3P [V]</button>
+        <button id="btn-open-inventory" class="top-pill-btn" type="button" title="Open Exosuit Inventory, Crafting &amp; Xenology Codex [I]">INV [I]</button>
+      </div>
     </div>
+    <div id="hud-objective-tasks" class="objective-tasks-bar"></div>
     <div id="hud-compass" class="compass-bar">Locating beacons...</div>
   </header>
 
@@ -64,6 +80,11 @@
       <div class="stat-row"><span>Ship Repair</span><strong id="hud-parts">0/5 Installed</strong></div>
       <div class="stat-row"><span>Moons Landed</span><strong id="hud-moons">0 / 3 Moons Landed</strong></div>
       <div class="stat-row"><span>Targets Blasted</span><strong id="hud-targets">0 Destroyed</strong></div>
+
+      <div id="hud-suit-health-block" class="gauge-block">
+        <div class="gauge-label">EXOSUIT INTEGRITY &amp; SHIELD</div>
+        <div class="gauge-track"><div id="hud-suit-health-bar" class="gauge-fill" style="background: #00f5d4; width: 100%;"></div></div>
+      </div>
 
       <div id="hud-hull-block" class="gauge-block" style="display: none;">
         <div class="gauge-label">STARFIGHTER HULL INTEGRITY</div>
@@ -141,6 +162,9 @@
 
     <!-- Context Actions: On-Foot Cluster -->
     <div id="touch-foot-actions" class="touch-actions-cluster">
+      <button id="btn-touch-view" class="touch-btn action-view" type="button">1P/3P<br><small>VIEW</small></button>
+      <button id="btn-touch-inv" class="touch-btn action-inv" type="button">INV<br><small>CRAFT</small></button>
+      <button id="btn-touch-foot-fire" class="touch-btn action-fire" type="button">FIRE<br><small>PLASMA</small></button>
       <button id="btn-touch-sprint" class="touch-btn action-sprint" type="button">RUN</button>
       <button id="btn-touch-jump" class="touch-btn action-jump" type="button">JUMP<br><small>JET</small></button>
       <button id="btn-touch-dive" class="touch-btn action-dive" type="button" style="display: none;">DIVE<br><small>SWIM</small></button>
@@ -332,6 +356,48 @@
           <button id="btn-force-recache" class="secondary-action-btn" type="button">Force Recache All Files</button>
         </div>
       </section>
+    </div>
+  </div>
+
+  <!-- Exosuit Inventory, Crafting & Xenology Codex Modal -->
+  <div id="inventory-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="inventory-title">
+    <div class="settings-card inventory-card">
+      <div class="settings-header">
+        <h2 id="inventory-title">&#127890; EXOSUIT INVENTORY, CRAFTING &amp; XENOLOGY CODEX</h2>
+        <button id="btn-close-inventory" class="close-btn" type="button" aria-label="Close Inventory">&times;</button>
+      </div>
+
+      <div class="inv-tabs-row">
+        <button type="button" class="inv-tab-btn active" data-tab="crafting">Resources &amp; Crafting</button>
+        <button type="button" class="inv-tab-btn" data-tab="codex">Xenology &amp; Flora Codex</button>
+        <button type="button" class="inv-tab-btn" data-tab="missions">Mission Objectives</button>
+      </div>
+
+      <div id="inv-pane-crafting" class="inv-tab-pane" style="display: flex;">
+        <div class="settings-section">
+          <h3>HARVESTED MINERALS &amp; XENO-ORGANIC SAMPLES</h3>
+          <div id="inv-resource-grid" class="inv-resource-grid"></div>
+        </div>
+        <div class="settings-section">
+          <h3>EXOSUIT &amp; STARFIGHTER FABRICATION</h3>
+          <div id="inv-crafting-grid" class="inv-crafting-grid"></div>
+        </div>
+      </div>
+
+      <div id="inv-pane-codex" class="inv-tab-pane" style="display: none;">
+        <div class="settings-section">
+          <h3>AURELIA PRIME &amp; LUNAR BIOTA ENCYCLOPEDIA</h3>
+          <p class="section-desc">Documented alien fauna (flying, walking, swimming) and solid-collision planetary flora:</p>
+          <div id="inv-codex-grid" class="inv-codex-grid"></div>
+        </div>
+      </div>
+
+      <div id="inv-pane-missions" class="inv-tab-pane" style="display: none;">
+        <div class="settings-section">
+          <h3>EXPEDITION PROGRESSION LOG</h3>
+          <div id="inv-missions-list" class="inv-missions-list"></div>
+        </div>
+      </div>
     </div>
   </div>
 

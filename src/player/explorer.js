@@ -97,16 +97,137 @@ export class Explorer {
     this.wasGroundedLastFrame = true;
     this.prevVertSpeed = 0;
 
-    // Mineral Resource Inventory
+    // Suit Health, Combat & Upgrades
+    this.maxSuitHealth = 100;
+    this.suitHealth = 100;
+    this.blasterDamage = 38;
+    this.blasterCooldown = 0;
+    this.plasmaProjectiles = [];
+    this.firstPersonMode = false;
+
+    this.craftedUpgrades = {
+      exosuit: false,
+      rebreather: false,
+      blasterOvercharge: false,
+      shipPlating: false
+    };
+
+    // Mineral & Xenology Resource Inventory
     this.inventory = {
       titanium: 0,
-      crystal: 0
+      crystal: 0,
+      chitin_shell: 0,
+      apex_fang: 0,
+      biolum_gland: 0,
+      abyssal_pearl: 0,
+      aero_membrane: 0
     };
 
     // Mining Laser Tool
     this.isMining = false;
     this.miningTarget = null;
     this._initMiningBeam();
+  }
+
+  setFirstPersonVisual(isFirstPerson) {
+    this.firstPersonMode = Boolean(isFirstPerson);
+    if (!this.visualRoot) return;
+    if (this.head) this.head.visible = !this.firstPersonMode;
+    if (this.companionDrone) this.companionDrone.visible = !this.firstPersonMode;
+    if (this.leftLeg) this.leftLeg.visible = !this.firstPersonMode;
+    if (this.rightLeg) this.rightLeg.visible = !this.firstPersonMode;
+    if (this.torso) {
+      this.torso.children.forEach((child) => {
+        if (child !== this.rightArm) {
+          child.visible = !this.firstPersonMode;
+        } else {
+          child.visible = true;
+        }
+      });
+    }
+  }
+
+  takeDamage(amount = 10) {
+    const mitigation = this.craftedUpgrades.exosuit ? 0.65 : 1.0;
+    const damageTaken = Math.round(amount * mitigation);
+    this.suitHealth = Math.max(0, this.suitHealth - damageTaken);
+    const respawned = this.suitHealth <= 0;
+    if (respawned) {
+      this.suitHealth = this.maxSuitHealth;
+    }
+    return { damageTaken, respawned, suitHealth: this.suitHealth };
+  }
+
+  firePlasmaBlaster(origin, direction) {
+    if (this.blasterCooldown > 0) return null;
+    this.blasterCooldown = this.craftedUpgrades.blasterOvercharge ? 0.16 : 0.24;
+
+    const boltGeo = new THREE.SphereGeometry(0.16, 8, 8);
+    boltGeo.scale(0.8, 0.8, 2.8);
+    const boltColor = this.craftedUpgrades.blasterOvercharge ? 0xf72585 : 0x00f5d4;
+    const boltMat = new THREE.MeshBasicMaterial({ color: boltColor });
+    const mesh = new THREE.Mesh(boltGeo, boltMat);
+
+    const startPos = origin
+      ? origin.clone()
+      : this.group.position.clone().addScaledVector(this.localUp, 1.55);
+    const dir = direction
+      ? direction.clone().normalize()
+      : new THREE.Vector3(0, 0, -1).applyQuaternion(this.group.quaternion).normalize();
+
+    mesh.position.copy(startPos).addScaledVector(dir, 0.7);
+    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), dir);
+    this.scene.add(mesh);
+
+    const speed = this.craftedUpgrades.blasterOvercharge ? 88 : 68;
+    const bolt = {
+      mesh,
+      velocity: dir.clone().multiplyScalar(speed),
+      life: 1.8,
+      damage: this.craftedUpgrades.blasterOvercharge ? 58 : this.blasterDamage
+    };
+    this.plasmaProjectiles.push(bolt);
+
+    if (this.rightArm) {
+      this.rightArm.rotation.x = -1.55;
+    }
+    return bolt;
+  }
+
+  updatePlasmaProjectiles(dt, faunaSystem, onHitFauna) {
+    if (this.blasterCooldown > 0) {
+      this.blasterCooldown = Math.max(0, this.blasterCooldown - dt);
+    }
+
+    for (let i = this.plasmaProjectiles.length - 1; i >= 0; i--) {
+      const b = this.plasmaProjectiles[i];
+      b.life -= dt;
+      const step = b.velocity.clone().multiplyScalar(dt);
+      b.mesh.position.add(step);
+
+      let hit = false;
+      if (faunaSystem && Array.isArray(faunaSystem.entities)) {
+        for (let j = 0; j < faunaSystem.entities.length; j++) {
+          const e = faunaSystem.entities[j];
+          if (e.dead) continue;
+          const center = e.group.position.clone().addScaledVector(e.localDir, 1.0);
+          const dist = b.mesh.position.distanceTo(center);
+          if (dist <= (e.species.hitRadius || 2.0) + 0.45) {
+            const res = e.takeDamage(b.damage);
+            hit = true;
+            if (onHitFauna) onHitFauna(res, e);
+            break;
+          }
+        }
+      }
+
+      if (hit || b.life <= 0) {
+        this.scene.remove(b.mesh);
+        if (b.mesh.geometry) b.mesh.geometry.dispose();
+        if (b.mesh.material) b.mesh.material.dispose();
+        this.plasmaProjectiles.splice(i, 1);
+      }
+    }
   }
 
   _initMiningBeam() {
@@ -853,10 +974,15 @@ export class Explorer {
       }
     }
 
-    // 6. Integrate position & snap to procedural terrain surface / seabed
+    // 6. Integrate position, resolve solid flora collision & snap to terrain / seabed
     this.group.position.addScaledVector(this.velocity, dt);
+    this.suitHealth = Math.min(this.maxSuitHealth, this.suitHealth + 1.5 * dt);
 
     if (body) {
+      if (typeof body.resolveFloraCollision === 'function') {
+        body.resolveFloraCollision(this.group.position, 0.55);
+      }
+
       const bPos = body.getWorldPosition();
       const rel = this.group.position.clone().sub(bPos);
       const dist = rel.length() || 1;

@@ -11,6 +11,9 @@ import { SettingsManager } from './ui/settings.js';
 import { TouchControlsManager } from './ui/touchControls.js';
 import { NavMarkerSystem } from './ui/navMarkers.js';
 import { MineralSystem } from './world/minerals.js';
+import { FaunaSystem } from './world/fauna.js';
+import { ObjectiveSystem } from './world/objectives.js';
+import { InventoryModal } from './ui/inventoryModal.js';
 
 const canvas = document.getElementById('game-canvas');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -41,9 +44,17 @@ ship.placeOnBody(planet, new THREE.Vector3(0.055, 0.997, 0.045));
 
 const repairSystem = new ShipRepairSystem(scene, planet);
 const mineralSystem = new MineralSystem(scene, planet, moons);
+const faunaSystem = new FaunaSystem(scene, planet, moons);
 const cameraRig = new CameraRig(camera);
 const input = new InputManager(canvas);
 const hud = new HUD();
+const objectiveSystem = new ObjectiveSystem((msg, dur) => hud.showNotice(msg, dur));
+const inventoryModal = new InventoryModal({
+  explorer,
+  ship,
+  objectiveSystem,
+  onNotice: (msg, dur) => hud.showNotice(msg, dur)
+});
 const touchControls = new TouchControlsManager(input, (msg, dur) => hud.showNotice(msg, dur));
 const settings = new SettingsManager((msg) => hud.showNotice(msg), touchControls, input);
 settings.setRenderer(renderer);
@@ -189,10 +200,16 @@ export const gameAPI = {
     theme: settings.currentThemeId,
     graphicsQuality: settings.currentQuality,
     settingsOpen: settings.isOpen,
+    inventoryOpen: inventoryModal.isOpen,
+    firstPerson: cameraRig.firstPerson,
+    faunaCount: faunaSystem.entities.length,
+    suitHealth: explorer.suitHealth,
     touchScheme: touchControls.scheme,
     touchVisibility: touchControls.visibility
   }),
   openSettings: (open = true) => settings.toggleModal(open),
+  openInventory: (open = true) => inventoryModal.toggle(open),
+  toggleFirstPerson: () => cameraRig.toggleFirstPerson(explorer, (msg) => hud.showNotice(msg)),
   setTheme: (themeId) => settings.applyTheme(themeId),
   setGraphicsQuality: (q) => settings.applyGraphicsQuality(q),
   setTouchScheme: (scheme) => touchControls.applyScheme(scheme),
@@ -278,12 +295,15 @@ export const gameAPI = {
 };
 window.gameDebug = gameAPI;
 
-// Bind fast-travel UI buttons
+// Bind fast-travel & top HUD quick buttons
 document.getElementById('btn-quick-repair')?.addEventListener('click', () => gameAPI.teleportToBase());
 document.getElementById('btn-quick-orbit')?.addEventListener('click', () => gameAPI.teleportToOrbit());
 document.getElementById('btn-moon-1')?.addEventListener('click', () => gameAPI.teleportToMoon(0));
 document.getElementById('btn-moon-2')?.addEventListener('click', () => gameAPI.teleportToMoon(1));
 document.getElementById('btn-moon-3')?.addEventListener('click', () => gameAPI.teleportToMoon(2));
+document.getElementById('btn-toggle-view')?.addEventListener('click', () => {
+  cameraRig.toggleFirstPerson(explorer, (msg) => hud.showNotice(msg));
+});
 
 // Update dynamic keybinding labels across HUD footer & sidebar buttons
 function updateDynamicUIControls() {
@@ -296,6 +316,9 @@ function updateDynamicUIControls() {
     const sprint = input.getActionKeyLabel('sprint');
     const jump = input.getActionKeyLabel('jump');
     const act = input.getActionKeyLabel('interact');
+    const fireFoot = input.getActionKeyLabel('fireWeapon');
+    const viewKey = input.getActionKeyLabel('toggleCameraView');
+    const invKey = input.getActionKeyLabel('openInventory');
 
     const fThrust = input.getActionKeyLabel('flightThrustForward');
     const rThrust = input.getActionKeyLabel('flightThrustBackward');
@@ -311,10 +334,15 @@ function updateDynamicUIControls() {
     const exit = input.getActionKeyLabel('flightDisembark');
 
     footer.innerHTML = `
-      <div><strong>ON FOOT:</strong> [${fwd}/${left}/${bwd}/${right}] Move &bull; [${sprint}] Sprint &bull; [${jump}] Jump / Jetpack &bull; [Mouse] Look &bull; [${act}] Collect / Install / Board</div>
+      <div><strong>ON FOOT:</strong> [${fwd}/${left}/${bwd}/${right}] Move &bull; [${sprint}] Sprint &bull; [${jump}] Jump/Jet &bull; [Click/${fireFoot}] Plasma Blaster &amp; Mine &bull; [${viewKey}] 1P/3P View &bull; [${invKey}] Inventory &bull; [${act}] Interact</div>
       <div><strong>STARFIGHTER (NEWTONIAN):</strong> [${fThrust}/${rThrust}] Thrust &bull; [${sLeft}/${sRight}] Strafe &bull; [${rollL}/${rollR}] 6DoF Roll &bull; [${asc}/${dsc}] Ascend/Descend &bull; [${boost}] Boost &bull; [${sas}] SAS Assist &bull; [${fire}/Click] Pulse Cannons &bull; [${exit}] Disembark</div>
     `;
   }
+
+  const btnView = document.getElementById('btn-toggle-view');
+  if (btnView) btnView.textContent = `1P/3P [${input.getActionKeyLabel('toggleCameraView')}]`;
+  const btnInv = document.getElementById('btn-open-inventory');
+  if (btnInv) btnInv.textContent = `INV [${input.getActionKeyLabel('openInventory')}]`;
 
   const btnBase = document.getElementById('btn-quick-repair');
   if (btnBase) btnBase.textContent = `[${input.getActionKeyLabel('quickRepair')}] Base`;
@@ -346,6 +374,14 @@ else if (urlPhase === 'moon1_foot') {
 else if (urlPhase === 'moon2') gameAPI.landOnMoon(1);
 else if (urlPhase === 'moon3') gameAPI.landOnMoon(2);
 else if (urlPhase === 'settings') settings.toggleModal(true);
+else if (urlPhase === 'inventory') {
+  explorer.inventory.titanium = 12;
+  explorer.inventory.crystal = 8;
+  explorer.inventory.chitin_shell = 3;
+  explorer.inventory.apex_fang = 2;
+  explorer.inventory.biolum_gland = 2;
+  inventoryModal.toggle(true);
+}
 if (params.get('theme')) settings.applyTheme(params.get('theme'));
 if (params.get('touch')) touchControls.applyVisibility(params.get('touch'));
 if (params.get('scheme')) touchControls.applyScheme(params.get('scheme'));
@@ -454,10 +490,46 @@ if (urlView === 'char_back') {
     }
   }
   explorer.spawnOnBody(planet, oceanDir);
-  explorer.group.position.copy(oceanDir).multiplyScalar(planet.seaLevelRadius - 12);
+  explorer.group.position.copy(oceanDir).multiplyScalar(planet.seaLevelRadius - 48);
   explorer.cameraDistance = 7.5;
   explorer.pitch = 0.15;
-  explorer.oxygen = 68;
+  explorer.oxygen = 82;
+} else if (urlView === 'fpv') {
+  cameraRig.setFirstPerson(true, explorer);
+  explorer.pitch = -0.05;
+  const aim = cameraRig.getAimRay(explorer);
+  // Position an aggressive Spined Stalker right in front of the player's reticle & fire plasma bolt!
+  const stalker = faunaSystem.entities.find((e) => e.speciesKey === 'spined_stalker');
+  if (stalker) {
+    const targetPos = explorer.group.position.clone().addScaledVector(aim.direction, 12.0);
+    const bPos = planet.getWorldPosition();
+    stalker.localDir.copy(targetPos.clone().sub(bPos).normalize());
+    stalker.state = 'AGGRO';
+    stalker._syncPositionToBody();
+  }
+  explorer.fireCooldown = 0;
+  explorer.firePlasmaBlaster(aim.origin, aim.direction);
+} else if (urlView === 'fauna') {
+  explorer.cameraDistance = 6.2;
+  explorer.pitch = 0.08;
+  const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(explorer.group.quaternion);
+  const stalker = faunaSystem.entities.find((e) => e.speciesKey === 'spined_stalker');
+  if (stalker) {
+    const pos = explorer.group.position.clone().addScaledVector(fwd, 9.5);
+    stalker.localDir.copy(pos.clone().sub(planet.getWorldPosition()).normalize());
+    stalker.state = 'AGGRO';
+    stalker._syncPositionToBody();
+  }
+  const manta = faunaSystem.entities.find((e) => e.speciesKey === 'sky_manta');
+  if (manta) {
+    const mPos = explorer.group.position.clone().addScaledVector(fwd, 18.0);
+    manta.localDir.copy(mPos.clone().sub(planet.getWorldPosition()).normalize());
+    manta.altitudeOffset = 8.5;
+    manta._syncPositionToBody();
+  }
+  const aim = cameraRig.getAimRay(explorer);
+  explorer.fireCooldown = 0;
+  explorer.firePlasmaBlaster(aim.origin, aim.direction);
 } else if (urlView === 'sun') {
   repairSystem.giveAndInstallAll();
   ship.setRepairedVisual(true);
@@ -545,14 +617,30 @@ function animate(now) {
   planet.updateOcean(elapsedTime);
   skyTargets.update(elapsedTime, camera);
 
-  // 3. Update rotating repair parts, mineral nodes & projectiles
+  // 3. Update rotating repair parts, mineral nodes, alien fauna & projectiles
   repairSystem.update(dt, elapsedTime);
   mineralSystem.update(dt);
   ship.updateProjectilesAndTargets(dt, spaceTargets);
 
   let promptText = '';
+  let targetedFauna = null;
+  let nearbyHostile = null;
 
-  if (settings.isOpen) {
+  // Toggle Inventory Modal with [I] or [Tab]
+  if (input.wasActionPressed('openInventory') || input.wasPressed('KeyI') || input.wasPressed('Tab')) {
+    if (!settings.isOpen) {
+      inventoryModal.toggle();
+    }
+  }
+
+  // Toggle First-Person / Third-Person Camera View with [V]
+  if (input.wasActionPressed('toggleCameraView') || input.wasPressed('KeyV')) {
+    if (!settings.isOpen && !inventoryModal.isOpen && gameMode === 'EXPLORING') {
+      cameraRig.toggleFirstPerson(explorer, (msg) => hud.showNotice(msg));
+    }
+  }
+
+  if (settings.isOpen || inventoryModal.isOpen) {
     navMarkers.navLayer.style.display = 'none';
     input.consumeFrame();
     renderer.render(scene, camera);
@@ -560,6 +648,33 @@ function animate(now) {
     return;
   }
   navMarkers.navLayer.style.display = 'block';
+
+  // Update alien fauna & handle hostile predator melee strikes
+  faunaSystem.update(dt, gameMode === 'EXPLORING' ? explorer.group.position : null, (dmg, predatorName) => {
+    if (gameMode === 'EXPLORING') {
+      const res = explorer.takeDamage(dmg);
+      hud.showNotice(`⚠ Attacked by ${predatorName}! (-${res.damageTaken} Suit HP)`, 2.5);
+      if (res.respawned) {
+        explorer.suitHealth = explorer.maxSuitHealth;
+        const safeExit = findSafeExitSpot(ship, explorer.currentBody || planet);
+        explorer.group.position.copy(safeExit.position);
+        explorer.localUp.copy(safeExit.up);
+        hud.showNotice('Exosuit emergency teleported to Starfighter beacon! Suit shield recharged.', 4.5);
+      }
+    }
+  });
+
+  // Update on-foot plasma projectiles & fauna hits
+  explorer.updatePlasmaProjectiles(dt, faunaSystem, (hitResult) => {
+    hud.triggerHitmarker(0.25);
+    if (hitResult.defeated) {
+      if (hitResult.dropItem && explorer.inventory[hitResult.dropItem] !== undefined) {
+        explorer.inventory[hitResult.dropItem] += 1;
+      }
+      objectiveSystem.recordFaunaDefeated(hitResult.speciesKey);
+      hud.showNotice(`Neutralized ${hitResult.speciesName}! Harvested +1 ${hitResult.dropLabel}!`, 3.5);
+    }
+  });
 
   // Dynamic Keyboard shortcuts for Fast Travel (1: Base, 2: Planet Orbit, 3/4/5: Moons I-III)
   if (input.wasActionPressed('quickRepair') || input.wasPressed('Digit1') || input.wasPressed('Numpad1')) gameAPI.teleportToBase();
@@ -582,12 +697,19 @@ function animate(now) {
     const actKeyLabel = input.getActionKeyLabel('interact');
     const wantsAct = (input.wasActionPressed ? input.wasActionPressed('interact') : false) || input.wasPressed('KeyE');
 
-    // Check proximity to interactive mineral deposits & mining laser
+    // Check proximity to interactive mineral deposits & on-foot weapon / mining laser
     const nearestDeposit = mineralSystem.getNearestDeposit(explorer.group.position, 16.0);
-    const isMiningKey = input.mouseDown || (input.isActionDown ? input.isActionDown('mine') : false) || input.isDown('KeyF');
+    const isFiringKey = input.mouseDown || (input.isActionDown ? input.isActionDown('fireWeapon') : false) || (input.isActionDown ? input.isActionDown('mine') : false) || input.isDown('KeyF');
 
-    if (nearestDeposit && nearestDeposit.distance < 14.0) {
-      if (isMiningKey) {
+    const aim = cameraRig.getAimRay(explorer);
+    targetedFauna = faunaSystem.raycastFauna(aim.origin, aim.direction, 75);
+    if (targetedFauna) {
+      objectiveSystem.recordSpeciesSighting(targetedFauna.speciesKey);
+    }
+    nearbyHostile = faunaSystem.getNearestFauna(explorer.group.position, 28, true);
+
+    if (nearestDeposit && nearestDeposit.distance < 12.5 && !targetedFauna) {
+      if (isFiringKey) {
         explorer.setMiningTarget(nearestDeposit.deposit.position, true);
         const harvest = nearestDeposit.deposit.takeMiningDamage(52 * dt);
         if (harvest.harvested) {
@@ -596,16 +718,20 @@ function animate(now) {
           } else {
             explorer.inventory.crystal += harvest.amount;
           }
+          objectiveSystem.recordMineralHarvest(harvest.amount);
           hud.showNotice(`Harvested +${harvest.amount} ${harvest.type === 'titanium' ? 'Titanium Alloy' : 'Silica Crystal'}!`);
         }
       } else {
         explorer.setMiningTarget(null, false);
         promptText = isTouch
-          ? `Tap FIRE/ACT to Mine ${nearestDeposit.deposit.name}`
+          ? `Tap FIRE to Mine ${nearestDeposit.deposit.name}`
           : `Hold [Left Click / Key F] to Mine ${nearestDeposit.deposit.name}`;
       }
     } else {
       explorer.setMiningTarget(null, false);
+      if (isFiringKey) {
+        explorer.firePlasmaBlaster(aim.origin, aim.direction);
+      }
     }
 
     // Check proximity to uncollected repair parts
@@ -721,6 +847,12 @@ function animate(now) {
   // Update planetary nav reticles, off-screen edge arrows, and flight vectors
   navMarkers.update(activePos, gameMode, ship.targetBody, ship);
 
+  objectiveSystem.updateLiveState({
+    repairStatus: repairSystem.getStatus(),
+    visitedMoonsCount: ship.visitedMoons.size,
+    waterDepth: explorer.waterDepth || 0
+  });
+
   hud.update(dt, {
     mode: gameMode,
     explorer,
@@ -730,7 +862,11 @@ function animate(now) {
     moons,
     promptText,
     compassText: computeCompassText(),
-    input
+    input,
+    cameraRig,
+    objectiveSystem,
+    targetedFauna,
+    nearbyHostile
   });
 
   touchControls.update(gameMode, {

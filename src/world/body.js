@@ -50,9 +50,10 @@ export class CelestialBody {
       const spawnBias = spawnDot > 0.90 ? (spawnDot - 0.90) * 110 : 0;
 
       let rawElev = continent * 0.65 + hills * 0.35 + Math.max(0, ridges) * 0.25;
-      if (rawElev < -0.04) {
-        // Drop deep ocean basins down to 50-65m below sea level
-        rawElev = -0.04 + (rawElev + 0.04) * 2.75;
+      if (rawElev < -0.03) {
+        // Plunge deep ocean basins and rift trenches down to 120-180m below sea level
+        const trenchNoise = Math.max(0, -this.noise.fbm(nx * f * 1.65, ny * f * 1.65, nz * f * 1.65, 3));
+        rawElev = -0.03 + (rawElev + 0.03) * 8.4 - trenchNoise * 2.25;
       }
 
       const elevation = rawElev * this.heightAmplitude + spawnBias;
@@ -68,14 +69,15 @@ export class CelestialBody {
   sampleBiomeColor(nx, ny, nz, r) {
     if (!this.isMoon) {
       const h = r - this.seaLevelRadius;
-      if (h < -35.0) return [0.01, 0.06, 0.18]; // Deep ocean abyss
-      if (h < -14.0) return [0.03, 0.16, 0.32]; // Mid ocean seabed
-      if (h < -3.0)  return [0.06, 0.34, 0.44]; // Turquoise shelf lagoon
-      if (h < 2.5)   return [0.95, 0.84, 0.56]; // Tropical golden coral sand
-      if (h < 14.0)  return [0.11, 0.72, 0.48]; // Lush alien teal-emerald jungle
-      if (h < 26.0)  return [0.06, 0.52, 0.44]; // Deep canopy
-      if (h < 38.0)  return [0.36, 0.32, 0.46]; // Purple highland rock
-      return [0.78, 0.92, 0.96];                // Mineral-capped peak
+      if (h < -85.0) return [0.005, 0.02, 0.09]; // Midnight Hadal Abyss
+      if (h < -45.0) return [0.01, 0.06, 0.18];  // Deep Bathyal Trench
+      if (h < -16.0) return [0.03, 0.16, 0.32];  // Mid ocean seabed
+      if (h < -3.0)  return [0.06, 0.34, 0.44];  // Turquoise shelf lagoon
+      if (h < 2.5)   return [0.95, 0.84, 0.56];  // Tropical golden coral sand
+      if (h < 14.0)  return [0.11, 0.72, 0.48];  // Lush alien teal-emerald jungle
+      if (h < 26.0)  return [0.06, 0.52, 0.44];  // Deep canopy
+      if (h < 38.0)  return [0.36, 0.32, 0.46];  // Purple highland rock
+      return [0.78, 0.92, 0.96];                 // Mineral-capped peak
     }
 
     const theme = this.moonTheme;
@@ -132,6 +134,7 @@ export class CelestialBody {
 
     // Sci-fi flora & minerals
     this.decor = populatePlanetDecor(this, this.noise);
+    this.floraCollisionGrid = this.decor ? this.decor.collisionGrid : null;
     this.group.add(this.decor.group);
   }
 
@@ -187,6 +190,7 @@ export class CelestialBody {
       this.decor = null;
     }
     this.decor = populatePlanetDecor(this, this.noise, this.currentQuality);
+    this.floraCollisionGrid = this.decor ? this.decor.collisionGrid : null;
     if (this.decor && this.decor.group) {
       this.group.add(this.decor.group);
     }
@@ -209,6 +213,18 @@ export class CelestialBody {
       }
     });
     return { triangles: Math.round(triangles), vertices: Math.round(vertices) };
+  }
+
+  resolveFloraCollision(worldPos, entityRadius = 0.55) {
+    if (!this.decor || !this.decor.collisionGrid) return false;
+    const bPos = this.getWorldPosition();
+    const localPos = worldPos.clone().sub(bPos);
+    const pushed = this.decor.collisionGrid.resolveCollision(localPos, entityRadius);
+    if (pushed) {
+      worldPos.copy(bPos).add(localPos);
+      return true;
+    }
+    return false;
   }
 
   updateOcean(time) {

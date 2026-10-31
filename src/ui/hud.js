@@ -17,7 +17,14 @@ export class HUD {
     this.elNotice = document.getElementById('hud-notice');
     this.elCompass = document.getElementById('hud-compass');
     this.elObjectiveText = document.getElementById('hud-objective-text');
+    this.elMissionBadge = document.getElementById('hud-mission-badge');
+    this.elObjectiveTasks = document.getElementById('hud-objective-tasks');
     this.elCrosshair = document.getElementById('hud-crosshair');
+    this.elHitmarker = document.getElementById('hud-hitmarker');
+    this.elTargetInfo = document.getElementById('hud-target-info');
+    this.elThreatWarning = document.getElementById('hud-threat-warning');
+    this.elSuitHealthBlock = document.getElementById('hud-suit-health-block');
+    this.elSuitHealthBar = document.getElementById('hud-suit-health-bar');
     this.elOrbitTelemetry = document.getElementById('hud-orbit-telemetry');
     this.elAp = document.getElementById('hud-ap');
     this.elPe = document.getElementById('hud-pe');
@@ -34,6 +41,20 @@ export class HUD {
     this.radarCtx = this.radarCanvas ? this.radarCanvas.getContext('2d') : null;
 
     this.noticeTimer = 0;
+    this.hitmarkerTimer = 0;
+  }
+
+  triggerHitmarker(duration = 0.22) {
+    this.hitmarkerTimer = duration;
+    if (this.elHitmarker) {
+      this.elHitmarker.classList.add('active');
+    }
+  }
+
+  updateMinerals(inventory) {
+    if (this.elMinerals && inventory) {
+      this.elMinerals.textContent = `${inventory.titanium || 0} Ti • ${inventory.crystal || 0} Cry`;
+    }
   }
 
   showNotice(text, duration = 4.0) {
@@ -53,8 +74,19 @@ export class HUD {
       moons,
       promptText,
       compassText,
-      input
+      input,
+      cameraRig,
+      objectiveSystem,
+      targetedFauna,
+      nearbyHostile
     } = state;
+
+    if (this.hitmarkerTimer > 0) {
+      this.hitmarkerTimer -= dt;
+      if (this.hitmarkerTimer <= 0 && this.elHitmarker) {
+        this.elHitmarker.classList.remove('active');
+      }
+    }
 
     if (this.noticeTimer > 0) {
       this.noticeTimer -= dt;
@@ -69,7 +101,11 @@ export class HUD {
     const spd = mode === 'PILOTING' ? ship.speed : explorer.velocity.length();
 
     if (this.elMode) {
-      this.elMode.textContent = mode === 'PILOTING' ? 'STARFIGHTER COCKPIT' : 'ON FOOT (3RD PERSON)';
+      if (mode === 'PILOTING') {
+        this.elMode.textContent = 'STARFIGHTER COCKPIT';
+      } else {
+        this.elMode.textContent = cameraRig?.firstPerson ? 'ON FOOT (1ST PERSON)' : 'ON FOOT (3RD PERSON)';
+      }
     }
     if (this.elBody) {
       this.elBody.textContent = activeBody ? activeBody.name : 'Deep Space';
@@ -117,6 +153,14 @@ export class HUD {
       this.elMinerals.textContent = `${explorer.inventory.titanium} Ti • ${explorer.inventory.crystal} Cry`;
     }
 
+    if (this.elSuitHealthBlock && this.elSuitHealthBar) {
+      this.elSuitHealthBlock.style.display = mode === 'PILOTING' ? 'none' : 'block';
+      const maxHp = explorer.maxSuitHealth || 100;
+      const hpPct = Math.round(((explorer.suitHealth ?? 100) / maxHp) * 100);
+      this.elSuitHealthBar.style.width = `${Math.max(0, Math.min(100, hpPct))}%`;
+      this.elSuitHealthBar.style.background = hpPct < 30 ? '#ff4d6d' : (hpPct < 65 ? '#ffbe0b' : '#00f5d4');
+    }
+
     if (this.elHullBlock && this.elHullBar) {
       const showHull = mode === 'PILOTING' || ship.hullIntegrity < 99.5;
       this.elHullBlock.style.display = showHull ? 'block' : 'none';
@@ -128,7 +172,27 @@ export class HUD {
     }
 
     if (this.elCrosshair) {
-      this.elCrosshair.style.display = mode === 'PILOTING' ? 'block' : 'none';
+      this.elCrosshair.style.display = 'block';
+      this.elCrosshair.classList.remove('target-hostile', 'target-docile');
+      if (mode !== 'PILOTING' && targetedFauna && !targetedFauna.dead) {
+        const isHostile = targetedFauna.temperament === 'aggressive';
+        this.elCrosshair.classList.add(isHostile ? 'target-hostile' : 'target-docile');
+        if (this.elTargetInfo) {
+          const hpPct = Math.round((targetedFauna.health / targetedFauna.maxHealth) * 100);
+          this.elTargetInfo.style.display = 'block';
+          this.elTargetInfo.textContent = `${targetedFauna.name} (${hpPct}% HP)`;
+        }
+      } else if (this.elTargetInfo) {
+        this.elTargetInfo.style.display = 'none';
+      }
+    }
+
+    if (this.elThreatWarning) {
+      const showThreat = mode !== 'PILOTING' && nearbyHostile && !nearbyHostile.dead && (nearbyHostile.state === 'AGGRO' || nearbyHostile.state === 'ATTACK');
+      this.elThreatWarning.style.display = showThreat ? 'block' : 'none';
+      if (showThreat) {
+        this.elThreatWarning.textContent = `⚠ HOSTILE ${nearbyHostile.name.toUpperCase()} ENGAGED!`;
+      }
     }
 
     // Keplerian Orbital & Flight Landing Telemetry Readouts
@@ -178,8 +242,22 @@ export class HUD {
       }
     }
 
-    // Objective guidance
-    if (this.elObjectiveText) {
+    // Objective guidance & multi-chapter checklist
+    if (objectiveSystem && this.elObjectiveText) {
+      const summary = objectiveSystem.getBannerSummary();
+      if (this.elMissionBadge) {
+        this.elMissionBadge.textContent = summary.badge;
+      }
+      this.elObjectiveText.textContent = summary.headline;
+      if (this.elObjectiveTasks) {
+        this.elObjectiveTasks.innerHTML = summary.tasks.map((t) => `
+          <div class="obj-task-pill ${t.done ? 'done' : ''}">
+            <span>${t.done ? '✓' : '•'} ${t.label}</span>
+            <strong>${t.progress}</strong>
+          </div>
+        `).join('');
+      }
+    } else if (this.elObjectiveText) {
       const isTouch = input?.isTouchDevice;
       const actKey = input?.getActionKeyLabel ? input.getActionKeyLabel('interact') : 'E';
       const fwdKey = input?.getActionKeyLabel ? input.getActionKeyLabel('flightThrustForward') : 'W';
