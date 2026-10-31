@@ -1797,3 +1797,438 @@ body.touch-active #hud-controls {
     left: calc(14px * var(--ui-scale, 1.0));
   }
 }
+
+/* ==========================================================================
+   Story Dialog Presentation System (Interactive Transceiver)
+   ========================================================================== */
+.story-dialog-container {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: auto;
+}
+
+/* Mid Screen (Cinematic Center Format) */
+.story-dialog-container.pos-mid-screen {
+  left: 50%;
+  bottom: calc(16vh * var(--ui-scale, 1.0));
+  transform: translateX(-50%);
+  width: min(calc(660px * var(--ui-scale, 1.0)), 92vw);
+}
+
+/* Bottom Left */
+.story-dialog-container.pos-bottom-left {
+  left: calc(20px * var(--ui-scale, 1.0));
+  bottom: calc(24px * var(--ui-scale, 1.0));
+  transform: none;
+  width: min(calc(460px * var(--ui-scale, 1.0)), 88vw);
+}
+
+/* Bottom Right */
+.story-dialog-container.pos-bottom-right {
+  right: calc(20px * var(--ui-scale, 1.0));
+  bottom: calc(24px * var(--ui-scale, 1.0));
+  left: auto;
+  transform: none;
+  width: min(calc(460px * var(--ui-scale, 1.0)), 88vw);
+}
+
+.story-dialog-card {
+  background: rgba(10, 16, 32, 0.94);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(0, 245, 212, 0.45);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.65), 0 0 24px rgba(0, 245, 212, 0.18);
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: dialogCardIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes dialogCardIn {
+  from { opacity: 0; transform: translateY(14px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.story-dialog-header {
+  background: rgba(0, 245, 212, 0.08);
+  border-bottom: 1px solid rgba(0, 245, 212, 0.22);
+  padding: calc(6px * var(--ui-scale, 1.0)) calc(12px * var(--ui-scale, 1.0));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.comm-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.comm-pulse-dot {
+  width: 8px;
+  height: 8px;
+  background: #ff1eff;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #ff1eff;
+  animation: commPulse 1.2s infinite alternate;
+}
+
+@keyframes commPulse {
+  from { opacity: 0.4; transform: scale(0.85); }
+  to { opacity: 1.0; transform: scale(1.2); }
+}
+
+.comm-channel {
+  font-size: calc(0.72em * var(--ui-scale, 1.0));
+  letter-spacing: 0.1em;
+  color: #00f5d4;
+  font-weight: 700;
+  font-family: monospace;
+}
+
+.comm-wave-canvas {
+  height: 18px;
+  width: 90px;
+  opacity: 0.85;
+}
+
+.comm-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--hud-muted);
+  font-size: 1.3em;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 4px;
+}
+.comm-close-btn:hover { color: #fff; }
+
+.story-dialog-body {
+  padding: calc(12px * var(--ui-scale, 1.0)) calc(16px * var(--ui-scale, 1.0));
+  display: flex;
+  flex-direction: column;
+  gap: calc(8px * var(--ui-scale, 1.0));
+}
+
+.speaker-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.speaker-avatar {
+  width: 32px;
+  height: 32px;
+  background: rgba(0, 245, 212, 0.14);
+  border: 1px solid #00f5d4;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1em;
+}
+
+.speaker-meta {
+  flex: 1;
+}
+
+.speaker-name {
+  font-size: 0.88em;
+  font-weight: 700;
+  color: #00f5d4;
+  letter-spacing: 0.04em;
+}
+
+.speaker-role {
+  font-size: 0.72em;
+  color: var(--hud-muted);
+  letter-spacing: 0.05em;
+  font-family: monospace;
+}
+
+.dialog-act-badge {
+  background: rgba(255, 30, 255, 0.18);
+  border: 1px solid #ff1eff;
+  color: #ff85ff;
+  font-size: 0.72em;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.story-dialog-title {
+  font-size: 1.05em;
+  color: #fff;
+  font-weight: 700;
+  margin: 0;
+}
+
+.story-dialog-text {
+  font-size: 0.88em;
+  line-height: 1.45;
+  color: var(--hud-text);
+  margin: 0;
+}
+
+.story-dialog-directive {
+  background: rgba(0, 245, 212, 0.06);
+  border-left: 3px solid #00f5d4;
+  padding: 6px 10px;
+  border-radius: 0 6px 6px 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.directive-badge {
+  font-size: 0.68em;
+  background: #00f5d4;
+  color: #040711;
+  font-weight: 800;
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.directive-summary {
+  font-size: 0.82em;
+  color: #e0fbfc;
+}
+
+.story-dialog-actions {
+  padding: calc(8px * var(--ui-scale, 1.0)) calc(16px * var(--ui-scale, 1.0)) calc(12px * var(--ui-scale, 1.0));
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.dialog-btn {
+  padding: calc(6px * var(--ui-scale, 1.0)) calc(14px * var(--ui-scale, 1.0));
+  border-radius: 6px;
+  font-size: 0.82em;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  transition: all 0.15s ease;
+}
+
+.dialog-btn-secondary {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: var(--hud-text);
+}
+.dialog-btn-secondary:hover { background: rgba(255, 255, 255, 0.16); }
+
+.dialog-btn-primary {
+  background: #00f5d4;
+  border: 1px solid #00f5d4;
+  color: #040711;
+}
+.dialog-btn-primary:hover {
+  background: #38ffe3;
+  box-shadow: 0 0 14px rgba(0, 245, 212, 0.5);
+}
+
+/* ==========================================================================
+   Victory Completion Modal & Hyperspace Warp Sequence
+   ========================================================================== */
+.completion-card {
+  background: rgba(8, 14, 28, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(0, 245, 212, 0.55);
+  box-shadow: 0 0 40px rgba(0, 245, 212, 0.25), 0 24px 60px rgba(0, 0, 0, 0.8);
+  border-radius: 14px;
+  width: min(calc(680px * var(--ui-scale, 1.0)), 92vw);
+  max-height: 90vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  padding: calc(24px * var(--ui-scale, 1.0));
+  animation: dialogCardIn 0.35s ease;
+}
+
+.completion-header {
+  text-align: center;
+  border-bottom: 1px solid rgba(0, 245, 212, 0.25);
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+}
+
+.victory-ribbon {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 30, 255, 0.16);
+  border: 1px solid #ff1eff;
+  color: #ff9eff;
+  font-size: 0.78em;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  padding: 4px 14px;
+  border-radius: 20px;
+  margin-bottom: 10px;
+}
+
+.completion-title {
+  font-size: 1.45em;
+  color: #fff;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+}
+
+.completion-subtitle {
+  font-size: 0.88em;
+  color: #00f5d4;
+  letter-spacing: 0.06em;
+  font-family: monospace;
+}
+
+.outro-narrative {
+  font-size: 0.92em;
+  line-height: 1.55;
+  color: var(--hud-text);
+  margin-bottom: 20px;
+}
+.outro-narrative p { margin-bottom: 10px; }
+.outro-narrative .highlight-line {
+  color: #00f5d4;
+  font-weight: 600;
+}
+
+.debrief-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 20px;
+}
+
+.debrief-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.debrief-stat .stat-label {
+  font-size: 0.72em;
+  color: var(--hud-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.debrief-stat .stat-val {
+  font-size: 1.25em;
+  color: #fff;
+  font-family: monospace;
+  font-weight: 700;
+}
+
+.completion-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.warp-btn {
+  background: linear-gradient(135deg, #00f5d4, #ff1eff);
+  border: none;
+  color: #040711;
+  font-weight: 800;
+  box-shadow: 0 0 20px rgba(0, 245, 212, 0.45);
+  padding: 10px 22px;
+}
+.warp-btn:hover {
+  filter: brightness(1.15);
+  box-shadow: 0 0 28px rgba(255, 30, 255, 0.6);
+}
+
+.warp-screen-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 100;
+  background: #040711;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+#warp-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.warp-hud {
+  position: absolute;
+  bottom: 12vh;
+  text-align: center;
+  pointer-events: none;
+  z-index: 101;
+}
+
+.warp-status-text {
+  font-size: 1.3em;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  color: #00f5d4;
+  text-shadow: 0 0 16px rgba(0, 245, 212, 0.8);
+  margin-bottom: 6px;
+  animation: warpPulse 1s infinite alternate;
+}
+
+@keyframes warpPulse {
+  from { opacity: 0.7; transform: scale(0.98); }
+  to { opacity: 1.0; transform: scale(1.02); }
+}
+
+.warp-coordinates {
+  font-size: 0.82em;
+  letter-spacing: 0.1em;
+  color: #ff9eff;
+  font-family: monospace;
+}
+
+.warp-outro-card {
+  position: relative;
+  z-index: 102;
+  background: rgba(8, 14, 28, 0.92);
+  border: 1px solid #00f5d4;
+  border-radius: 12px;
+  padding: 32px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-width: 480px;
+  box-shadow: 0 0 40px rgba(0, 245, 212, 0.35);
+  animation: dialogCardIn 0.4s ease;
+}
+
+.warp-outro-card h2 {
+  font-size: 1.5em;
+  color: #00f5d4;
+  margin: 0;
+}
+.warp-outro-card p {
+  color: #e0fbfc;
+  margin: 0;
+  font-size: 0.95em;
+}
+

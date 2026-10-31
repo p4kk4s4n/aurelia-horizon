@@ -66,6 +66,14 @@
       <div class="gauge-track"><div id="hud-suit-health-bar" class="gauge-fill" style="background: #00f5d4; width: 100%;"></div></div>
     </div>
 
+    <div id="hud-ammo-block" class="vitals-block">
+      <div class="vitals-header">
+        <span class="vitals-label">PLASMA AMMO</span>
+        <strong id="hud-ammo-val" class="vitals-val">40 / 60</strong>
+      </div>
+      <div class="gauge-track"><div id="hud-ammo-bar" class="gauge-fill" style="background: #00f5d4; width: 66%;"></div></div>
+    </div>
+
     <div id="hud-hull-block" class="vitals-block" style="display: none;">
       <div class="vitals-header">
         <span class="vitals-label">STARFIGHTER HULL</span>
@@ -202,6 +210,9 @@
   <!-- Center Notifications & Interaction Prompt -->
   <div id="hud-notice"></div>
   <div id="hud-prompt"></div>
+
+  <!-- Interactive Story Dialog & Transmission Comms Container -->
+  <div id="story-dialog-container" class="story-dialog-container pos-mid-screen" style="display: none;"></div>
 
   <!-- Settings & GitHub Live Update Modal -->
   <div id="settings-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="settings-title">
@@ -340,6 +351,31 @@
       </section>
 
       <section class="settings-section">
+        <h3>STORY DIALOG &amp; CAMPAIGN</h3>
+        <p class="section-desc">Configure transmission dialog placement and manage campaign save data:</p>
+        <div class="settings-subsection">
+          <span class="setting-label">Story Dialog Placement</span>
+          <div id="dialog-pos-options" class="pill-group">
+            <button type="button" class="pill-btn active" data-dialog-pos="mid-screen">Mid Screen</button>
+            <button type="button" class="pill-btn" data-dialog-pos="bottom-left">Bottom Left</button>
+            <button type="button" class="pill-btn" data-dialog-pos="bottom-right">Bottom Right</button>
+          </div>
+          <div class="setting-detail-note" style="margin-top: 6px; font-size: 0.82em; color: var(--hud-muted);">
+            Position transmission logs in mid-screen (cinematic center format), bottom left, or bottom right.
+          </div>
+        </div>
+        <div class="settings-subsection" style="margin-top: 14px;">
+          <span class="setting-label">Campaign &amp; Achievement Permanence</span>
+          <div style="display: flex; gap: 12px; align-items: center; margin-top: 6px; flex-wrap: wrap;">
+            <button type="button" class="btn btn-secondary danger-btn" id="btn-reset-campaign" style="color: #ff595e; border-color: rgba(255, 89, 94, 0.4); padding: 6px 14px; font-weight: bold;">
+              Reset Campaign &amp; Achievements
+            </button>
+            <span style="font-size: 0.82em; color: var(--hud-muted);">Permanently resets all mission progress and achievements back to Day 1.</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="settings-section">
         <h3>GRAPHICS &amp; PERFORMANCE</h3>
         <p class="section-desc">Adjust rendering fidelity, environment terrain resolution, and flora density:</p>
         <div class="settings-subsection">
@@ -431,6 +467,12 @@
       </div>
     </div>
   </div>
+
+  <!-- Campaign Victory Completion Modal -->
+  <div id="completion-modal" class="modal-backdrop" style="display: none;" role="dialog" aria-modal="true"></div>
+
+  <!-- Fullscreen 60fps Hyperspace Warp Jump Overlay -->
+  <div id="warp-screen-overlay" class="warp-screen-overlay" style="display: none;"></div>
 
   <!-- Bottom Controls Guide -->
   <footer id="hud-controls">

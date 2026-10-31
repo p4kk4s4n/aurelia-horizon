@@ -38,6 +38,9 @@ export class HUD {
     this.elHullBlock = document.getElementById('hud-hull-block');
     this.elHullBar = document.getElementById('hud-hull-bar');
     this.elHullVal = document.getElementById('hud-hull-val');
+    this.elAmmoBlock = document.getElementById('hud-ammo-block');
+    this.elAmmoBar = document.getElementById('hud-ammo-bar');
+    this.elAmmoVal = document.getElementById('hud-ammo-val');
     this.elBoostBlock = document.getElementById('hud-boost-block');
     this.elBoostVal = document.getElementById('hud-boost-val');
     this.elVertSpd = document.getElementById('hud-vert-spd');
@@ -167,6 +170,16 @@ export class HUD {
       this.elSuitHealthBar.style.width = `${Math.max(0, Math.min(100, hpPct))}%`;
       this.elSuitHealthBar.style.background = hpPct < 30 ? '#ff4d6d' : (hpPct < 65 ? '#ffbe0b' : '#00f5d4');
       if (this.elSuitHealthVal) this.elSuitHealthVal.textContent = `${hpPct}%`;
+    }
+
+    if (this.elAmmoBlock && this.elAmmoBar) {
+      this.elAmmoBlock.style.display = mode === 'PILOTING' ? 'none' : 'block';
+      const ammo = explorer.ammo ?? 0;
+      const maxAmmo = explorer.maxAmmo ?? 60;
+      const ammoPct = Math.round((ammo / maxAmmo) * 100);
+      this.elAmmoBar.style.width = `${Math.max(0, Math.min(100, ammoPct))}%`;
+      this.elAmmoBar.style.background = ammo <= 10 ? '#ff4d6d' : (ammo <= 20 ? '#ffbe0b' : '#00f5d4');
+      if (this.elAmmoVal) this.elAmmoVal.textContent = `${ammo} / ${maxAmmo}`;
     }
 
     if (this.elHullBlock && this.elHullBar) {

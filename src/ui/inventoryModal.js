@@ -35,12 +35,20 @@ export const CRAFTING_RECIPES = [
     desc: '+25% Movement & Sprint Speed, +20% Jump Power, +50 Max Shield HP, +80 Max Oxygen',
     costs: { void_crystal: 5, titanium: 4 },
     costText: '5 Void Aetherium • 4 Titanium'
+  },
+  {
+    id: 'ammoCell',
+    name: 'Plasma Capacitor Ammo Pack',
+    desc: 'Instant +30 Plasma Blaster Rounds synthesized from common Silica Crystal.',
+    costs: { crystal: 1 },
+    costText: '1 Silica Crystal',
+    repeatable: true
   }
 ];
 
 export const RESOURCE_ITEMS = [
   { key: 'titanium', name: 'Titanium Alloy', category: 'Mineral Ore', color: '#4cc9f0', desc: 'High-tensile structural alloy mined from surface & lunar nodes.' },
-  { key: 'crystal', name: 'Silica Crystal', category: 'Energetic Shard', color: '#f72585', desc: 'Piezoelectric lattice used in plasma optics and life-support filters.' },
+  { key: 'crystal', name: 'Silica Crystal', category: 'Energetic Shard', color: '#f72585', desc: 'Piezoelectric lattice used in plasma weapon ammunition recharging, optical emitters, and life-support filters.' },
   { key: 'void_crystal', name: 'Void Aetherium', category: 'Goliath Mineral', color: '#d900ff', desc: 'Hyper-resonant crystal from Moon III: Goliath. Infuses suit systems with kinetic velocity, enhanced jump propulsion, expanded shield capacity, and pressurized oxygen reserves.' },
   { key: 'chitin_shell', name: 'Chitin Shell', category: 'Organic Carapace', color: '#2ec4b6', desc: 'Harvested from Hexapod Striders. Lightweight impact-absorbing armor.' },
   { key: 'apex_fang', name: 'Apex Fang', category: 'Predator Trophy', color: '#ff595e', desc: 'Dense hyper-conductive fang dropped by aggressive Spined Stalkers.' },
@@ -125,7 +133,7 @@ export class InventoryModal {
   canCraft(recipeId) {
     const recipe = CRAFTING_RECIPES.find((r) => r.id === recipeId);
     if (!recipe || !this.explorer) return false;
-    if (this.explorer.craftedUpgrades && this.explorer.craftedUpgrades[recipeId]) return false;
+    if (!recipe.repeatable && this.explorer.craftedUpgrades && this.explorer.craftedUpgrades[recipeId]) return false;
 
     for (const [key, req] of Object.entries(recipe.costs)) {
       if ((this.explorer.inventory[key] || 0) < req) return false;
@@ -136,7 +144,7 @@ export class InventoryModal {
   craftUpgrade(recipeId) {
     const recipe = CRAFTING_RECIPES.find((r) => r.id === recipeId);
     if (!recipe || !this.explorer) return false;
-    if (this.explorer.craftedUpgrades[recipeId]) {
+    if (!recipe.repeatable && this.explorer.craftedUpgrades[recipeId]) {
       if (this.onNotice) this.onNotice(`${recipe.name} is already installed!`);
       return false;
     }
@@ -149,7 +157,9 @@ export class InventoryModal {
       this.explorer.inventory[key] -= req;
     }
 
-    this.explorer.craftedUpgrades[recipeId] = true;
+    if (!recipe.repeatable) {
+      this.explorer.craftedUpgrades[recipeId] = true;
+    }
 
     if (recipeId === 'exosuit') {
       this.explorer.maxSuitHealth = 150;
@@ -164,6 +174,9 @@ export class InventoryModal {
       if (typeof this.explorer.applyVoidCrystalBoosts === 'function') {
         this.explorer.applyVoidCrystalBoosts(0);
       }
+    } else if (recipeId === 'ammoCell') {
+      const added = this.explorer.replenishAmmo(30);
+      if (this.onNotice) this.onNotice(`Synthesized Ammo Pack! (+${added} Plasma Rounds) [${this.explorer.ammo}/${this.explorer.maxAmmo}]`, 3.0);
     }
 
     if (this.objectiveSystem) {

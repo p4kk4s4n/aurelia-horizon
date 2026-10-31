@@ -15,6 +15,8 @@ import { FaunaSystem } from './world/fauna.js';
 import { ObjectiveSystem } from './world/objectives.js';
 import { InventoryModal } from './ui/inventoryModal.js';
 import { EnemyFactionSystem } from './world/enemyFaction.js';
+import { StoryDialogSystem } from './ui/storyDialog.js';
+import { CompletionModal } from './ui/completionModal.js';
 
 const canvas = document.getElementById('game-canvas');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -51,6 +53,23 @@ const cameraRig = new CameraRig(camera);
 const input = new InputManager(canvas);
 const hud = new HUD();
 const objectiveSystem = new ObjectiveSystem((msg, dur) => hud.showNotice(msg, dur));
+const storyDialog = new StoryDialogSystem({
+  containerId: 'story-dialog-container',
+  onNotice: (msg, dur) => hud.showNotice(msg, dur)
+});
+const completionModal = new CompletionModal({
+  onWarpComplete: () => {
+    objectiveSystem.recordHyperdriveEngaged();
+    hud.showNotice('Hyperdrive jump complete! Returning to free flight.', 4.0);
+  },
+  onResumeFreeRoam: () => {
+    hud.showNotice('Resuming free flight in Aurelia system.', 3.0);
+  }
+});
+
+objectiveSystem.onStoryDialogCallback = (ch) => storyDialog.show(ch);
+objectiveSystem.onCompletionCallback = (stats) => completionModal.show(stats);
+
 const inventoryModal = new InventoryModal({
   explorer,
   ship,
@@ -63,6 +82,18 @@ settings.setRenderer(renderer);
 settings.setEnvironment(planet, moons);
 settings.setExplorer(explorer);
 settings.setShip(ship);
+settings.setStoryDialog(storyDialog);
+settings.setObjectiveSystem(objectiveSystem);
+
+// Show introductory story mission dialog on start if not yet completed
+setTimeout(() => {
+  const activeCh = objectiveSystem.getActiveChapter();
+  if (activeCh && !objectiveSystem.unlockedDialogs.has(activeCh.id)) {
+    objectiveSystem.unlockedDialogs.add(activeCh.id);
+    objectiveSystem.saveProgress();
+    storyDialog.show(activeCh);
+  }
+}, 800);
 
 // WebAPK / PWA installation event listener & prompt capture
 window.addEventListener('beforeinstallprompt', (e) => {
@@ -815,7 +846,8 @@ function animate(now) {
     hud.triggerHitmarker(0.25);
     if (hitResult.defeated) {
       if (hitResult.targetType === 'bug_alien') {
-        objectiveSystem.recordBugAlienDefeated();
+        const isGoliath = enemyFaction && enemyFaction.goliathBases && enemyFaction.goliathBases.some(b => b.bugAliens.some(a => a.id === hitResult.targetId));
+        objectiveSystem.recordBugAlienDefeated(isGoliath);
         if (explorer.inventory) {
           explorer.inventory.chitin_shell = (explorer.inventory.chitin_shell || 0) + 1;
         }
@@ -839,6 +871,9 @@ function animate(now) {
   if (input.wasActionPressed('quickMoon1') || input.wasPressed('Digit3') || input.wasPressed('Numpad3')) gameAPI.teleportToMoon(0);
   if (input.wasActionPressed('quickMoon2') || input.wasPressed('Digit4') || input.wasPressed('Numpad4')) gameAPI.teleportToMoon(1);
   if (input.wasActionPressed('quickMoon3') || input.wasPressed('Digit5') || input.wasPressed('Numpad5')) gameAPI.teleportToMoon(2);
+  if (input.wasPressed('KeyL')) {
+    storyDialog.toggle(objectiveSystem.getActiveChapter());
+  }
 
   if (gameMode === 'EXPLORING') {
     const mouseFrame = input.consumeFrame();
@@ -882,9 +917,14 @@ function animate(now) {
             hud.showNotice(`⚡ Harvested +${harvest.amount} Void Aetherium! Speed +${stats.speedBoost}%, Jump +${stats.jumpBoost}%, Max HP ${stats.maxShield}, Max O₂ ${stats.maxOxygen}!`, 3.5);
           } else {
             explorer.inventory.crystal += harvest.amount;
-            hud.showNotice(`Harvested +${harvest.amount} Silica Crystal!`);
+            const restoredAmmo = explorer.replenishAmmo(20 * harvest.amount);
+            objectiveSystem.recordMineralHarvest(harvest.amount, 'crystal');
+            objectiveSystem.recordSilicaAmmoRecharge(restoredAmmo);
+            hud.showNotice(`Harvested +${harvest.amount} Silica Crystal! (+${restoredAmmo} Plasma Ammo Charged) [${explorer.ammo}/${explorer.maxAmmo}]`, 3.0);
           }
-          objectiveSystem.recordMineralHarvest(harvest.amount);
+          if (harvest.type !== 'crystal') {
+            objectiveSystem.recordMineralHarvest(harvest.amount);
+          }
         }
       } else {
         explorer.setMiningTarget(null, false);
@@ -895,7 +935,10 @@ function animate(now) {
     } else {
       explorer.setMiningTarget(null, false);
       if (isFiringKey) {
-        explorer.firePlasmaBlaster(aim.origin, aim.direction);
+        const shot = explorer.firePlasmaBlaster(aim.origin, aim.direction);
+        if (shot && shot.outOfAmmo) {
+          hud.showNotice('⚠ BLASTER AMMO DEPLETED — Mine Silica Crystal nodes to recharge capacitor!', 2.5);
+        }
       }
     }
 

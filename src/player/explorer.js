@@ -105,6 +105,10 @@ export class Explorer {
     this.plasmaProjectiles = [];
     this.firstPersonMode = false;
 
+    // Weapon Ammunition Mechanic (Replenished by mining Silica Crystals)
+    this.maxAmmo = 60;
+    this.ammo = 40;
+
     // Void Aetherium & Exosuit Stat Boosts
     this.speedBoostMult = 1.0;
     this.jumpBoostMult = 1.0;
@@ -170,11 +174,17 @@ export class Explorer {
     this.maxOxygen = baseO2 + passiveO2 + (hasOverdrive ? 80 : 0);
     this.oxygen = Math.min(this.maxOxygen, this.oxygen + (this.maxOxygen - prevMaxO2) + addedCount * 5);
 
+    if (hasOverdrive && this.maxAmmo < 90) {
+      this.maxAmmo = 90;
+      this.ammo = Math.min(this.maxAmmo, this.ammo + 20);
+    }
+
     return {
       speedBoost: Math.round((this.speedBoostMult - 1.0) * 100),
       jumpBoost: Math.round((this.jumpBoostMult - 1.0) * 100),
       maxShield: this.maxSuitHealth,
-      maxOxygen: this.maxOxygen
+      maxOxygen: this.maxOxygen,
+      maxAmmo: this.maxAmmo
     };
   }
 
@@ -207,8 +217,18 @@ export class Explorer {
     return { damageTaken, respawned, suitHealth: this.suitHealth };
   }
 
+  replenishAmmo(amount = 20) {
+    const prev = this.ammo;
+    this.ammo = Math.min(this.maxAmmo, this.ammo + amount);
+    return this.ammo - prev;
+  }
+
   firePlasmaBlaster(origin, direction) {
+    if (this.ammo <= 0) {
+      return { outOfAmmo: true, bolt: null };
+    }
     if (this.blasterCooldown > 0) return null;
+    this.ammo = Math.max(0, this.ammo - 1);
     this.blasterCooldown = this.craftedUpgrades.blasterOvercharge ? 0.16 : 0.24;
 
     const boltGeo = new THREE.SphereGeometry(0.16, 8, 8);

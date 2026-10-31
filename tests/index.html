@@ -47,9 +47,11 @@
     import { FloraCollisionGrid } from '../src/world/decor.js';
     import { FAUNA_SPECIES, FaunaEntity, FaunaSystem } from '../src/world/fauna.js';
     import { CameraRig } from '../src/player/cameraRig.js';
-    import { ObjectiveSystem } from '../src/world/objectives.js';
+    import { ObjectiveSystem, ACHIEVEMENTS, STORAGE_CAMPAIGN_KEY } from '../src/world/objectives.js';
     import { InventoryModal, CRAFTING_RECIPES } from '../src/ui/inventoryModal.js';
     import { EnemyFactionSystem, EnemyPodShip, BugAlienTrooper, EnemyOutpostBase } from '../src/world/enemyFaction.js';
+    import { StoryDialogSystem } from '../src/ui/storyDialog.js';
+    import { CompletionModal } from '../src/ui/completionModal.js';
     import * as THREE from 'three';
 
     const logs = [];
@@ -1108,6 +1110,102 @@
     boostExplorer.update(0.016, testInput, { dx: 0, dy: 0, wheel: 0 }, [enemySystem.goliathMoon]);
     const expGoliathDist = boostExplorer.group.position.distanceTo(enemySystem.goliathMoon.getWorldPosition());
     assert(expGoliathDist >= gBaseElev + 2.0, 'Explorer stands firmly on Goliath base lower plaza without sinking into lunar terrain');
+
+    // 22. Storyline Campaign, Permanence, Silica Ammunition Mechanic, Dialog Placement & Warp Outro
+    // 22A: Storyline Campaign Acts & Objective Hierarchy
+    const campaignSys = new ObjectiveSystem();
+    assert(campaignSys.chapters.length === 7, 'ObjectiveSystem features 7-chapter narrative campaign (Acts I through VII)');
+    const allHaveLogs = campaignSys.chapters.every(c => c.storyLog && c.storyLog.speaker && c.storyLog.title && c.storyLog.text && c.storyLog.directive);
+    assert(allHaveLogs === true, 'All 7 storyline chapters contain complete narrative transceiver logs and tactical directives');
+    assert(campaignSys.chapters[0].id === 'ch1_salvage', 'Chapter 1 maintains backward compatibility (ch1_salvage)');
+    assert(campaignSys.chapters[4].id === 'ch5_crimson_hive', 'Chapter 5 maintains backward compatibility (ch5_crimson_hive)');
+    assert(campaignSys.chapters[5].id === 'ch6_goliath_bastion', 'Chapter 6 establishes Goliath Bastion Siege & Void Crystals');
+    assert(campaignSys.chapters[6].id === 'ch7_liberation', 'Chapter 7 establishes System Liberation & Hyperspace Warp Jump');
+
+    // 22B: Campaign & Achievement Permanence
+    assert(ACHIEVEMENTS.length >= 11, 'ACHIEVEMENTS catalog defines 11 distinct permanent campaign commendations');
+    campaignSys.unlockAchievement('first_encounter');
+    assert(campaignSys.unlockedAchievements.has('first_encounter'), 'unlockAchievement awards permanent achievement badge');
+    campaignSys.stats.partsInstalled = 5;
+    campaignSys.saveProgress();
+    const storedSave = localStorage.getItem(STORAGE_CAMPAIGN_KEY);
+    assert(storedSave !== null && storedSave.includes('first_encounter'), 'saveProgress serializes campaign state & achievements to localStorage');
+
+    // Test Progress Reset (can be reset in settings)
+    campaignSys.resetProgress();
+    assert(campaignSys.stats.partsInstalled === 0, 'resetProgress restores partsInstalled to 0');
+    assert(campaignSys.unlockedAchievements.size === 0, 'resetProgress clears unlocked achievements to Day 1');
+
+    // 22C: Weapon Ammunition Mechanic (Replenished by mining Silica Crystals)
+    const ammoExplorer = new Explorer(mockScene);
+    assert(ammoExplorer.ammo === 40 && ammoExplorer.maxAmmo === 60, 'Explorer initializes with 40 / 60 plasma blaster ammo');
+
+    // Fire 1 shot
+    const shotResult = ammoExplorer.firePlasmaBlaster(new THREE.Vector3(0, 10, 0), new THREE.Vector3(0, 0, 1));
+    assert(shotResult !== null && shotResult.mesh !== undefined, 'firePlasmaBlaster fires plasma bolt when ammunition is available');
+    assert(ammoExplorer.ammo === 39, 'firePlasmaBlaster decrements plasma ammunition by 1');
+
+    // Deplete ammo completely
+    ammoExplorer.blasterCooldown = 0;
+    ammoExplorer.ammo = 0;
+    const dryShot = ammoExplorer.firePlasmaBlaster(new THREE.Vector3(0, 10, 0), new THREE.Vector3(0, 0, 1));
+    assert(dryShot !== null && dryShot.outOfAmmo === true && dryShot.bolt === null, 'firePlasmaBlaster returns outOfAmmo when capacitor is depleted');
+
+    // Replenish ammo (mimicking silica crystal harvest)
+    const restoredAmt = ammoExplorer.replenishAmmo(20);
+    assert(restoredAmt === 20 && ammoExplorer.ammo === 20, 'replenishAmmo recharges plasma ammo by 20 rounds from mined silica crystal');
+
+    const cappedRestored = ammoExplorer.replenishAmmo(100);
+    assert(ammoExplorer.ammo === 60, 'replenishAmmo caps ammunition reserves at maxAmmo (60)');
+
+    // Repeatable Ammo Pack Crafting Recipe
+    const ammoPackRecipe = CRAFTING_RECIPES.find(r => r.id === 'ammoCell');
+    assert(ammoPackRecipe !== undefined && ammoPackRecipe.repeatable === true, 'CRAFTING_RECIPES contains repeatable Plasma Capacitor Ammo Pack');
+    assert(ammoPackRecipe.costs.crystal === 1, 'Ammo Pack recipe converts 1 common Silica Crystal into ammunition');
+
+    // 22D: Interactive Story Dialog Presentation System & Placement Settings
+    const testStoryDialog = new StoryDialogSystem();
+    assert(testStoryDialog.container !== null, 'StoryDialogSystem attaches transceiver container');
+    assert(testStoryDialog.canvas !== null, 'StoryDialogSystem renders animated audio waveform canvas');
+
+    // Placement settings: Mid Screen, Bottom Left, Bottom Right
+    testStoryDialog.setPosition('bottom-left');
+    assert(testStoryDialog.container.classList.contains('pos-bottom-left'), 'setPosition sets bottom-left dock layout');
+    testStoryDialog.setPosition('bottom-right');
+    assert(testStoryDialog.container.classList.contains('pos-bottom-right'), 'setPosition sets bottom-right dock layout');
+    testStoryDialog.setPosition('mid-screen');
+    assert(testStoryDialog.container.classList.contains('pos-mid-screen'), 'setPosition sets mid-screen cinematic center layout');
+
+    // SettingsManager integration
+    settingsMgr.setStoryDialog(testStoryDialog);
+    settingsMgr.applyDialogPosition('bottom-left', true);
+    assert(localStorage.getItem('aurelia_dialog_position') === 'bottom-left', 'SettingsManager persists dialog position choice to localStorage');
+    assert(testStoryDialog.container.classList.contains('pos-bottom-left'), 'SettingsManager updates StoryDialogSystem position in real time');
+    settingsMgr.applyDialogPosition('mid-screen', true); // restore default
+
+    // Test Show / Hide Dialog
+    testStoryDialog.show(campaignSys.chapters[0]);
+    assert(testStoryDialog.isOpen === true && testStoryDialog.container.style.display !== 'none', 'show activates transceiver dialog with narrative briefing');
+    testStoryDialog.hide();
+    assert(testStoryDialog.isOpen === false, 'hide dismisses story dialog');
+
+    // 22E: Campaign Completion Modal & Hyperspace Warp Jump Sequence
+    const completionMod = new CompletionModal();
+    assert(completionMod.modalEl !== null, 'CompletionModal initializes victory debrief modal');
+    assert(completionMod.warpCanvas !== null, 'CompletionModal creates fullscreen hyperspace warp canvas');
+
+    completionMod.show({
+      bugAliensDefeated: 7,
+      enemyPodsDestroyed: 5,
+      faunaDefeated: 4,
+      mineralsHarvested: 24,
+      voidCrystalsHarvested: 8,
+      upgradesCrafted: 3
+    });
+    const debriefText = completionMod.modalEl.textContent;
+    assert(debriefText.includes('VICTORY OVER THE CRIMSON SWARM'), 'CompletionModal displays narrative outro celebrating total system liberation');
+    assert(debriefText.includes('ENGAGE HYPERDRIVE WARP DRIVE'), 'CompletionModal features primary action button to engage hyperdrive warp jump');
+    completionMod.hide();
 
     const summary = `SUMMARY: ${passed} passed, ${failed} failed`;
     logs.push('', summary);

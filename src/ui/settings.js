@@ -64,6 +64,7 @@ const STORAGE_AUTOSCALE_KEY = 'aurelia_ui_autoscale';
 const STORAGE_SHA_KEY = 'aurelia_installed_sha';
 const STORAGE_VER_KEY = 'aurelia_installed_version';
 const STORAGE_VITALS_POS_KEY = 'aurelia_vitals_position';
+const STORAGE_DIALOG_POS_KEY = 'aurelia_dialog_position';
 const GITHUB_REPO = 'p4kk4s4n/aurelia-horizon';
 const GITHUB_BRANCH = 'main';
 
@@ -121,6 +122,14 @@ export class SettingsManager {
     this.vitalsPosition = localStorage.getItem(STORAGE_VITALS_POS_KEY) || 'top-center';
     this.applyVitalsPosition(this.vitalsPosition, false);
 
+    this.dialogPosContainer = document.getElementById('dialog-pos-options');
+    this.dialogPosition = localStorage.getItem(STORAGE_DIALOG_POS_KEY) || 'mid-screen';
+    this.applyDialogPosition(this.dialogPosition, false);
+
+    this.storyDialog = null;
+    this.objectiveSystem = null;
+    this.btnResetCampaign = document.getElementById('btn-reset-campaign');
+
     this.planet = null;
     this.moons = [];
     this.allBodies = [];
@@ -129,6 +138,7 @@ export class SettingsManager {
     this._renderGraphicsSettings();
     this._renderFlightSettings();
     this._renderVitalsSettings();
+    this._renderDialogSettings();
     this._renderKeybindings();
     this.applyTheme(this.currentThemeId);
     this._bindEvents();
@@ -435,6 +445,64 @@ export class SettingsManager {
     });
   }
 
+  setStoryDialog(storyDialog) {
+    this.storyDialog = storyDialog;
+    if (this.storyDialog) {
+      this.storyDialog.setPosition(this.dialogPosition);
+    }
+  }
+
+  setObjectiveSystem(objectiveSystem) {
+    this.objectiveSystem = objectiveSystem;
+  }
+
+  applyDialogPosition(pos, save = true) {
+    const valid = ['mid-screen', 'bottom-left', 'bottom-right'];
+    if (!valid.includes(pos)) pos = 'mid-screen';
+    this.dialogPosition = pos;
+    if (save) {
+      localStorage.setItem(STORAGE_DIALOG_POS_KEY, pos);
+    }
+    document.body.dataset.dialogPos = pos;
+    if (this.storyDialog) {
+      this.storyDialog.setPosition(pos);
+    }
+    const dialogEl = document.getElementById('story-dialog-container');
+    if (dialogEl) {
+      dialogEl.classList.remove('pos-mid-screen', 'pos-bottom-left', 'pos-bottom-right');
+      dialogEl.classList.add(`pos-${pos}`);
+    }
+    this._renderDialogSettings();
+  }
+
+  _renderDialogSettings() {
+    if (!this.dialogPosContainer) return;
+    this.dialogPosContainer.querySelectorAll('button').forEach((btn) => {
+      const pos = btn.dataset.dialogPos;
+      btn.classList.toggle('active', pos === this.dialogPosition);
+      btn.onclick = () => {
+        this.applyDialogPosition(pos, true);
+        if (this.onNotice) {
+          this.onNotice(`Story Dialog placed at ${btn.textContent.trim()}`, 1800);
+        }
+      };
+    });
+  }
+
+  resetCampaignProgress() {
+    if (this.objectiveSystem) {
+      this.objectiveSystem.resetProgress();
+    } else {
+      try {
+        localStorage.removeItem('aurelia_campaign_save');
+        localStorage.removeItem('aurelia_achievements_save');
+      } catch (e) {}
+      if (this.onNotice) {
+        this.onNotice('Campaign progress and achievements reset to Day 1.', 2500);
+      }
+    }
+  }
+
   _renderGraphicsSettings() {
     if (!this.graphicsContainer) return;
     this.graphicsContainer.querySelectorAll('button').forEach((btn) => {
@@ -542,6 +610,12 @@ export class SettingsManager {
   _bindEvents() {
     this.btnOpen?.addEventListener('click', () => this.toggleModal(true));
     this.btnClose?.addEventListener('click', () => this.toggleModal(false));
+    this.btnResetCampaign?.addEventListener('click', () => {
+      const confirmed = window.confirm('Reset all campaign progress, objectives, and achievements to Day 1?');
+      if (confirmed) {
+        this.resetCampaignProgress();
+      }
+    });
     this.btnResetKeybinds?.addEventListener('click', () => {
       if (this.input) {
         this.input.resetKeybindings();
