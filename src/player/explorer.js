@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { evaluateGravity } from '../world/gravity.js';
+import { createCarbonFiberNormalMap, createMetalPanelsNormalMap } from '../world/procTextures.js';
 
 /**
  * Density presets for character polygon scaling:
@@ -380,10 +381,21 @@ export class Explorer {
   }
 
   _initMaterials() {
+    let carbonFiberMap = null;
+    let metalPanelsMap = null;
+    try {
+      carbonFiberMap = createCarbonFiberNormalMap();
+      metalPanelsMap = createMetalPanelsNormalMap();
+    } catch (e) {
+      console.warn('Proc textures not available in environment:', e);
+    }
+
     this.armorMat = new THREE.MeshStandardMaterial({
       color: 0xd8dad3,
       roughness: 0.58,
       metalness: 0.12,
+      normalMap: carbonFiberMap,
+      normalScale: carbonFiberMap ? new THREE.Vector2(0.35, 0.35) : undefined,
       flatShading: false
     });
 
@@ -391,6 +403,8 @@ export class Explorer {
       color: 0x2c353b,
       roughness: 0.68,
       metalness: 0.22,
+      normalMap: carbonFiberMap,
+      normalScale: carbonFiberMap ? new THREE.Vector2(0.5, 0.5) : undefined,
       flatShading: false
     });
 
@@ -431,7 +445,10 @@ export class Explorer {
 
     this.crestMat = new THREE.MeshStandardMaterial({
       color: 0xc4c8bf,
-      roughness: 0.6,
+      roughness: 0.45,
+      metalness: 0.65,
+      normalMap: metalPanelsMap,
+      normalScale: metalPanelsMap ? new THREE.Vector2(0.4, 0.4) : undefined,
       flatShading: false
     });
   }
@@ -852,6 +869,13 @@ export class Explorer {
     const rightSole = new THREE.Mesh(soleGeo, soleMat);
     rightSole.position.y = -0.56;
     this.rightLowerLegGroup.add(rightBoot, rightSole);
+
+    this.visualRoot.traverse((child) => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
   }
 
   spawnOnBody(body, dirVector = new THREE.Vector3(0, 1, 0)) {

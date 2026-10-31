@@ -17,6 +17,7 @@ import { InventoryModal } from './ui/inventoryModal.js';
 import { EnemyFactionSystem } from './world/enemyFaction.js';
 import { StoryDialogSystem } from './ui/storyDialog.js';
 import { CompletionModal } from './ui/completionModal.js';
+import { PostProcessingManager } from './world/postprocessing.js';
 
 const canvas = document.getElementById('game-canvas');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -24,6 +25,8 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.1;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x050814);
@@ -77,8 +80,10 @@ const inventoryModal = new InventoryModal({
   onNotice: (msg, dur) => hud.showNotice(msg, dur)
 });
 const touchControls = new TouchControlsManager(input, (msg, dur) => hud.showNotice(msg, dur));
+const postProcessing = new PostProcessingManager(renderer, scene, camera);
 const settings = new SettingsManager((msg) => hud.showNotice(msg), touchControls, input);
 settings.setRenderer(renderer);
+settings.setPostProcessing(postProcessing);
 settings.setEnvironment(planet, moons);
 settings.setExplorer(explorer);
 settings.setShip(ship);
@@ -736,6 +741,7 @@ window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  postProcessing.setSize(window.innerWidth, window.innerHeight);
 });
 
 let lastTime = performance.now();
@@ -800,7 +806,7 @@ function animate(now) {
   if (settings.isOpen || inventoryModal.isOpen) {
     navMarkers.navLayer.style.display = 'none';
     input.consumeFrame();
-    renderer.render(scene, camera);
+    postProcessing.render(scene, camera);
     input.endFrame();
     return;
   }
@@ -1083,7 +1089,7 @@ function animate(now) {
     promptText
   });
 
-  renderer.render(scene, camera);
+  postProcessing.render(scene, camera);
   input.endFrame();
 }
 

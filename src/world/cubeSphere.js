@@ -109,7 +109,10 @@ export function createCubeSphereMesh(options) {
     vertexColors: true,
     roughness: options.roughness ?? 0.82,
     metalness: options.metalness ?? 0.08,
-    flatShading: true
+    flatShading: options.flatShading ?? false,
+    normalMap: options.normalMap || null,
+    normalScale: options.normalScale || new THREE.Vector2(0.85, 0.85),
+    roughnessMap: options.roughnessMap || null
   });
 
   const mesh = new THREE.Mesh(geometry, material);

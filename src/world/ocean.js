@@ -1,12 +1,15 @@
 import * as THREE from 'three';
 import { cubeToSphere } from './cubeSphere.js';
+import { createWaterNormalMap } from './procTextures.js';
 
 /**
  * Procedural Deep Ocean for Aurelia Prime.
  * Features:
  * - Real per-vertex water depth calculation (seaLevel - terrainHeight)
  * - Dynamic color gradient: shimmering turquoise shallows -> deep abyssal navy
- * - Animated wave displacement vertex shader
+ * - Animated Gerstner wave displacement vertex shader
+ * - Dual-scrolling procedural water normal ripples
+ * - Fresnel sky reflection & high-gloss sun specular glints
  * - Shoreline white water foam edge
  * - Double-sided rendering for underwater swimming views
  */
@@ -92,6 +95,8 @@ export function createDeepOceanMesh(body, segments = 80) {
   oceanGeo.setAttribute('aDepth', new THREE.BufferAttribute(depths, 1));
   oceanGeo.setIndex(new THREE.BufferAttribute(indices, 1));
 
+  const waterNormalMap = createWaterNormalMap(256);
+
   // Custom Shader Material for realistic depth coloring and wave motion
   const oceanUniforms = {
     uTime: { value: 0 },
@@ -100,7 +105,8 @@ export function createDeepOceanMesh(body, segments = 80) {
     uDeepColor: { value: new THREE.Color(0x022b52) },    // Deep bathyal navy
     uAbyssColor: { value: new THREE.Color(0x01040e) },   // Midnight Hadal trench abyss
     uFoamColor: { value: new THREE.Color(0xffffff) },
-    uSunDir: { value: new THREE.Vector3(1, 0.65, 0.45).normalize() }
+    uSunDir: { value: new THREE.Vector3(1, 0.65, 0.45).normalize() },
+    uNormalMap: { value: waterNormalMap }
   };
 
   const oceanMat = new THREE.ShaderMaterial({
@@ -122,11 +128,18 @@ export function createDeepOceanMesh(body, segments = 80) {
         float waveStrength = smoothstep(0.5, 5.0, aDepth);
         vec3 displacedPos = position;
 
-        float w1 = sin(position.x * 0.08 + uTime * 1.8) * cos(position.z * 0.08 + uTime * 1.5);
-        float w2 = sin(position.y * 0.12 + uTime * 2.4) * 0.5;
-        float totalWave = (w1 + w2) * 0.45 * waveStrength;
+        // Dual Gerstner-style harmonic wave motion
+        float k1 = 0.09;
+        float w1 = 1.7;
+        float phase1 = (position.x * 0.7 + position.z * 0.7) * k1 + uTime * w1;
 
-        displacedPos += normal * totalWave;
+        float k2 = 0.14;
+        float w2 = 2.3;
+        float phase2 = (position.x * -0.6 + position.z * 0.8) * k2 + uTime * w2;
+
+        float waveH = (sin(phase1) * 0.55 + sin(phase2) * 0.35) * 0.52 * waveStrength;
+
+        displacedPos += normal * waveH;
         vec4 worldP = modelMatrix * vec4(displacedPos, 1.0);
         vWorldPos = worldP.xyz;
         gl_Position = projectionMatrix * viewMatrix * worldP;
@@ -144,6 +157,7 @@ export function createDeepOceanMesh(body, segments = 80) {
       uniform vec3 uAbyssColor;
       uniform vec3 uFoamColor;
       uniform vec3 uSunDir;
+      uniform sampler2D uNormalMap;
 
       void main() {
         // Multi-tier depth gradient: 0m (shore) -> 8m (shallows) -> 42m (bathyal) -> 125m+ (hadal abyss)
@@ -155,17 +169,31 @@ export function createDeepOceanMesh(body, segments = 80) {
         waterColor = mix(waterColor, uDeepColor, deepFactor);
         waterColor = mix(waterColor, uAbyssColor, abyssFactor);
 
+        // Dual scrolling wave normals
+        vec2 uv1 = vUv * 16.0 + vec2(uTime * 0.035, uTime * 0.02);
+        vec2 uv2 = vUv * 24.0 + vec2(-uTime * 0.025, uTime * 0.038);
+        vec3 norm1 = texture2D(uNormalMap, uv1).rgb * 2.0 - 1.0;
+        vec3 norm2 = texture2D(uNormalMap, uv2).rgb * 2.0 - 1.0;
+        vec3 waveNorm = normalize(norm1 + norm2);
+
+        // Perturb vertex normal with dynamic water ripples
+        vec3 N = normalize(vNormal + waveNorm * 0.38);
+
         // Shoreline white foam pulse
         float foamNoise = sin(vWorldPos.x * 0.35 + uTime * 3.0) * cos(vWorldPos.z * 0.35 + uTime * 2.5);
         float foamThreshold = 0.9 + foamNoise * 0.3;
         float isFoam = step(vDepth, foamThreshold) * (1.0 - step(vDepth, 0.05));
         waterColor = mix(waterColor, uFoamColor, isFoam * 0.75);
 
-        // Specular sun reflection glint
-        vec3 N = normalize(vNormal);
+        // Fresnel sky reflection: glancing angles reflect bright sky
         vec3 V = normalize(cameraPosition - vWorldPos);
+        float fresnel = pow(1.0 - max(0.0, dot(V, N)), 4.0);
+        vec3 skyReflectColor = vec3(0.55, 0.92, 0.98);
+        waterColor = mix(waterColor, skyReflectColor, fresnel * 0.55);
+
+        // Specular sun reflection glints
         vec3 H = normalize(uSunDir + V);
-        float spec = pow(max(0.0, dot(N, H)), 64.0) * 0.85;
+        float spec = pow(max(0.0, dot(N, H)), 96.0) * 1.45;
 
         // Opacity increases smoothly with water depth
         float alpha = mix(0.68, 0.94, deepFactor);

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { evaluateGravity } from '../world/gravity.js';
+import { createMetalPanelsNormalMap } from '../world/procTextures.js';
 
 function getBodyWorldPos(body) {
   if (!body) return new THREE.Vector3();
@@ -77,25 +78,37 @@ export class Ship {
     this.visualRoot = new THREE.Group();
     this.group.add(this.visualRoot);
 
+    let metalPanelsMap = null;
+    try {
+      metalPanelsMap = createMetalPanelsNormalMap();
+    } catch (e) {
+      console.warn('Proc textures not available in environment:', e);
+    }
+
     // Concept Materials
     const armorMat = new THREE.MeshStandardMaterial({
       color: 0xd8dad3,
       roughness: 0.35,
       metalness: 0.42,
-      flatShading: true
+      normalMap: metalPanelsMap,
+      normalScale: metalPanelsMap ? new THREE.Vector2(0.4, 0.4) : undefined,
+      flatShading: false
     });
     const darkMat = new THREE.MeshStandardMaterial({
       color: 0x242e36,
       roughness: 0.48,
       metalness: 0.65,
-      flatShading: true
+      normalMap: metalPanelsMap,
+      normalScale: metalPanelsMap ? new THREE.Vector2(0.5, 0.5) : undefined,
+      flatShading: false
     });
     const accentMat = new THREE.MeshStandardMaterial({
       color: 0xde7938,
       emissive: 0x8a3808,
       emissiveIntensity: 0.25,
       roughness: 0.4,
-      metalness: 0.4
+      metalness: 0.4,
+      flatShading: false
     });
     const canopyMat = new THREE.MeshStandardMaterial({
       color: 0x121c24,
@@ -104,26 +117,31 @@ export class Ship {
       roughness: 0.12,
       metalness: 0.92,
       transparent: true,
-      opacity: 0.94
+      opacity: 0.94,
+      flatShading: false
     });
     const crystalMat = new THREE.MeshStandardMaterial({
       color: 0x00f5d4,
       emissive: 0x00f5d4,
       emissiveIntensity: 1.6,
       roughness: 0.12,
-      metalness: 0.25
+      metalness: 0.25,
+      flatShading: false
     });
     const conduitMat = new THREE.MeshStandardMaterial({
       color: 0x48cae4,
       emissive: 0x00b4d8,
       emissiveIntensity: 1.1,
-      roughness: 0.2
+      roughness: 0.2,
+      flatShading: false
     });
     const gunMetalMat = new THREE.MeshStandardMaterial({
       color: 0x181f26,
       roughness: 0.32,
       metalness: 0.88,
-      flatShading: true
+      normalMap: metalPanelsMap,
+      normalScale: metalPanelsMap ? new THREE.Vector2(0.35, 0.35) : undefined,
+      flatShading: false
     });
     const opticMat = new THREE.MeshBasicMaterial({
       color: 0x00f5d4
@@ -424,6 +442,13 @@ export class Ship {
     this.beaconRing = new THREE.Mesh(beaconGeo, this.beaconMat);
     this.beaconRing.position.y = 0.22;
     this.visualRoot.add(this.beaconRing);
+
+    this.visualRoot.traverse((child) => {
+      if (child.isMesh && child !== this.muzzleFlash && child !== this.beaconRing) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
   }
 
   setRepairedVisual(repaired) {

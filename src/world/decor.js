@@ -316,7 +316,7 @@ export function populatePlanetDecor(body, noise, qualityOverride = null) {
   const trunkMat = new THREE.MeshStandardMaterial({
     color: 0x3b2d54,
     roughness: 0.8,
-    flatShading: true
+    flatShading: false
   });
 
   const capMat = new THREE.MeshStandardMaterial({
@@ -324,7 +324,7 @@ export function populatePlanetDecor(body, noise, qualityOverride = null) {
     emissive: 0x00a896,
     emissiveIntensity: 0.75,
     roughness: 0.35,
-    flatShading: true
+    flatShading: false
   });
 
   const palmMat = new THREE.MeshStandardMaterial({
@@ -332,7 +332,7 @@ export function populatePlanetDecor(body, noise, qualityOverride = null) {
     emissive: 0x0b525b,
     emissiveIntensity: 0.35,
     roughness: 0.6,
-    flatShading: true
+    flatShading: false
   });
 
   const fernMat = new THREE.MeshStandardMaterial({
@@ -340,7 +340,7 @@ export function populatePlanetDecor(body, noise, qualityOverride = null) {
     emissive: 0x38b000,
     emissiveIntensity: 0.45,
     roughness: 0.5,
-    flatShading: true
+    flatShading: false
   });
 
   const tendrilMat = new THREE.MeshStandardMaterial({
@@ -348,7 +348,7 @@ export function populatePlanetDecor(body, noise, qualityOverride = null) {
     emissive: 0xf72585,
     emissiveIntensity: 0.65,
     roughness: 0.4,
-    flatShading: true
+    flatShading: false
   });
 
   const crystalMat = new THREE.MeshStandardMaterial({
@@ -357,7 +357,7 @@ export function populatePlanetDecor(body, noise, qualityOverride = null) {
     emissiveIntensity: 0.95,
     roughness: 0.2,
     metalness: 0.55,
-    flatShading: true
+    flatShading: false
   });
 
   const sporeMat = new THREE.MeshBasicMaterial({

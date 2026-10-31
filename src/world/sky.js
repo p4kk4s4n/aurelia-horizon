@@ -43,10 +43,59 @@ export function createSkyAndSpaceTargets(scene) {
 
   const sunLight = new THREE.DirectionalLight(0xfff5dd, 2.3);
   sunLight.position.copy(sunDir).multiplyScalar(9000);
+  sunLight.castShadow = true;
+  sunLight.shadow.mapSize.width = 2048;
+  sunLight.shadow.mapSize.height = 2048;
+  sunLight.shadow.camera.near = 100;
+  sunLight.shadow.camera.far = 25000;
+  const shadowDist = 1800;
+  sunLight.shadow.camera.left = -shadowDist;
+  sunLight.shadow.camera.right = shadowDist;
+  sunLight.shadow.camera.top = shadowDist;
+  sunLight.shadow.camera.bottom = -shadowDist;
+  sunLight.shadow.bias = -0.0003;
   scene.add(sunLight);
 
   const hemiLight = new THREE.HemisphereLight(0x72efdd, 0x1b1433, 0.8);
   scene.add(hemiLight);
+
+  // Volumetric Sun Rays (Crepuscular God Rays)
+  const godRaysUniforms = {
+    uTime: { value: 0 },
+    uColor: { value: new THREE.Color(0xfff4d0) }
+  };
+  const godRaysGeo = new THREE.CylinderGeometry(480 * 0.95, 480 * 7.5, 9500, 32, 1, true);
+  godRaysGeo.rotateX(Math.PI / 2);
+  const godRaysMat = new THREE.ShaderMaterial({
+    uniforms: godRaysUniforms,
+    vertexShader: `
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      varying vec2 vUv;
+      uniform float uTime;
+      uniform vec3 uColor;
+      void main() {
+        float ray1 = sin(vUv.x * 32.0 + uTime * 0.35);
+        float ray2 = cos(vUv.x * 16.0 - uTime * 0.25);
+        float rays = max(0.0, ray1 * 0.5 + ray2 * 0.5);
+        float falloff = (1.0 - vUv.y) * rays;
+        gl_FragColor = vec4(uColor, falloff * 0.12);
+      }
+    `,
+    transparent: true,
+    blending: THREE.AdditiveBlending,
+    side: THREE.DoubleSide,
+    depthWrite: false
+  });
+  const godRaysMesh = new THREE.Mesh(godRaysGeo, godRaysMat);
+  godRaysMesh.position.copy(sunCenter.clone().multiplyScalar(0.55));
+  godRaysMesh.lookAt(new THREE.Vector3(0, 0, 0));
+  scene.add(godRaysMesh);
 
   // 3. Radiant Animated Sun Surface (Shader with moving solar granules and plasma flares)
   const sunRadius = 480;
@@ -296,10 +345,15 @@ export function createSkyAndSpaceTargets(scene) {
     sunLight,
     hemiLight,
     sunGroup,
+    godRaysMesh,
+    godRaysUniforms,
     targets,
     update: (time, camera) => {
       // 1. Update sun shader animation
       sunUniforms.uTime.value = time;
+      if (godRaysUniforms) {
+        godRaysUniforms.uTime.value = time;
+      }
 
       // 2. Pulse corona scale & glow
       const pulse1 = 1.0 + Math.sin(time * 1.6) * 0.08;

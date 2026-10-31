@@ -52,6 +52,9 @@
     import { EnemyFactionSystem, EnemyPodShip, BugAlienTrooper, EnemyOutpostBase } from '../src/world/enemyFaction.js';
     import { StoryDialogSystem } from '../src/ui/storyDialog.js';
     import { CompletionModal } from '../src/ui/completionModal.js';
+    import { createBasaltNormalMap, createCarbonFiberNormalMap, createMetalPanelsNormalMap, createWaterNormalMap, createNoiseRoughnessMap } from '../src/world/procTextures.js';
+    import { PostProcessingManager } from '../src/world/postprocessing.js';
+    import { createSkyAndSpaceTargets } from '../src/world/sky.js';
     import * as THREE from 'three';
 
     const logs = [];
@@ -1206,6 +1209,104 @@
     assert(debriefText.includes('VICTORY OVER THE CRIMSON SWARM'), 'CompletionModal displays narrative outro celebrating total system liberation');
     assert(debriefText.includes('ENGAGE HYPERDRIVE WARP DRIVE'), 'CompletionModal features primary action button to engage hyperdrive warp jump');
     completionMod.hide();
+
+    // 23. Hybrid Graphics Upgrade (PBR Shading, Dynamic Ocean, God Rays & Bloom)
+    // 23A: In-Memory Procedural PBR Texture Generation
+    const basaltTex = createBasaltNormalMap(512);
+    assert(basaltTex !== null && basaltTex.isTexture === true, 'createBasaltNormalMap returns valid Three.js texture');
+    assert(basaltTex.image.width === 512 && basaltTex.wrapS === THREE.RepeatWrapping, 'Basalt normal map renders at 512x512 with RepeatWrapping');
+
+    const carbonTex = createCarbonFiberNormalMap(256);
+    assert(carbonTex !== null && carbonTex.isTexture === true, 'createCarbonFiberNormalMap returns valid Three.js texture');
+    assert(carbonTex.image.width === 256 && carbonTex.wrapS === THREE.RepeatWrapping, 'Carbon fiber normal map renders at 256x256 with RepeatWrapping');
+
+    const metalTex = createMetalPanelsNormalMap(512);
+    assert(metalTex !== null && metalTex.isTexture === true, 'createMetalPanelsNormalMap returns valid Three.js texture');
+    assert(metalTex.image.width === 512 && metalTex.wrapS === THREE.RepeatWrapping, 'Metal panels normal map renders at 512x512 with RepeatWrapping');
+
+    const waterTex = createWaterNormalMap(256);
+    assert(waterTex !== null && waterTex.isTexture === true, 'createWaterNormalMap returns valid Three.js texture');
+    assert(waterTex.image.width === 256 && waterTex.wrapS === THREE.RepeatWrapping, 'Water wave normal map renders at 256x256 with RepeatWrapping');
+
+    const noiseTex = createNoiseRoughnessMap(256);
+    assert(noiseTex !== null && noiseTex.isTexture === true, 'createNoiseRoughnessMap returns valid Three.js texture');
+    assert(noiseTex.image.width === 256, 'Roughness map renders at 256x256');
+
+    // 23B: Smooth Planetary Terrain & Atmospheric Rayleigh Scattering
+    assert(system.planet.terrainMesh.material.flatShading === false, 'Planetary terrain material utilizes smooth shading (flatShading: false)');
+    assert(system.planet.terrainMesh.material.normalMap !== null, 'Planetary terrain material binds procedural basalt normal map');
+    assert(system.planet.terrainMesh.material.roughnessMap !== null, 'Planetary terrain material binds procedural roughness map');
+    assert(system.planet.atmoMesh !== null && system.planet.atmoMesh.material.uniforms.uSunDir !== undefined, 'Atmosphere mesh utilizes Rayleigh scattering rim shader with sun direction uniform');
+
+    // 23C: Dynamic Ocean Wave Shader
+    const oceanRes = createDeepOceanMesh(system.planet, 12);
+    const oceanTestMesh = oceanRes.mesh;
+    assert(oceanTestMesh.material.isShaderMaterial === true, 'createDeepOceanMesh returns custom GLSL ShaderMaterial');
+    assert(oceanTestMesh.material.uniforms.uNormalMap !== undefined, 'Ocean wave shader exposes uNormalMap sampler uniform');
+    assert(oceanTestMesh.material.uniforms.uSunDir !== undefined && oceanTestMesh.material.uniforms.uFoamColor !== undefined, 'Ocean wave shader exposes uSunDir and uFoamColor uniforms');
+    assert(oceanTestMesh.material.uniforms.uNormalMap.value !== null, 'Ocean wave shader binds procedural water normal map texture');
+
+    // 23D: Crepuscular Sun God Rays & PCF Soft Shadows
+    const skyRes = createSkyAndSpaceTargets(mockScene);
+    assert(skyRes.sunLight.castShadow === true, 'sunLight casts dynamic shadows (castShadow: true)');
+    assert(skyRes.sunLight.shadow.mapSize.width === 2048, 'sunLight shadow resolution set to 2048x2048');
+    assert(skyRes.godRaysMesh !== undefined && skyRes.godRaysMesh.isMesh === true, 'createSkyAndSpaceTargets creates volumetric crepuscular god rays mesh');
+    assert(skyRes.godRaysUniforms !== undefined && skyRes.godRaysUniforms.uTime !== undefined, 'God rays shader exposes uTime uniform');
+    skyRes.update(4.5, { position: new THREE.Vector3(0, 0, 0) });
+    assert(skyRes.godRaysUniforms.uTime.value === 4.5, 'skyRes.update advances god rays animation uniform');
+
+    // 23E: Post-Processing Neon Bloom Pipeline & Quality Scaling
+    const mockRenderer = {
+      getSize: (v) => v.set(800, 600),
+      getPixelRatio: () => 1,
+      setPixelRatio: () => {},
+      setSize: () => {},
+      render: () => {},
+      setRenderTarget: () => {},
+      shadowMap: { enabled: true }
+    };
+    const postManager = new PostProcessingManager(mockRenderer, mockScene, new THREE.PerspectiveCamera());
+    assert(postManager.enabled === true, 'PostProcessingManager initializes enabled by default');
+    assert(postManager.brightMaterial !== undefined, 'PostProcessingManager initializes bright-pass threshold filter');
+    assert(postManager.blurMaterial !== undefined, 'PostProcessingManager initializes 9-tap Gaussian blur pass');
+    assert(postManager.compositeMaterial !== undefined, 'PostProcessingManager initializes additive composite pass');
+
+    postManager.setBloomIntensity(1.5);
+    assert(postManager.bloomIntensity === 1.5, 'setBloomIntensity updates bloom intensity parameter');
+    postManager.setEnabled(false);
+    assert(postManager.enabled === false, 'setEnabled toggles post-processing pass');
+
+    // Test SettingsManager quality scaling integration
+    settingsMgr.setRenderer(mockRenderer);
+    settingsMgr.setPostProcessing(postManager);
+    settingsMgr.applyGraphicsQuality('low', false);
+    assert(postManager.enabled === false, 'Quality Low disables post-processing bloom for maximum FPS');
+    assert(mockRenderer.shadowMap.enabled === false, 'Quality Low disables shadow mapping');
+
+    settingsMgr.applyGraphicsQuality('high', false);
+    assert(postManager.enabled === true && postManager.bloomIntensity === 0.85, 'Quality High enables bloom with 0.85 intensity');
+    assert(mockRenderer.shadowMap.enabled === true, 'Quality High enables shadow mapping');
+
+    settingsMgr.applyGraphicsQuality('ultra', false);
+    assert(postManager.enabled === true && postManager.bloomIntensity === 1.25, 'Quality Ultra scales bloom intensity to 1.25');
+
+    // 23F: Exosuit, Starfighter & Enemy PBR Normal Mapping
+    assert(ammoExplorer.armorMat.normalMap !== null, 'Exosuit armor material binds hexagonal carbon-fiber normal map');
+    assert(ammoExplorer.armorMat.flatShading === false, 'Exosuit armor material uses smooth shading');
+    assert(ammoExplorer.crestMat.normalMap !== null, 'Exosuit crest material binds metal panels normal map');
+
+    const pbrShip = new Ship(mockScene);
+    let shipMeshCastsShadow = false;
+    pbrShip.visualRoot.traverse((c) => {
+      if (c.isMesh && c.castShadow) shipMeshCastsShadow = true;
+    });
+    assert(shipMeshCastsShadow === true, 'Starfighter hull meshes cast dynamic directional shadows');
+
+    let bugMeshCastsShadow = false;
+    waspWarrior.group.traverse((c) => {
+      if (c.isMesh && c.castShadow) bugMeshCastsShadow = true;
+    });
+    assert(bugMeshCastsShadow === true, 'BugAlienTrooper meshes cast dynamic shadows');
 
     const summary = `SUMMARY: ${passed} passed, ${failed} failed`;
     logs.push('', summary);

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createBasaltNormalMap, createMetalPanelsNormalMap } from './procTextures.js';
 
 /**
  * Enemy Faction — Crimson Hive & Goliath Finned Pod Fleet
@@ -16,40 +17,57 @@ import * as THREE from 'three';
  *    - Line-of-sight aiming, crystal core charging, and recoil animation.
  */
 
+let basaltMap = null;
+let metalPanelsMap = null;
+try {
+  basaltMap = createBasaltNormalMap();
+  metalPanelsMap = createMetalPanelsNormalMap();
+} catch (e) {
+  // Graceful fallback if headless/mocked
+}
+
 // Materials for Crimson Hive & Bug Aliens
 const darkChitinMat = new THREE.MeshStandardMaterial({
   color: 0x1a1224,
   roughness: 0.52,
   metalness: 0.62,
-  flatShading: true
+  normalMap: metalPanelsMap,
+  normalScale: metalPanelsMap ? new THREE.Vector2(0.35, 0.35) : undefined,
+  flatShading: false
 });
 
 const violetCarapaceMat = new THREE.MeshStandardMaterial({
   color: 0x34234c,
   roughness: 0.40,
   metalness: 0.55,
-  flatShading: true
+  normalMap: metalPanelsMap,
+  normalScale: metalPanelsMap ? new THREE.Vector2(0.4, 0.4) : undefined,
+  flatShading: false
 });
 
 const redArmorMat = new THREE.MeshStandardMaterial({
   color: 0x7a112c,
   roughness: 0.38,
   metalness: 0.52,
-  flatShading: true
+  normalMap: metalPanelsMap,
+  normalScale: metalPanelsMap ? new THREE.Vector2(0.35, 0.35) : undefined,
+  flatShading: false
 });
 
 const darkSpireRockMat = new THREE.MeshStandardMaterial({
   color: 0x1f162c,
   roughness: 0.82,
   metalness: 0.25,
-  flatShading: true
+  normalMap: basaltMap,
+  normalScale: basaltMap ? new THREE.Vector2(0.5, 0.5) : undefined,
+  flatShading: false
 });
 
 const obsidianTrimMat = new THREE.MeshStandardMaterial({
   color: 0x130e1a,
   roughness: 0.48,
   metalness: 0.58,
-  flatShading: true
+  flatShading: false
 });
 
 const cyanCrystalMat = new THREE.MeshStandardMaterial({
@@ -58,7 +76,7 @@ const cyanCrystalMat = new THREE.MeshStandardMaterial({
   emissiveIntensity: 1.15,
   roughness: 0.18,
   metalness: 0.3,
-  flatShading: true
+  flatShading: false
 });
 
 const magentaCrystalMat = new THREE.MeshStandardMaterial({
@@ -67,7 +85,7 @@ const magentaCrystalMat = new THREE.MeshStandardMaterial({
   emissiveIntensity: 1.35,
   roughness: 0.22,
   metalness: 0.35,
-  flatShading: true
+  flatShading: false
 });
 
 const amberCrystalMat = new THREE.MeshStandardMaterial({
@@ -75,7 +93,7 @@ const amberCrystalMat = new THREE.MeshStandardMaterial({
   emissive: 0xf77f00,
   emissiveIntensity: 1.25,
   roughness: 0.25,
-  flatShading: true
+  flatShading: false
 });
 
 const wingMat = new THREE.MeshStandardMaterial({
@@ -108,21 +126,25 @@ const deepVioletPanelMat = new THREE.MeshStandardMaterial({
   color: 0x2e1f42,
   roughness: 0.38,
   metalness: 0.58,
-  flatShading: true
+  normalMap: metalPanelsMap,
+  normalScale: metalPanelsMap ? new THREE.Vector2(0.4, 0.4) : undefined,
+  flatShading: false
 });
 
 const royalCarapaceMat = new THREE.MeshStandardMaterial({
   color: 0x3d2b58,
   roughness: 0.32,
   metalness: 0.62,
-  flatShading: true
+  normalMap: metalPanelsMap,
+  normalScale: metalPanelsMap ? new THREE.Vector2(0.45, 0.45) : undefined,
+  flatShading: false
 });
 
 const collectorBezelMat = new THREE.MeshStandardMaterial({
   color: 0x0f0b16,
   roughness: 0.55,
   metalness: 0.72,
-  flatShading: true
+  flatShading: false
 });
 
 const crystalCoreMat = new THREE.MeshStandardMaterial({
@@ -131,7 +153,7 @@ const crystalCoreMat = new THREE.MeshStandardMaterial({
   emissiveIntensity: 1.6,
   roughness: 0.15,
   metalness: 0.35,
-  flatShading: true
+  flatShading: false
 });
 
 const cyanLineMat = new THREE.MeshBasicMaterial({
@@ -279,6 +301,13 @@ export class EnemyPodShip {
     this.thrusterFlame = new THREE.Mesh(flameGeo, magentaGlowMat);
     this.thrusterFlame.position.set(0, 0, 3.85);
     this.group.add(this.thrusterFlame);
+
+    this.group.traverse((c) => {
+      if (c.isMesh && c !== this.thrusterFlame) {
+        c.castShadow = true;
+        c.receiveShadow = true;
+      }
+    });
   }
 
   update(dt, playerShipPos, onFireBolt) {
@@ -671,6 +700,13 @@ export class BugAlienTrooper {
     this.rightLegGroup = this._createDigitigradeLeg(1);
     this.group.add(this.leftLegGroup, this.rightLegGroup);
     this.legs.push(this.leftLegGroup, this.rightLegGroup);
+
+    this.group.traverse((c) => {
+      if (c.isMesh) {
+        c.castShadow = true;
+        c.receiveShadow = true;
+      }
+    });
   }
 
   _createDigitigradeLeg(side) {
@@ -1108,6 +1144,13 @@ export class EnemyOutpostBase {
       }
       this.group.add(amberGroup);
     }
+
+    this.group.traverse((c) => {
+      if (c.isMesh) {
+        c.castShadow = true;
+        c.receiveShadow = true;
+      }
+    });
   }
 
   _placeOnPlanet() {

@@ -3,6 +3,7 @@ import { SeededNoise } from './noise.js';
 import { createCubeSphereMesh } from './cubeSphere.js';
 import { populatePlanetDecor } from './decor.js';
 import { createDeepOceanMesh } from './ocean.js';
+import { createBasaltNormalMap, createNoiseRoughnessMap } from './procTextures.js';
 
 export class CelestialBody {
   constructor(config) {
@@ -88,10 +89,19 @@ export class CelestialBody {
   }
 
   _buildMesh() {
+    const normalMap = createBasaltNormalMap(256);
+    normalMap.repeat.set(this.isMoon ? 32 : 48, this.isMoon ? 32 : 48);
+    const roughnessMap = createNoiseRoughnessMap(128);
+    roughnessMap.repeat.set(16, 16);
+
     this.terrainMesh = createCubeSphereMesh({
       segments: this.segments,
       heightSampler: (nx, ny, nz) => this.getSurfaceRadiusAtDir(nx, ny, nz),
-      colorSampler: (nx, ny, nz, r) => this.sampleBiomeColor(nx, ny, nz, r)
+      colorSampler: (nx, ny, nz, r) => this.sampleBiomeColor(nx, ny, nz, r),
+      flatShading: false,
+      normalMap,
+      roughnessMap,
+      normalScale: new THREE.Vector2(0.95, 0.95)
     });
     this.group.add(this.terrainMesh);
 
@@ -104,14 +114,41 @@ export class CelestialBody {
       }
     }
 
-    // Atmosphere halo shell
+    // Atmosphere halo shell with Rayleigh scattering rim shader
     if (this.atmosphereHeight > 0) {
-      const atmoGeo = new THREE.SphereGeometry(this.radius + this.atmosphereHeight, 44, 32);
-      const atmoMat = new THREE.MeshBasicMaterial({
-        color: this.isMoon ? 0x90e0ef : 0x48bfe3,
+      const atmoGeo = new THREE.SphereGeometry(this.radius + this.atmosphereHeight, 48, 36);
+      const atmoMat = new THREE.ShaderMaterial({
+        uniforms: {
+          uColor: { value: new THREE.Color(this.isMoon ? 0x90e0ef : 0x00f5d4) },
+          uRimColor: { value: new THREE.Color(this.isMoon ? 0xd0f4de : 0x48bfe3) },
+          uSunDir: { value: new THREE.Vector3(1, 0.65, 0.45).normalize() }
+        },
+        vertexShader: `
+          varying vec3 vNormal;
+          varying vec3 vViewDir;
+          void main() {
+            vNormal = normalize(normalMatrix * normal);
+            vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+            vViewDir = normalize(-mvPosition.xyz);
+            gl_Position = projectionMatrix * mvPosition;
+          }
+        `,
+        fragmentShader: `
+          varying vec3 vNormal;
+          varying vec3 vViewDir;
+          uniform vec3 uColor;
+          uniform vec3 uRimColor;
+          uniform vec3 uSunDir;
+          void main() {
+            float rim = 1.0 - max(0.0, dot(vViewDir, vNormal));
+            float intensity = pow(rim, 3.2) * 1.45;
+            vec3 col = mix(uColor, uRimColor, rim);
+            gl_FragColor = vec4(col, min(0.65, intensity));
+          }
+        `,
         transparent: true,
-        opacity: 0.12,
         side: THREE.BackSide,
+        blending: THREE.AdditiveBlending,
         depthWrite: false
       });
       this.atmoMesh = new THREE.Mesh(atmoGeo, atmoMat);
@@ -159,10 +196,19 @@ export class CelestialBody {
       if (this.terrainMesh.geometry) this.terrainMesh.geometry.dispose();
       this.terrainMesh = null;
     }
+    const normalMap = createBasaltNormalMap(256);
+    normalMap.repeat.set(this.isMoon ? 32 : 48, this.isMoon ? 32 : 48);
+    const roughnessMap = createNoiseRoughnessMap(128);
+    roughnessMap.repeat.set(16, 16);
+
     this.terrainMesh = createCubeSphereMesh({
       segments: this.segments,
       heightSampler: (nx, ny, nz) => this.getSurfaceRadiusAtDir(nx, ny, nz),
-      colorSampler: (nx, ny, nz, r) => this.sampleBiomeColor(nx, ny, nz, r)
+      colorSampler: (nx, ny, nz, r) => this.sampleBiomeColor(nx, ny, nz, r),
+      flatShading: false,
+      normalMap,
+      roughnessMap,
+      normalScale: new THREE.Vector2(0.95, 0.95)
     });
     this.group.add(this.terrainMesh);
 

@@ -321,6 +321,11 @@ export class SettingsManager {
     this.applyGraphicsQuality(this.currentQuality, false);
   }
 
+  setPostProcessing(postProcessing) {
+    this.postProcessing = postProcessing;
+    this.applyGraphicsQuality(this.currentQuality, false);
+  }
+
   setEnvironment(planet, moons) {
     this.planet = planet;
     this.moons = Array.isArray(moons) ? moons : [];
@@ -544,6 +549,25 @@ export class SettingsManager {
       else if (this.currentQuality === 'ultra') maxPr = 2.5;
       this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, maxPr));
       this.renderer.setSize(window.innerWidth, window.innerHeight);
+
+      if (this.renderer.shadowMap) {
+        this.renderer.shadowMap.enabled = this.currentQuality !== 'low';
+      }
+    }
+    if (this.postProcessing) {
+      if (this.currentQuality === 'low') {
+        this.postProcessing.setEnabled(false);
+      } else if (this.currentQuality === 'medium') {
+        this.postProcessing.setEnabled(true);
+        this.postProcessing.setBloomIntensity(0.5);
+      } else if (this.currentQuality === 'high') {
+        this.postProcessing.setEnabled(true);
+        this.postProcessing.setBloomIntensity(0.85);
+      } else if (this.currentQuality === 'ultra') {
+        this.postProcessing.setEnabled(true);
+        this.postProcessing.setBloomIntensity(1.25);
+      }
+      this.postProcessing.setSize(window.innerWidth, window.innerHeight);
     }
     // Scale polygon density for the ENVIRONMENT (planet and moons), NOT the character
     if (this.allBodies && this.allBodies.length > 0) {
