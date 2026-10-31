@@ -861,7 +861,7 @@
     assert(allPodsOnGoliath === true, 'All finned pod interceptors defend ONLY Moon III: Goliath');
 
     assert(enemySystem.outpost !== null && enemySystem.outpost.position instanceof THREE.Vector3, 'EnemyFactionSystem builds single planetary outpost base on Aurelia Prime');
-    assert(enemySystem.bugAliens.length === 6, 'EnemyFactionSystem spawns 6 bug-alien troopers around the planetary outpost');
+    assert(enemySystem.bugAliens.filter(a => a.planet === system.planet).length === 6, 'EnemyFactionSystem spawns 6 bug-alien troopers around the planetary outpost');
 
     // Test fire-on-sight:
     let boltFired = false;
@@ -1010,6 +1010,104 @@
     waspWarrior.update(0.016, intruderPos, () => { boltSpur = true; });
     assert(boltSpur === true, 'Crystal Shard Cannon fires crystal bolt on sight at intruder');
     assert(waspWarrior.recoilOffset > 0, 'Crystal Shard Cannon executes backward axial recoil impulse on firing');
+
+    // 21H: v1.15.0 Crystal Collector Alien Craft, Goliath Hive Bases & Void Aetherium Exosuit Boosts
+    // 1. Crystal Collector Alien Craft Model & Dynamics
+    const collectorPod = enemySystem.pods[0];
+    assert(collectorPod.crystalCore !== undefined && collectorPod.crystalCore.isMesh === true, 'EnemyPodShip features recessed ventral aperture with glowing magenta crystal core');
+    assert(collectorPod.thrusterFlame !== undefined && collectorPod.thrusterFlame.isMesh === true, 'EnemyPodShip features stepped thruster collar with dynamic magenta exhaust flame');
+    assert(collectorPod.hitRadius === 2.4, 'EnemyPodShip hit radius calibrated to elongated 2.4m chrysalis hull');
+    const initialFlameScale = collectorPod.thrusterFlame.scale.z;
+    collectorPod.update(0.1, null, null);
+    assert(collectorPod.crystalCore.scale.x !== 0 && collectorPod.thrusterFlame.scale.z !== 0, 'Crystal core and exhaust flame animate dynamically during flight');
+
+    // 2. Moon III: Goliath Crater-Crystal Hive Bases (6 Strongholds)
+    assert(enemySystem.goliathBases !== undefined && enemySystem.goliathBases.length === 6, 'EnemyFactionSystem deploys 6 Crater-Crystal Hive Bases across Moon III: Goliath');
+    assert(enemySystem.goliathMoon.outpostBases !== undefined && enemySystem.goliathMoon.outpostBases.length === 6, 'Moon III: Goliath registers all 6 Hive Bases in outpostBases array');
+    const allGoliathBasesBound = enemySystem.goliathBases.every(b => b.planet === enemySystem.goliathMoon);
+    assert(allGoliathBasesBound === true, 'All 6 Goliath bases are anchored to Moon III: Goliath');
+
+    // Test orbital motion tracking for Goliath bases
+    const sampleGoliathBase = enemySystem.goliathBases[0];
+    const basePreMovePos = sampleGoliathBase.group.position.clone();
+    const shift = new THREE.Vector3(12.5, -4.0, 8.5);
+    enemySystem.goliathMoon.group.position.add(shift);
+    enemySystem.goliathMoon.deltaPosition.copy(shift);
+    sampleGoliathBase.update(0.05);
+    const basePostMovePos = sampleGoliathBase.group.position.clone();
+    assert(basePostMovePos.distanceTo(basePreMovePos) > 5.0, 'Goliath Hive Bases re-anchor to follow moon orbital trajectory without drifting');
+    // Restore moon position
+    enemySystem.goliathMoon.group.position.sub(shift);
+    enemySystem.goliathMoon.deltaPosition.set(0, 0, 0);
+    sampleGoliathBase.update(0.05);
+
+    // Test base elevation and obstacle collision on Goliath
+    const gBaseElev = sampleGoliathBase.baseSurfaceRadius;
+    const gRampLocal = new THREE.Vector3(0, 0, 22);
+    const gRampWorld = sampleGoliathBase.group.localToWorld(gRampLocal.clone());
+    const gRampFloorR = sampleGoliathBase.getFloorRadius(gRampWorld);
+    assert(gRampFloorR > gBaseElev && gRampFloorR < gBaseElev + 2.0, 'Goliath base ramp provides sloped elevation entry above moon surface');
+
+    const gPlazaLocal = new THREE.Vector3(0, 2.0, 12);
+    const gPlazaWorld = sampleGoliathBase.group.localToWorld(gPlazaLocal.clone());
+    const gPlazaFloorR = sampleGoliathBase.getFloorRadius(gPlazaWorld);
+    assert(Math.abs(gPlazaFloorR - (gBaseElev + 2.0)) < 1e-4, 'Goliath base entry plaza provides walkable floor at +2.0m');
+
+    const gInsideCrystalLocal = new THREE.Vector3(0, 12.0, -6.5);
+    const gInsideCrystalWorld = sampleGoliathBase.group.localToWorld(gInsideCrystalLocal.clone());
+    const gCrystalCollided = sampleGoliathBase.resolveCollision(gInsideCrystalWorld, 0.55);
+    const gPushedLocal = sampleGoliathBase.group.worldToLocal(gInsideCrystalWorld.clone());
+    const gDistToCenter = Math.hypot(gPushedLocal.x, gPushedLocal.z - (-6.5));
+    assert(gCrystalCollided === true && gDistToCenter >= 4.9, 'Goliath base crystal collision pushes entities outward');
+
+    // Test BugAlienTrooper garrisons: 6 on Aurelia Prime + (6 bases * 2 troopers) on Goliath = 18 total
+    assert(enemySystem.bugAliens.length === 18, 'EnemyFactionSystem deploys 18 total Wasp-Warriors (6 on Aurelia, 12 garrisoned on Goliath)');
+    const goliathTroopers = enemySystem.bugAliens.filter(a => a.planet === enemySystem.goliathMoon);
+    assert(goliathTroopers.length === 12, '12 Wasp-Warriors actively garrison Goliath Hive Strongholds');
+
+    // 3. Void Aetherium Mineral System on Goliath (30 nodes)
+    const testMineralSys = new MineralSystem(mockScene, system.planet, system.moons);
+    const voidNodes = testMineralSys.deposits.filter(d => d.type === 'void_crystal');
+    assert(voidNodes.length === 30, 'MineralSystem spawns exactly 30 Void Aetherium Crystal nodes on Moon III: Goliath');
+    const allVoidOnGoliath = voidNodes.every(d => d.body.id === 'goliath');
+    assert(allVoidOnGoliath === true, 'All 30 Void Aetherium Crystal deposits are situated on Moon III: Goliath');
+
+    const sampleVoidNode = voidNodes[0];
+    assert(sampleVoidNode.maxHealth === 80, 'Void Aetherium Crystal deposit has 80 max health');
+    const voidHarvest = sampleVoidNode.takeMiningDamage(50);
+    assert(voidHarvest.harvested === true && voidHarvest.type === 'void_crystal' && voidHarvest.amount > 0, 'Mining void crystal yields void_crystal resource');
+
+    // 4. Exosuit Void Crystal Stat Boosts & Crafting
+    const boostExplorer = new Explorer(mockScene);
+    assert(boostExplorer.speedBoostMult === 1.0 && boostExplorer.jumpBoostMult === 1.0, 'Explorer begins with 1.0x standard speed and jump multipliers');
+    assert(boostExplorer.maxSuitHealth === 100 && boostExplorer.maxOxygen === 100, 'Explorer begins with 100 base suit health and oxygen');
+
+    // Apply 5 Void Crystals
+    const boostsApplied = boostExplorer.applyVoidCrystalBoosts(5);
+    assert(boostExplorer.voidCrystalsMined === 5, 'applyVoidCrystalBoosts increments mined crystal counter');
+    assert(Math.abs(boostExplorer.speedBoostMult - 1.15) < 1e-4, 'Mining 5 void crystals grants +15% sprint speed boost (+3% per crystal)');
+    assert(Math.abs(boostExplorer.jumpBoostMult - 1.125) < 1e-4, 'Mining 5 void crystals grants +12.5% jump impulse boost (+2.5% per crystal)');
+    assert(boostExplorer.maxSuitHealth === 125, 'Mining 5 void crystals increases max suit health to 125 HP (+25 HP)');
+    assert(boostExplorer.maxOxygen === 140, 'Mining 5 void crystals increases max oxygen capacity to 140 O2 (+40 O2)');
+
+    // Crafting Recipe: Aetherium Exosuit Overdrive
+    const overdriveRecipe = CRAFTING_RECIPES.find(r => r.id === 'goliathOverdrive');
+    assert(overdriveRecipe !== undefined, 'CRAFTING_RECIPES includes Aetherium Exosuit Overdrive recipe');
+    assert(overdriveRecipe.costs.void_crystal === 5 && overdriveRecipe.costs.titanium === 4, 'Overdrive recipe requires 5 void crystals and 4 titanium');
+
+    boostExplorer.craftedUpgrades.goliathOverdrive = true;
+    boostExplorer.applyVoidCrystalBoosts(0);
+    assert(Math.abs(boostExplorer.speedBoostMult - 1.40) < 1e-4, 'Aetherium Overdrive activates +25% additional movement speed (1.40x total)');
+    assert(Math.abs(boostExplorer.jumpBoostMult - 1.325) < 1e-4, 'Aetherium Overdrive activates +20% additional jump power (1.325x total)');
+    assert(boostExplorer.maxSuitHealth === 175, 'Aetherium Overdrive grants +50 shield capacity (175 HP total)');
+    assert(boostExplorer.maxOxygen === 220, 'Aetherium Overdrive grants +80 oxygen capacity (220 O2 total)');
+
+    // 5. Multi-Base Floor Elevation & Standing on Goliath
+    boostExplorer.spawnOnBody(enemySystem.goliathMoon, sampleGoliathBase.direction);
+    boostExplorer.group.position.copy(gPlazaWorld);
+    boostExplorer.update(0.016, testInput, { dx: 0, dy: 0, wheel: 0 }, [enemySystem.goliathMoon]);
+    const expGoliathDist = boostExplorer.group.position.distanceTo(enemySystem.goliathMoon.getWorldPosition());
+    assert(expGoliathDist >= gBaseElev + 2.0, 'Explorer stands firmly on Goliath base lower plaza without sinking into lunar terrain');
 
     const summary = `SUMMARY: ${passed} passed, ${failed} failed`;
     logs.push('', summary);

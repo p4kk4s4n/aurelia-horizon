@@ -104,8 +104,48 @@ const amberEyeMat = new THREE.MeshBasicMaterial({
   color: 0xffa01c
 });
 
+const deepVioletPanelMat = new THREE.MeshStandardMaterial({
+  color: 0x2e1f42,
+  roughness: 0.38,
+  metalness: 0.58,
+  flatShading: true
+});
+
+const royalCarapaceMat = new THREE.MeshStandardMaterial({
+  color: 0x3d2b58,
+  roughness: 0.32,
+  metalness: 0.62,
+  flatShading: true
+});
+
+const collectorBezelMat = new THREE.MeshStandardMaterial({
+  color: 0x0f0b16,
+  roughness: 0.55,
+  metalness: 0.72,
+  flatShading: true
+});
+
+const crystalCoreMat = new THREE.MeshStandardMaterial({
+  color: 0xff2aff,
+  emissive: 0xe024ff,
+  emissiveIntensity: 1.6,
+  roughness: 0.15,
+  metalness: 0.35,
+  flatShading: true
+});
+
+const cyanLineMat = new THREE.MeshBasicMaterial({
+  color: 0x00f5d4
+});
+
 /**
- * Finned Pod Interceptor — Patrols only Moon III: Goliath
+ * Crystal Collector Interceptor Craft — Patrols only Moon III: Goliath
+ * Matching Turnaround Model Sheet (Vehicle Turnaround Model Sheet — Crystal Collector):
+ * - Elongated octagonal faceted chrysalis/obelisk hull.
+ * - Alternating charcoal-obsidian armor plates and deep royal-violet carapace panels.
+ * - Recessed hexagonal aperture bezel housing a pulsing magenta crystalline energy core.
+ * - Angled glowing cyan seam lines tracing panel joins.
+ * - Stepped octagonal thruster collar with magenta plasma emitter and exhaust flame.
  */
 export class EnemyPodShip {
   constructor(id, moon, orbitRadius, orbitAngle, orbitSpeed, yOffset) {
@@ -116,7 +156,7 @@ export class EnemyPodShip {
     this.orbitSpeed = orbitSpeed;
     this.yOffset = yOffset;
 
-    this.maxHp = 60;
+    this.maxHp = 65;
     this.hp = this.maxHp;
     this.dead = false;
     this.respawnTimer = 0;
@@ -129,78 +169,115 @@ export class EnemyPodShip {
   }
 
   _buildMesh() {
-    // 1. Central Ovoid Cockpit Pod
-    const podGeo = new THREE.SphereGeometry(1.4, 12, 10);
-    podGeo.scale(1.0, 0.85, 1.35);
-    const podMesh = new THREE.Mesh(podGeo, redArmorMat);
-    this.group.add(podMesh);
+    // Forward direction is -Z, Aft propulsion is +Z
 
-    // Dark underbelly armor plate
-    const bellyGeo = new THREE.SphereGeometry(1.25, 10, 8);
-    bellyGeo.scale(0.9, 0.45, 1.2);
-    const bellyMesh = new THREE.Mesh(bellyGeo, darkChitinMat);
-    bellyMesh.position.set(0, -0.45, 0);
-    this.group.add(bellyMesh);
+    // 1. Nose Octagonal Cap & Forward Hull Taper
+    const noseGeo = new THREE.CylinderGeometry(0.55, 1.35, 1.8, 8);
+    noseGeo.rotateX(Math.PI / 2);
+    noseGeo.translate(0, 0, -1.2);
+    const noseMesh = new THREE.Mesh(noseGeo, darkChitinMat);
+    this.group.add(noseMesh);
 
-    // Glowing Crimson Ocular Visor Slit in front
-    const visorGeo = new THREE.BoxGeometry(0.95, 0.22, 0.45);
-    const visorMesh = new THREE.Mesh(visorGeo, crimsonGlowMat);
-    visorMesh.position.set(0, 0.12, -1.25);
-    this.group.add(visorMesh);
+    // Flat front nose shield plate
+    const capGeo = new THREE.CylinderGeometry(0.52, 0.52, 0.15, 8);
+    capGeo.rotateX(Math.PI / 2);
+    capGeo.translate(0, 0, -2.12);
+    const capMesh = new THREE.Mesh(capGeo, obsidianTrimMat);
+    this.group.add(capMesh);
 
-    // Monocle targeting eye
-    const eyeGeo = new THREE.SphereGeometry(0.16, 8, 8);
-    const eyeMesh = new THREE.Mesh(eyeGeo, amberEyeMat);
-    eyeMesh.position.set(0, 0.12, -1.4);
-    this.group.add(eyeMesh);
+    // 2. Central Midsection (Widest Hull & Carapace Deck)
+    const midGeo = new THREE.CylinderGeometry(1.35, 1.25, 1.9, 8);
+    midGeo.rotateX(Math.PI / 2);
+    midGeo.translate(0, 0, 0.45);
+    const midMesh = new THREE.Mesh(midGeo, deepVioletPanelMat);
+    this.group.add(midMesh);
 
-    // 2. Three Swept Aerodynamic / Ion Fins
-    const dorsalFinGeo = new THREE.BoxGeometry(0.12, 1.1, 1.8);
-    dorsalFinGeo.rotateX(Math.PI * 0.18);
-    const dorsalFin = new THREE.Mesh(dorsalFinGeo, darkChitinMat);
-    dorsalFin.position.set(0, 1.15, 0.35);
-    this.group.add(dorsalFin);
+    // Dorsal Carapace Shield Plates (Angled chevron roof)
+    const dorsalGeo = new THREE.BoxGeometry(1.4, 0.45, 2.4);
+    dorsalGeo.rotateX(0.08);
+    dorsalGeo.translate(0, 0.95, 0.1);
+    const dorsalMesh = new THREE.Mesh(dorsalGeo, royalCarapaceMat);
+    this.group.add(dorsalMesh);
 
-    const dorsalGlowGeo = new THREE.BoxGeometry(0.14, 0.18, 1.4);
-    dorsalGlowGeo.rotateX(Math.PI * 0.18);
-    const dorsalGlow = new THREE.Mesh(dorsalGlowGeo, crimsonGlowMat);
-    dorsalGlow.position.set(0, 1.35, 0.4);
-    this.group.add(dorsalGlow);
+    // Lateral Armored Chitin Cheeks (Left & Right)
+    for (const side of [-1, 1]) {
+      const cheekGeo = new THREE.BoxGeometry(0.32, 1.1, 2.2);
+      cheekGeo.rotateZ(side * 0.22);
+      cheekGeo.translate(side * 1.35, 0.05, 0.15);
+      const cheekMesh = new THREE.Mesh(cheekGeo, darkChitinMat);
+      this.group.add(cheekMesh);
+    }
 
-    const portFinGeo = new THREE.BoxGeometry(1.5, 0.12, 1.6);
-    portFinGeo.rotateZ(Math.PI * 0.12);
-    portFinGeo.rotateY(Math.PI * 0.15);
-    const portFin = new THREE.Mesh(portFinGeo, darkChitinMat);
-    portFin.position.set(-1.45, -0.15, 0.25);
-    this.group.add(portFin);
+    // 3. Recessed Hexagonal Ventral Aperture & Glowing Magenta Crystal Core
+    // Located on ventral / lower-front face
+    const bezelGeo = new THREE.BoxGeometry(0.72, 0.32, 1.45);
+    bezelGeo.translate(0, -0.92, -0.15);
+    const bezelMesh = new THREE.Mesh(bezelGeo, collectorBezelMat);
+    this.group.add(bezelMesh);
 
-    const stbdFinGeo = new THREE.BoxGeometry(1.5, 0.12, 1.6);
-    stbdFinGeo.rotateZ(-Math.PI * 0.12);
-    stbdFinGeo.rotateY(-Math.PI * 0.15);
-    const stbdFin = new THREE.Mesh(stbdFinGeo, darkChitinMat);
-    stbdFin.position.set(1.45, -0.15, 0.25);
-    this.group.add(stbdFin);
+    // Glowing cyan energy border lines around the aperture
+    for (const side of [-1, 1]) {
+      const borderGeo = new THREE.BoxGeometry(0.045, 0.06, 1.35);
+      borderGeo.translate(side * 0.32, -1.05, -0.15);
+      const border = new THREE.Mesh(borderGeo, cyanLineMat);
+      this.group.add(border);
+    }
 
-    // Twin Blaster Cannons under side fins
-    const cannonGeo = new THREE.CylinderGeometry(0.08, 0.08, 1.2, 6);
-    cannonGeo.rotateX(Math.PI / 2);
-    const leftCannon = new THREE.Mesh(cannonGeo, darkChitinMat);
-    leftCannon.position.set(-0.85, -0.32, -0.9);
-    const rightCannon = new THREE.Mesh(cannonGeo, darkChitinMat);
-    rightCannon.position.set(0.85, -0.32, -0.9);
-    this.group.add(leftCannon, rightCannon);
+    // Faceted Glowing Magenta Crystal Core
+    const crystalGeo = new THREE.CylinderGeometry(0.22, 0.26, 0.95, 6);
+    crystalGeo.rotateX(Math.PI / 2);
+    crystalGeo.scale(1.0, 0.75, 1.2);
+    this.crystalCore = new THREE.Mesh(crystalGeo, crystalCoreMat);
+    this.crystalCore.position.set(0, -0.98, -0.15);
+    this.group.add(this.crystalCore);
 
-    // Rear Propulsion Exhaust Thruster
-    const nozzleGeo = new THREE.CylinderGeometry(0.38, 0.48, 0.5, 8);
-    nozzleGeo.rotateX(Math.PI / 2);
-    const nozzle = new THREE.Mesh(nozzleGeo, darkChitinMat);
-    nozzle.position.set(0, 0, 1.35);
-    this.group.add(nozzle);
+    // 4. Glowing Cyan Panel Seam Traces
+    const seamPoints = [
+      // Left flank angled seam
+      { x: -1.25, y: -0.25, z: 0.65, rotZ: 0.35, len: 1.6 },
+      // Right flank angled seam
+      { x: 1.25, y: -0.25, z: 0.65, rotZ: -0.35, len: 1.6 },
+      // Dorsal chevron seams
+      { x: -0.45, y: 1.15, z: 0.35, rotY: 0.35, len: 0.95 },
+      { x: 0.45, y: 1.15, z: 0.35, rotY: -0.35, len: 0.95 }
+    ];
 
-    const flameGeo = new THREE.ConeGeometry(0.35, 2.2, 8);
+    for (const sp of seamPoints) {
+      const lineGeo = new THREE.BoxGeometry(0.04, 0.04, sp.len);
+      if (sp.rotZ) lineGeo.rotateZ(sp.rotZ);
+      if (sp.rotY) lineGeo.rotateY(sp.rotY);
+      lineGeo.translate(sp.x, sp.y, sp.z);
+      const lineMesh = new THREE.Mesh(lineGeo, cyanLineMat);
+      this.group.add(lineMesh);
+    }
+
+    // 5. Stepped Octagonal Thruster Collar & Magenta Plasma Emitter
+    // Collar Stage 1 (Hull Transition)
+    const collar1Geo = new THREE.CylinderGeometry(1.25, 0.85, 0.8, 8);
+    collar1Geo.rotateX(Math.PI / 2);
+    collar1Geo.translate(0, 0, 1.75);
+    const collar1Mesh = new THREE.Mesh(collar1Geo, darkChitinMat);
+    this.group.add(collar1Mesh);
+
+    // Collar Stage 2 (Nozzle Ring)
+    const collar2Geo = new THREE.CylinderGeometry(0.78, 0.72, 0.45, 8);
+    collar2Geo.rotateX(Math.PI / 2);
+    collar2Geo.translate(0, 0, 2.25);
+    const collar2Mesh = new THREE.Mesh(collar2Geo, obsidianTrimMat);
+    this.group.add(collar2Mesh);
+
+    // Magenta Plasma Emitter Disc
+    const emitterGeo = new THREE.CylinderGeometry(0.55, 0.55, 0.12, 8);
+    emitterGeo.rotateX(Math.PI / 2);
+    emitterGeo.translate(0, 0, 2.45);
+    const emitterMesh = new THREE.Mesh(emitterGeo, magentaGlowMat);
+    this.group.add(emitterMesh);
+
+    // Dynamic Magenta Propulsion Exhaust Flame
+    const flameGeo = new THREE.ConeGeometry(0.48, 2.8, 8);
     flameGeo.rotateX(Math.PI / 2);
-    this.thrusterFlame = new THREE.Mesh(flameGeo, crimsonGlowMat);
-    this.thrusterFlame.position.set(0, 0, 2.45);
+    this.thrusterFlame = new THREE.Mesh(flameGeo, magentaGlowMat);
+    this.thrusterFlame.position.set(0, 0, 3.85);
     this.group.add(this.thrusterFlame);
   }
 
@@ -226,30 +303,49 @@ export class EnemyPodShip {
       moonPos.z + baseLocalZ
     );
 
+    // Pulse Thruster Exhaust in vibrant magenta
     if (this.thrusterFlame) {
       const s = 0.9 + Math.sin(performance.now() * 0.04 + this.orbitRadius) * 0.25;
-      this.thrusterFlame.scale.set(s, s, s * 1.3);
+      this.thrusterFlame.scale.set(s, s, s * 1.35);
+    }
+
+    // Pulse Glowing Magenta Crystal Core
+    if (this.crystalCore) {
+      const cp = 1.0 + Math.sin(performance.now() * 0.006 + this.orbitRadius) * 0.22;
+      this.crystalCore.scale.set(1.0, cp, 1.0);
     }
 
     if (playerShipPos) {
       const distToPlayer = currentWorldPos.distanceTo(playerShipPos);
       const distToGoliath = playerShipPos.distanceTo(moonPos);
 
+      // Engages intruder within Goliath defense perimeter
       if (distToGoliath < (this.moon.soiRadius || 960) && distToPlayer < 550) {
         const aimDir = playerShipPos.clone().sub(currentWorldPos).normalize();
         const lookTarget = currentWorldPos.clone().add(aimDir);
         this.group.lookAt(lookTarget);
 
+        // Core flares up when engaging
+        if (this.crystalCore) {
+          crystalCoreMat.emissiveIntensity = 2.4;
+        }
+
         this.fireCooldown -= dt;
-        if (this.fireCooldown <= 0 && distToPlayer < 380) {
-          this.fireCooldown = 1.8 + Math.random() * 0.8;
+        if (this.fireCooldown <= 0 && distToPlayer < 400) {
+          this.fireCooldown = 1.7 + Math.random() * 0.7;
           if (onFireBolt) {
-            onFireBolt(currentWorldPos.clone(), aimDir.clone(), 65.0, 4);
+            // Emit high-velocity crystal bolt from forward ventral crystal aperture
+            const muzzlePos = currentWorldPos.clone().addScaledVector(aimDir, 2.4);
+            onFireBolt(muzzlePos, aimDir.clone(), 68.0, 5);
           }
         }
       } else {
+        // Routine orbit facing along orbital velocity
         const fwdDir = new THREE.Vector3(-Math.sin(this.orbitAngle), 0, Math.cos(this.orbitAngle)).normalize();
         this.group.lookAt(currentWorldPos.clone().add(fwdDir));
+        if (this.crystalCore) {
+          crystalCoreMat.emissiveIntensity = 1.6;
+        }
       }
     }
 
@@ -682,9 +778,12 @@ export class BugAlienTrooper {
 
     let floorElevation = surfaceElevation;
     const approxWorldPos = pPos.clone().addScaledVector(currentDir, surfaceElevation);
-    if (this.planet.outpostBase && typeof this.planet.outpostBase.getFloorRadius === 'function') {
-      const outpostFloor = this.planet.outpostBase.getFloorRadius(approxWorldPos);
-      if (outpostFloor > floorElevation) floorElevation = outpostFloor;
+    const bases = this.planet.outpostBases || (this.planet.outpostBase ? [this.planet.outpostBase] : []);
+    for (let b = 0; b < bases.length; b++) {
+      if (typeof bases[b].getFloorRadius === 'function') {
+        const outpostFloor = bases[b].getFloorRadius(approxWorldPos);
+        if (outpostFloor > floorElevation) floorElevation = outpostFloor;
+      }
     }
 
     // Hover lift offset
@@ -1157,6 +1256,9 @@ export class EnemyOutpostBase {
   }
 
   update(dt) {
+    if (this.planet && this.planet.deltaPosition) {
+      this._placeOnPlanet();
+    }
     if (this.hiveCore) {
       const scale = 1.0 + Math.sin(performance.now() * 0.005) * 0.08;
       this.hiveCore.scale.set(scale, scale, scale);
@@ -1185,6 +1287,7 @@ export class EnemyFactionSystem {
     this.bugAliens = [];
     this.projectiles = [];
     this.outpost = null;
+    this.goliathBases = [];
 
     // Magenta-cyan crystal bolt projectile
     this.crimsonBoltGeo = new THREE.CylinderGeometry(0.12, 0.12, 2.2, 6);
@@ -1270,10 +1373,11 @@ export class EnemyFactionSystem {
     // 1. Single Planetary Base on Aurelia Prime (Dry Highland Guaranteed)
     const outpostDir = this._findDryHighlandDirection(this.planet);
     this.outpost = new EnemyOutpostBase(this.planet, outpostDir);
+    this.planet.outpostBases = [this.outpost];
     this.planet.outpostBase = this.outpost;
     this.scene.add(this.outpost.group);
 
-    // 2. Six Wasp-Warrior Bug-Alien Troopers guarding the Outpost
+    // 2. Six Wasp-Warrior Bug-Alien Troopers guarding the Aurelia Outpost
     for (let i = 0; i < 6; i++) {
       const angle = (i * Math.PI * 2) / 6;
       const radius = 18.0 + (i % 2) * 10.0;
@@ -1282,7 +1386,39 @@ export class EnemyFactionSystem {
       this.bugAliens.push(trooper);
     }
 
-    // 3. Eight Finned Pod Interceptors patrolling ONLY Moon III: Goliath
+    // 3. Moon III: Goliath — Six Crater-Crystal Hive Bases littered across surface
+    this.goliathBases = [];
+    if (this.goliathMoon) {
+      const goliathDirs = [
+        new THREE.Vector3(0.18, 0.95, 0.22),
+        new THREE.Vector3(0.92, 0.15, 0.35),
+        new THREE.Vector3(-0.85, 0.22, 0.48),
+        new THREE.Vector3(-0.22, 0.38, -0.89),
+        new THREE.Vector3(0.38, -0.32, -0.86),
+        new THREE.Vector3(-0.16, -0.94, 0.28)
+      ];
+
+      for (let b = 0; b < goliathDirs.length; b++) {
+        const gBaseDir = goliathDirs[b].normalize();
+        const gBase = new EnemyOutpostBase(this.goliathMoon, gBaseDir);
+        this.scene.add(gBase.group);
+        this.goliathBases.push(gBase);
+
+        // Station 2 Wasp-Warrior Troopers at each Goliath Hive Base
+        for (let t = 0; t < 2; t++) {
+          const tAngle = (t * Math.PI) + (b * 0.4);
+          const tRadius = 16.0 + t * 8.0;
+          const gTrooper = new BugAlienTrooper(`goliath_trooper_${b}_${t}`, this.goliathMoon, gBaseDir, tAngle, tRadius);
+          this.scene.add(gTrooper.group);
+          this.bugAliens.push(gTrooper);
+        }
+      }
+
+      this.goliathMoon.outpostBases = this.goliathBases;
+      this.goliathMoon.outpostBase = this.goliathBases[0];
+    }
+
+    // 4. Eight Crystal Collector Interceptors patrolling ONLY Moon III: Goliath
     if (this.goliathMoon) {
       const gRadius = this.goliathMoon.radius || 310;
       for (let i = 0; i < 8; i++) {
@@ -1290,7 +1426,7 @@ export class EnemyFactionSystem {
         const orbitAngle = (i * Math.PI * 2) / 8;
         const orbitSpeed = 0.08 + (i % 2) * 0.04;
         const yOffset = ((i % 4) - 1.5) * 26;
-        const pod = new EnemyPodShip(`goliath_pod_${i}`, this.goliathMoon, orbitRad, orbitAngle, orbitSpeed, yOffset);
+        const pod = new EnemyPodShip(`goliath_collector_${i}`, this.goliathMoon, orbitRad, orbitAngle, orbitSpeed, yOffset);
         this.scene.add(pod.group);
         this.pods.push(pod);
       }
@@ -1313,6 +1449,11 @@ export class EnemyFactionSystem {
 
   update(dt, gameMode, explorer, ship, onPlayerDamaged) {
     if (this.outpost) this.outpost.update(dt);
+    if (this.goliathBases) {
+      for (let b = 0; b < this.goliathBases.length; b++) {
+        this.goliathBases[b].update(dt);
+      }
+    }
 
     const playerPos = (gameMode === 'EXPLORING' && explorer) ? explorer.group.position : (ship ? ship.group.position : null);
 

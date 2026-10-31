@@ -112,6 +112,11 @@ export class ObjectiveSystem {
     this._checkCompletions();
   }
 
+  recordVoidCrystalHarvest(amount = 1) {
+    this.stats.voidCrystalsHarvested = (this.stats.voidCrystalsHarvested || 0) + amount;
+    this._checkCompletions();
+  }
+
   recordFaunaDefeated(speciesKey) {
     this.stats.faunaDefeated += 1;
     if (speciesKey) this.discoveredSpecies.add(speciesKey);

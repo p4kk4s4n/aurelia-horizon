@@ -28,12 +28,20 @@ export const CRAFTING_RECIPES = [
     desc: '+50 Max Starfighter Hull Integrity (150%) & Instant Full Hull Repair',
     costs: { titanium: 5, crystal: 2 },
     costText: '5 Titanium • 2 Silica Crystal'
+  },
+  {
+    id: 'goliathOverdrive',
+    name: 'Aetherium Exosuit Overdrive',
+    desc: '+25% Movement & Sprint Speed, +20% Jump Power, +50 Max Shield HP, +80 Max Oxygen',
+    costs: { void_crystal: 5, titanium: 4 },
+    costText: '5 Void Aetherium • 4 Titanium'
   }
 ];
 
 export const RESOURCE_ITEMS = [
   { key: 'titanium', name: 'Titanium Alloy', category: 'Mineral Ore', color: '#4cc9f0', desc: 'High-tensile structural alloy mined from surface & lunar nodes.' },
   { key: 'crystal', name: 'Silica Crystal', category: 'Energetic Shard', color: '#f72585', desc: 'Piezoelectric lattice used in plasma optics and life-support filters.' },
+  { key: 'void_crystal', name: 'Void Aetherium', category: 'Goliath Mineral', color: '#d900ff', desc: 'Hyper-resonant crystal from Moon III: Goliath. Infuses suit systems with kinetic velocity, enhanced jump propulsion, expanded shield capacity, and pressurized oxygen reserves.' },
   { key: 'chitin_shell', name: 'Chitin Shell', category: 'Organic Carapace', color: '#2ec4b6', desc: 'Harvested from Hexapod Striders. Lightweight impact-absorbing armor.' },
   { key: 'apex_fang', name: 'Apex Fang', category: 'Predator Trophy', color: '#ff595e', desc: 'Dense hyper-conductive fang dropped by aggressive Spined Stalkers.' },
   { key: 'biolum_gland', name: 'Bioluminescent Gland', category: 'Aquatic Organ', color: '#00f5d4', desc: 'Oxygen-synthesizing organ harvested from Ribbon Leviathans.' },
@@ -152,6 +160,10 @@ export class InventoryModal {
     } else if (recipeId === 'shipPlating' && this.ship) {
       this.ship.maxHullIntegrity = 150;
       this.ship.hullIntegrity = 100;
+    } else if (recipeId === 'goliathOverdrive') {
+      if (typeof this.explorer.applyVoidCrystalBoosts === 'function') {
+        this.explorer.applyVoidCrystalBoosts(0);
+      }
     }
 
     if (this.objectiveSystem) {

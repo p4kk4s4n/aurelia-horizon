@@ -11,17 +11,17 @@ import { mulberry32, shardGeometry } from './procGeo.js';
 export class MineralDeposit {
   constructor(config) {
     this.id = config.id || `mineral_${Math.random().toString(36).substr(2, 9)}`;
-    this.type = config.type || 'titanium'; // 'titanium' | 'crystal'
-    this.name = this.type === 'titanium' ? 'Titanium Ore Vein' : 'Silica Crystal Node';
+    this.type = config.type || 'titanium'; // 'titanium' | 'crystal' | 'void_crystal'
+    this.name = this.type === 'titanium' ? 'Titanium Ore Vein' : (this.type === 'void_crystal' ? 'Void Aetherium Crystal' : 'Silica Crystal Node');
     this.body = config.body;
     this.localDir = config.localDir.clone().normalize();
     this.position = new THREE.Vector3();
-    this.maxHealth = this.type === 'titanium' ? 80 : 60;
+    this.maxHealth = this.type === 'titanium' ? 80 : (this.type === 'void_crystal' ? 80 : 60);
     this.health = this.maxHealth;
     this.isDepleted = false;
     this.respawnTimer = 0;
     this.respawnCooldown = 90; // Respawn after 90 seconds
-    this.yieldPerHit = this.type === 'titanium' ? 1 : 1;
+    this.yieldPerHit = 1;
     this.totalYield = this.type === 'titanium' ? 8 : 6;
     this.harvestedSoFar = 0;
     this.flashTimer = 0;
@@ -65,6 +65,65 @@ export class MineralDeposit {
       this.group.add(nugget1, nugget2);
       this.mainMaterial = veinMat;
       this.nuggetMaterial = nuggetMat;
+    } else if (this.type === 'void_crystal') {
+      // Void Aetherium: Hyper-resonant royal-violet & deep-magenta obelisk spires with levitating cyan aether diamond
+      const voidGroup = new THREE.Group();
+
+      // Obsidian basal rock matrix
+      const baseRockGeo = new THREE.DodecahedronGeometry(1.5, 0);
+      const baseMat = new THREE.MeshStandardMaterial({
+        color: 0x150f21,
+        roughness: 0.72,
+        metalness: 0.45,
+        flatShading: true
+      });
+      const rockMesh = new THREE.Mesh(baseRockGeo, baseMat);
+      rockMesh.scale.set(1.4, 0.65, 1.3);
+      rockMesh.position.y = 0.35;
+      voidGroup.add(rockMesh);
+
+      // Multi-shard violet-magenta crystal cluster
+      const voidMat = new THREE.MeshStandardMaterial({
+        color: 0x9b2226,
+        emissive: 0xd900ff,
+        emissiveIntensity: 1.5,
+        roughness: 0.18,
+        metalness: 0.42,
+        transparent: true,
+        opacity: 0.94,
+        flatShading: true
+      });
+
+      const heights = [2.6, 2.1, 1.7, 1.4, 1.1];
+      const angles = [0.2, 1.5, 2.8, 4.1, 5.3];
+      const radii = [0.42, 0.35, 0.30, 0.26, 0.22];
+
+      for (let i = 0; i < heights.length; i++) {
+        const shard = new THREE.Mesh(shardGeometry(heights[i], radii[i]), voidMat);
+        const a = angles[i];
+        shard.position.set(Math.cos(a) * 0.55, 0.35, Math.sin(a) * 0.55);
+        shard.rotation.z = (Math.random() - 0.5) * 0.32;
+        shard.rotation.x = (Math.random() - 0.5) * 0.32;
+        voidGroup.add(shard);
+      }
+
+      // Levitating Central Cyan Aether Core
+      const aetherGeo = new THREE.OctahedronGeometry(0.46, 0);
+      const aetherMat = new THREE.MeshStandardMaterial({
+        color: 0x00f5d4,
+        emissive: 0x00f5d4,
+        emissiveIntensity: 2.2,
+        roughness: 0.12,
+        metalness: 0.3,
+        flatShading: true
+      });
+      const aetherCore = new THREE.Mesh(aetherGeo, aetherMat);
+      aetherCore.position.set(0, 1.85, 0);
+      voidGroup.add(aetherCore);
+
+      this.group.add(voidGroup);
+      this.mainMaterial = voidMat;
+      this.aetherMaterial = aetherMat;
     } else {
       // Crystal: High-luminescence cyan/violet crystalline spire cluster
       const crystalGroup = new THREE.Group();
@@ -160,7 +219,7 @@ export class MineralDeposit {
     if (this.flashTimer > 0) {
       this.flashTimer -= dt;
       if (this.flashTimer <= 0 && this.mainMaterial) {
-        this.mainMaterial.emissiveIntensity = this.type === 'titanium' ? 0.4 : 1.2;
+        this.mainMaterial.emissiveIntensity = this.type === 'titanium' ? 0.4 : (this.type === 'void_crystal' ? 1.5 : 1.2);
       }
     }
 
@@ -229,23 +288,80 @@ export class MineralSystem {
       }
     }
 
-    // 2. Moon deposits (Lumen, Pyra, Goliath ~12 nodes each)
+    // 2. Moon deposits
     this.moons.forEach((moon, mIdx) => {
-      for (let i = 0; i < 12; i++) {
-        const u = rng() * 2 - 1;
-        const theta = rng() * Math.PI * 2;
-        const r = Math.sqrt(1 - u * u);
-        const dir = new THREE.Vector3(r * Math.cos(theta), u, r * Math.sin(theta)).normalize();
+      if (moon.id === 'goliath') {
+        // High concentration of Void Aetherium Crystals on Moon III: Goliath (30 nodes)
+        // A) 18 Nodes clustered around Goliath Hive Bases (3 nodes per base)
+        const goliathBaseDirs = [
+          new THREE.Vector3(0.18, 0.95, 0.22).normalize(),
+          new THREE.Vector3(0.92, 0.15, 0.35).normalize(),
+          new THREE.Vector3(-0.85, 0.22, 0.48).normalize(),
+          new THREE.Vector3(-0.22, 0.38, -0.89).normalize(),
+          new THREE.Vector3(0.38, -0.32, -0.86).normalize(),
+          new THREE.Vector3(-0.16, -0.94, 0.28).normalize()
+        ];
 
-        const type = (i % 2 === 0) ? 'titanium' : 'crystal';
-        const dep = new MineralDeposit({
-          id: `moon_${mIdx}_min_${i}`,
-          type,
-          body: moon,
-          localDir: dir
-        });
-        this.deposits.push(dep);
-        this.group.add(dep.group);
+        let nodeIndex = 0;
+        for (let b = 0; b < goliathBaseDirs.length; b++) {
+          const bDir = goliathBaseDirs[b];
+          const refUp = Math.abs(bDir.y) < 0.92 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0);
+          const right = new THREE.Vector3().crossVectors(bDir, refUp).normalize();
+          const fwd = new THREE.Vector3().crossVectors(right, bDir).normalize();
+
+          for (let k = 0; k < 3; k++) {
+            const angle = (k * Math.PI * 2) / 3 + b * 0.5;
+            const dist = 34.0 + k * 10.0; // 34m to 54m from base center
+            const offset = right.clone().multiplyScalar(Math.cos(angle) * dist)
+              .add(fwd.clone().multiplyScalar(Math.sin(angle) * dist));
+            const nodePos = bDir.clone().multiplyScalar(moon.radius || 310).add(offset);
+            const nodeDir = nodePos.normalize();
+
+            const dep = new MineralDeposit({
+              id: `goliath_hive_void_${nodeIndex++}`,
+              type: 'void_crystal',
+              body: moon,
+              localDir: nodeDir
+            });
+            this.deposits.push(dep);
+            this.group.add(dep.group);
+          }
+        }
+
+        // B) 12 Nodes scattered across craters and mineral ridges of Goliath
+        for (let i = 0; i < 12; i++) {
+          const u = rng() * 2 - 1;
+          const theta = rng() * Math.PI * 2;
+          const r = Math.sqrt(1 - u * u);
+          const dir = new THREE.Vector3(r * Math.cos(theta), u, r * Math.sin(theta)).normalize();
+
+          const dep = new MineralDeposit({
+            id: `goliath_crater_void_${i}`,
+            type: 'void_crystal',
+            body: moon,
+            localDir: dir
+          });
+          this.deposits.push(dep);
+          this.group.add(dep.group);
+        }
+      } else {
+        // Lumen and Pyra standard mineral deposits
+        for (let i = 0; i < 12; i++) {
+          const u = rng() * 2 - 1;
+          const theta = rng() * Math.PI * 2;
+          const r = Math.sqrt(1 - u * u);
+          const dir = new THREE.Vector3(r * Math.cos(theta), u, r * Math.sin(theta)).normalize();
+
+          const type = (i % 2 === 0) ? 'titanium' : 'crystal';
+          const dep = new MineralDeposit({
+            id: `moon_${mIdx}_min_${i}`,
+            type,
+            body: moon,
+            localDir: dir
+          });
+          this.deposits.push(dep);
+          this.group.add(dep.group);
+        }
       }
     });
   }

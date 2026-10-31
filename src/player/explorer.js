@@ -105,17 +105,24 @@ export class Explorer {
     this.plasmaProjectiles = [];
     this.firstPersonMode = false;
 
+    // Void Aetherium & Exosuit Stat Boosts
+    this.speedBoostMult = 1.0;
+    this.jumpBoostMult = 1.0;
+    this.voidCrystalsMined = 0;
+
     this.craftedUpgrades = {
       exosuit: false,
       rebreather: false,
       blasterOvercharge: false,
-      shipPlating: false
+      shipPlating: false,
+      goliathOverdrive: false
     };
 
     // Mineral & Xenology Resource Inventory
     this.inventory = {
       titanium: 0,
       crystal: 0,
+      void_crystal: 0,
       chitin_shell: 0,
       apex_fang: 0,
       biolum_gland: 0,
@@ -127,6 +134,48 @@ export class Explorer {
     this.isMining = false;
     this.miningTarget = null;
     this._initMiningBeam();
+  }
+
+  /**
+   * Applies cumulative Exosuit stat boosts from mining Void Aetherium on Goliath
+   * and crafting the Aetherium Exosuit Overdrive upgrade:
+   * - Movement & sprint speed multiplier (up to +70%)
+   * - Jump impulse & jetpack thrust multiplier (up to +55%)
+   * - Maximum shield strength (maxSuitHealth up to 275+ HP)
+   * - Maximum oxygen capacity (maxOxygen up to 300+ O2)
+   */
+  applyVoidCrystalBoosts(addedCount = 1) {
+    this.voidCrystalsMined += addedCount;
+    const hasOverdrive = Boolean(this.craftedUpgrades.goliathOverdrive);
+
+    // 1. Movement Speed Boost (+3% per crystal up to +45%, +25% with Overdrive)
+    const passiveSpeed = Math.min(0.45, this.voidCrystalsMined * 0.03);
+    this.speedBoostMult = 1.0 + passiveSpeed + (hasOverdrive ? 0.25 : 0.0);
+
+    // 2. Jump & Jetpack Power Boost (+2.5% per crystal up to +35%, +20% with Overdrive)
+    const passiveJump = Math.min(0.35, this.voidCrystalsMined * 0.025);
+    this.jumpBoostMult = 1.0 + passiveJump + (hasOverdrive ? 0.20 : 0.0);
+
+    // 3. Shield Strength (+5 Max HP per crystal up to +75, +50 with Overdrive, +50 with exosuit carapace)
+    const baseHealth = 100 + (this.craftedUpgrades.exosuit ? 50 : 0);
+    const passiveShield = Math.min(75, this.voidCrystalsMined * 5);
+    const prevMax = this.maxSuitHealth;
+    this.maxSuitHealth = baseHealth + passiveShield + (hasOverdrive ? 50 : 0);
+    this.suitHealth = Math.min(this.maxSuitHealth, this.suitHealth + (this.maxSuitHealth - prevMax) + addedCount * 3);
+
+    // 4. Oxygen Capacity (+8 Max O2 per crystal up to +120, +80 with Overdrive, +100 with rebreather)
+    const baseO2 = 100 + (this.craftedUpgrades.rebreather ? 100 : 0);
+    const passiveO2 = Math.min(120, this.voidCrystalsMined * 8);
+    const prevMaxO2 = this.maxOxygen;
+    this.maxOxygen = baseO2 + passiveO2 + (hasOverdrive ? 80 : 0);
+    this.oxygen = Math.min(this.maxOxygen, this.oxygen + (this.maxOxygen - prevMaxO2) + addedCount * 5);
+
+    return {
+      speedBoost: Math.round((this.speedBoostMult - 1.0) * 100),
+      jumpBoost: Math.round((this.jumpBoostMult - 1.0) * 100),
+      maxShield: this.maxSuitHealth,
+      maxOxygen: this.maxOxygen
+    };
   }
 
   setFirstPersonVisual(isFirstPerson) {
@@ -857,7 +906,7 @@ export class Explorer {
     const isSprinting = ((input.isActionDown ? input.isActionDown('sprint') : false) || input.isDown('ShiftLeft') || input.isDown('ShiftRight')) || stickMag > 0.88;
     const baseSpeed = isSprinting ? 28 : 16;
     const speedScale = stickMag > 0 ? Math.min(1.0, Math.max(0.4, stickMag)) : 1.0;
-    const moveSpeed = baseSpeed * speedScale;
+    const moveSpeed = baseSpeed * speedScale * (this.speedBoostMult || 1.0);
 
     // Detect water depth on bodies with an ocean
     let inWater = false;
@@ -871,10 +920,13 @@ export class Explorer {
       const rel = this.group.position.clone().sub(bPos);
       const dirNorm = rel.clone().normalize();
       terrainHeight = body.getSurfaceRadiusAtDir(dirNorm.x, dirNorm.y, dirNorm.z);
-      if (body.outpostBase && typeof body.outpostBase.getFloorRadius === 'function') {
-        const outpostR = body.outpostBase.getFloorRadius(this.group.position);
-        if (outpostR > terrainHeight) {
-          terrainHeight = outpostR;
+      const bases = body.outpostBases || (body.outpostBase ? [body.outpostBase] : []);
+      for (let i = 0; i < bases.length; i++) {
+        if (typeof bases[i].getFloorRadius === 'function') {
+          const outpostR = bases[i].getFloorRadius(this.group.position);
+          if (outpostR > terrainHeight) {
+            terrainHeight = outpostR;
+          }
         }
       }
       seaR = body.seaLevelRadius || 0;
@@ -937,7 +989,7 @@ export class Explorer {
       if (holdingJump) {
         this.velocity.addScaledVector(newUp, 22.0 * dt);
         if (distFromCenter >= targetSurfaceR - 0.25 && wantsJump) {
-          this.velocity.addScaledVector(newUp, 14.5);
+          this.velocity.addScaledVector(newUp, 14.5 * (this.jumpBoostMult || 1.0));
           this.jumpCooldown = 0.35;
           this.jumpPhase = 'ascent';
         }
@@ -959,12 +1011,12 @@ export class Explorer {
       this.velocity.z += grav.acceleration.z * dt;
 
       if (this.grounded && (wantsJump || (holdingJump && this.jumpCooldown <= 0))) {
-        this.velocity.addScaledVector(newUp, 15.5);
+        this.velocity.addScaledVector(newUp, 15.5 * (this.jumpBoostMult || 1.0));
         this.grounded = false;
         this.jumpCooldown = 0.25;
         this.jumpPhase = 'ascent';
       } else if (!this.grounded && holdingJump && this.jetpackFuel > 0) {
-        this.velocity.addScaledVector(newUp, 38 * dt);
+        this.velocity.addScaledVector(newUp, 38 * (this.jumpBoostMult || 1.0) * dt);
         this.jetpackFuel = Math.max(0, this.jetpackFuel - 34 * dt);
         isBoosting = true;
       } else {
@@ -996,8 +1048,11 @@ export class Explorer {
       if (typeof body.resolveFloraCollision === 'function') {
         body.resolveFloraCollision(this.group.position, 0.55);
       }
-      if (body.outpostBase && typeof body.outpostBase.resolveCollision === 'function') {
-        body.outpostBase.resolveCollision(this.group.position, 0.55);
+      const bases = body.outpostBases || (body.outpostBase ? [body.outpostBase] : []);
+      for (let i = 0; i < bases.length; i++) {
+        if (typeof bases[i].resolveCollision === 'function') {
+          bases[i].resolveCollision(this.group.position, 0.55);
+        }
       }
 
       const bPos = body.getWorldPosition();
@@ -1006,10 +1061,12 @@ export class Explorer {
       const dir = rel.divideScalar(dist);
       const terrainR = body.getSurfaceRadiusAtDir(dir.x, dir.y, dir.z);
       let effectiveFloorR = terrainR;
-      if (body.outpostBase && typeof body.outpostBase.getFloorRadius === 'function') {
-        const outpostR = body.outpostBase.getFloorRadius(this.group.position);
-        if (outpostR > effectiveFloorR) {
-          effectiveFloorR = outpostR;
+      for (let i = 0; i < bases.length; i++) {
+        if (typeof bases[i].getFloorRadius === 'function') {
+          const outpostR = bases[i].getFloorRadius(this.group.position);
+          if (outpostR > effectiveFloorR) {
+            effectiveFloorR = outpostR;
+          }
         }
       }
       const floorLimit = effectiveFloorR + 0.15;

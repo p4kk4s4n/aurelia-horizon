@@ -76,14 +76,21 @@ window.addEventListener('appinstalled', () => {
 });
 
 const navMarkers = new NavMarkerSystem(camera);
+const goliathNavBases = (enemyFaction.goliathBases || []).map((base, idx) => ({
+  id: `goliath_hive_${idx + 1}`,
+  name: `Goliath Hive Stronghold ${idx + 1}`,
+  getWorldPosition: () => base.position,
+  radius: 18
+}));
 const navBodies = [
   ...allBodies,
   {
     id: 'outpost_base',
-    name: 'Crimson Hive Outpost',
+    name: 'Aurelia Crimson Hive Outpost',
     getWorldPosition: () => enemyFaction.outpost.position,
     radius: 18
-  }
+  },
+  ...goliathNavBases
 ];
 navMarkers.setBodies(navBodies);
 navMarkers.onSelectTarget = (targetBody) => {
@@ -865,11 +872,19 @@ function animate(now) {
         if (harvest.harvested) {
           if (harvest.type === 'titanium') {
             explorer.inventory.titanium += harvest.amount;
+            hud.showNotice(`Harvested +${harvest.amount} Titanium Alloy!`);
+          } else if (harvest.type === 'void_crystal') {
+            explorer.inventory.void_crystal = (explorer.inventory.void_crystal || 0) + harvest.amount;
+            const stats = explorer.applyVoidCrystalBoosts(harvest.amount);
+            if (objectiveSystem.recordVoidCrystalHarvest) {
+              objectiveSystem.recordVoidCrystalHarvest(harvest.amount);
+            }
+            hud.showNotice(`⚡ Harvested +${harvest.amount} Void Aetherium! Speed +${stats.speedBoost}%, Jump +${stats.jumpBoost}%, Max HP ${stats.maxShield}, Max O₂ ${stats.maxOxygen}!`, 3.5);
           } else {
             explorer.inventory.crystal += harvest.amount;
+            hud.showNotice(`Harvested +${harvest.amount} Silica Crystal!`);
           }
           objectiveSystem.recordMineralHarvest(harvest.amount);
-          hud.showNotice(`Harvested +${harvest.amount} ${harvest.type === 'titanium' ? 'Titanium Alloy' : 'Silica Crystal'}!`);
         }
       } else {
         explorer.setMiningTarget(null, false);
