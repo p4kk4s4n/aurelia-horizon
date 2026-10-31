@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { createBasaltNormalMap, createMetalPanelsNormalMap } from './procTextures.js';
+import { assetManager } from './assetManager.js';
 
 /**
  * Enemy Faction — Crimson Hive & Goliath Finned Pod Fleet
@@ -332,6 +333,38 @@ export class EnemyPodShip {
         c.receiveShadow = true;
       }
     });
+
+    this.loadGLBModel();
+  }
+
+  /**
+   * Asynchronously loads production GLB model from assets/models/enemy_pod_ship.glb.
+   */
+  async loadGLBModel() {
+    try {
+      const glb = await assetManager.loadModel('assets/models/enemy_pod_ship.glb');
+      if (!glb || !this.group) return;
+
+      const glbCore = glb.getObjectByName('crystalCore');
+      const glbFlame = glb.getObjectByName('thrusterFlame');
+      const flame = this.thrusterFlame;
+
+      while (this.group.children.length > 0) {
+        this.group.remove(this.group.children[0]);
+      }
+      this.group.add(glb);
+
+      if (glbCore) this.crystalCore = glbCore;
+      if (glbFlame) {
+        this.thrusterFlame = glbFlame;
+      } else if (flame) {
+        this.group.add(flame);
+        this.thrusterFlame = flame;
+      }
+      this.isGLBActive = true;
+    } catch (e) {
+      console.warn('[EnemyPodShip] GLB load failed, retaining procedural fallback:', e);
+    }
   }
 
   update(dt, playerShipPos, onFireBolt) {
@@ -731,6 +764,61 @@ export class BugAlienTrooper {
         c.receiveShadow = true;
       }
     });
+
+    this.loadGLBModel();
+  }
+
+  /**
+   * Asynchronously loads production GLB model from assets/models/bug_alien_trooper.glb.
+   */
+  async loadGLBModel() {
+    try {
+      const glb = await assetManager.loadModel('assets/models/bug_alien_trooper.glb');
+      if (!glb || !this.group) return;
+
+      const glbHead = glb.getObjectByName('headGroup');
+      const glbMandL = glb.getObjectByName('leftMandible');
+      const glbMandR = glb.getObjectByName('rightMandible');
+      const glbAntL = glb.getObjectByName('leftAntenna');
+      const glbAntR = glb.getObjectByName('rightAntenna');
+      const glbAbdomen = glb.getObjectByName('abdomenGroup');
+      const glbLegL = glb.getObjectByName('leftLegGroup');
+      const glbLegR = glb.getObjectByName('rightLegGroup');
+      const glbWeapon = glb.getObjectByName('weaponArm');
+      const glbCore = glb.getObjectByName('crystalCannonCore');
+      const glbSubL = glb.getObjectByName('lowerLeftArm');
+      const glbSubR = glb.getObjectByName('lowerRightArm');
+
+      const glbWings = [];
+      for (let i = 0; i < 4; i++) {
+        const w = glb.getObjectByName(`wing_${i}`);
+        if (w) glbWings.push(w);
+      }
+
+      while (this.group.children.length > 0) {
+        this.group.remove(this.group.children[0]);
+      }
+      this.group.add(glb);
+
+      if (glbHead) this.headGroup = glbHead;
+      if (glbMandL) this.leftMandible = glbMandL;
+      if (glbMandR) this.rightMandible = glbMandR;
+      if (glbAntL) this.leftAntenna = glbAntL;
+      if (glbAntR) this.rightAntenna = glbAntR;
+      if (glbWings.length === 4) this.wings = glbWings;
+      if (glbAbdomen) this.abdomenGroup = glbAbdomen;
+      if (glbLegL) this.leftLegGroup = glbLegL;
+      if (glbLegR) this.rightLegGroup = glbLegR;
+      if (glbLegL && glbLegR) this.legs = [glbLegL, glbLegR];
+      if (glbWeapon) this.weaponArm = glbWeapon;
+      if (glbCore) this.crystalCannonCore = glbCore;
+      if (glbSubL) this.lowerLeftArm = glbSubL;
+      if (glbSubR) this.lowerRightArm = glbSubR;
+
+      this.isGLBActive = true;
+    } catch (e) {
+      console.warn('[BugAlienTrooper] GLB load failed, retaining procedural fallback:', e);
+    }
   }
 
   _createDigitigradeLeg(side) {
@@ -1175,6 +1263,33 @@ export class EnemyOutpostBase {
         c.receiveShadow = true;
       }
     });
+
+    this.loadGLBModel();
+  }
+
+  /**
+   * Asynchronously loads production GLB model from assets/models/enemy_hive_base.glb.
+   */
+  async loadGLBModel() {
+    try {
+      const glb = await assetManager.loadModel('assets/models/enemy_hive_base.glb');
+      if (!glb || !this.group) return;
+
+      const glbCore = glb.getObjectByName('hiveCore');
+      const glbLower = glb.getObjectByName('crystalLower');
+
+      while (this.group.children.length > 0) {
+        this.group.remove(this.group.children[0]);
+      }
+      this.group.add(glb);
+
+      if (glbCore) this.hiveCore = glbCore;
+      if (glbLower) this.crystalLower = glbLower;
+
+      this.isGLBActive = true;
+    } catch (e) {
+      console.warn('[EnemyOutpostBase] GLB load failed, retaining procedural fallback:', e);
+    }
   }
 
   _placeOnPlanet() {

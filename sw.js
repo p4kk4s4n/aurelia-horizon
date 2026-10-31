@@ -1,4 +1,4 @@
-const CACHE_NAME = 'p4kk4s4n-aurelia-horizon-v18';
+const CACHE_NAME = 'p4kk4s4n-aurelia-horizon-v19';
 const ASSETS = [
   './',
   './index.html',
@@ -23,6 +23,7 @@ const ASSETS = [
   './src/world/minerals.js',
   './src/world/fauna.js',
   './src/world/enemyFaction.js',
+  './src/world/assetManager.js',
   './src/world/objectives.js',
   './src/player/explorer.js',
   './src/player/cameraRig.js',
@@ -35,7 +36,15 @@ const ASSETS = [
   './src/ui/touchControls.js',
   './src/ui/navMarkers.js',
   './src/ui/inventoryModal.js',
-  './vendor/three/three.module.js'
+  './vendor/three/three.module.js',
+  './vendor/three/GLTFLoader.js',
+  './vendor/utils/BufferGeometryUtils.js',
+  './vendor/utils/TextureUtils.js',
+  './assets/models/explorer.glb',
+  './assets/models/starfighter.glb',
+  './assets/models/bug_alien_trooper.glb',
+  './assets/models/enemy_pod_ship.glb',
+  './assets/models/enemy_hive_base.glb'
 ];
 
 async function recacheAllAssets() {

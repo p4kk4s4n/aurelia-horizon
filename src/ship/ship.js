@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { evaluateGravity } from '../world/gravity.js';
 import { createMetalPanelsNormalMap } from '../world/procTextures.js';
+import { assetManager } from '../world/assetManager.js';
 
 function getBodyWorldPos(body) {
   if (!body) return new THREE.Vector3();
@@ -32,6 +33,7 @@ export class Ship {
     this.flashTimer = 0;
 
     this._buildShipMesh();
+    this.loadGLBModel();
     scene.add(this.group);
 
     this.velocity = new THREE.Vector3();
@@ -450,6 +452,58 @@ export class Ship {
         child.receiveShadow = true;
       }
     });
+  }
+
+  /**
+   * Asynchronously loads production GLB model from assets/models/starfighter.glb.
+   * Seamlessly enhances visualRoot with continuous PBR hull surfaces while keeping interactive flight elements.
+   */
+  async loadGLBModel() {
+    try {
+      const glb = await assetManager.loadModel('assets/models/starfighter.glb');
+      if (!glb || !this.visualRoot) return;
+
+      const glbChin = glb.getObjectByName('chinGunPod');
+      const glbFinL = glb.getObjectByName('floatingFinLeft');
+      const glbFinR = glb.getObjectByName('floatingFinRight');
+
+      const beacon = this.beaconRing;
+      const muzzle = this.muzzleFlash;
+
+      while (this.visualRoot.children.length > 0) {
+        this.visualRoot.remove(this.visualRoot.children[0]);
+      }
+      this.visualRoot.add(glb);
+
+      if (glbChin) {
+        this.chinGunPod = glbChin;
+        this.gunBarrels = [];
+        glbChin.traverse((c) => {
+          if (c.name && c.name.startsWith('barrel')) {
+            this.gunBarrels.push(c);
+          }
+        });
+        if (this.gunBarrels.length < 2) {
+          glbChin.children.forEach(c => {
+            if (c.geometry && c.geometry.type === 'CylinderGeometry') this.gunBarrels.push(c);
+          });
+        }
+        if (muzzle) this.chinGunPod.add(muzzle);
+      }
+
+      if (glbFinL && glbFinR) {
+        this.floatingFins = [glbFinL, glbFinR];
+      }
+
+      if (this.engineFlames) {
+        this.engineFlames.forEach(f => this.visualRoot.add(f));
+      }
+      if (beacon) this.visualRoot.add(beacon);
+
+      this.isGLBActive = true;
+    } catch (e) {
+      console.warn('[Ship] GLB model load failed, retaining procedural fallback:', e);
+    }
   }
 
   setRepairedVisual(repaired) {

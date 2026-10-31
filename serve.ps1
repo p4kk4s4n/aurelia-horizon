@@ -22,6 +22,8 @@ $MimeTypes = @{
   ".jpg"  = "image/jpeg"
   ".svg"  = "image/svg+xml"
   ".ico"  = "image/x-icon"
+  ".glb"  = "model/gltf-binary"
+  ".gltf" = "model/gltf+json"
 }
 
 try {
@@ -34,6 +36,25 @@ try {
       $UrlPath = $Request.Url.LocalPath.TrimStart('/')
       if ([string]::IsNullOrEmpty($UrlPath)) {
         $UrlPath = "index.html"
+      }
+
+      if ($Request.HttpMethod -eq "POST" -and $UrlPath.StartsWith("save_asset")) {
+        $RelPath = $Request.QueryString["path"]
+        if (-not [string]::IsNullOrEmpty($RelPath)) {
+          $AssetPath = Join-Path $Root ($RelPath -replace '/', '\')
+          $ParentDir = Split-Path -Parent $AssetPath
+          if (-not (Test-Path $ParentDir)) {
+            New-Item -ItemType Directory -Force -Path $ParentDir | Out-Null
+          }
+          $OutStream = [System.IO.File]::Create($AssetPath)
+          $Request.InputStream.CopyTo($OutStream)
+          $OutStream.Close()
+          $Response.StatusCode = 200
+          $Msg = [System.Text.Encoding]::UTF8.GetBytes("Saved $RelPath")
+          $Response.OutputStream.Write($Msg, 0, $Msg.Length)
+          $Response.OutputStream.Close()
+          continue
+        }
       }
 
       $FilePath = Join-Path $Root ($UrlPath -replace '/', '\')

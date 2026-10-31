@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { evaluateGravity } from '../world/gravity.js';
 import { createCarbonFiberNormalMap, createMetalPanelsNormalMap } from '../world/procTextures.js';
+import { assetManager } from '../world/assetManager.js';
 
 /**
  * Density presets for character polygon scaling:
@@ -72,6 +73,7 @@ export class Explorer {
     this.currentDensity = 'high'; // Default: Triple Density (3x)
     this._initMaterials();
     this._buildCharacterFromSheet();
+    this.loadGLBModel();
     scene.add(this.group);
 
     this.velocity = new THREE.Vector3();
@@ -495,6 +497,54 @@ export class Explorer {
       });
     }
     return { triangles: Math.round(triangles), vertices };
+  }
+
+  /**
+   * Asynchronously loads production GLB model from assets/models/explorer.glb.
+   * Gracefully updates visualRoot while preserving node kinematic references.
+   */
+  async loadGLBModel() {
+    try {
+      const glb = await assetManager.loadModel('assets/models/explorer.glb');
+      if (!glb || !this.visualRoot) return;
+
+      const torsoNode = glb.getObjectByName('torso');
+      const headNode = glb.getObjectByName('head');
+      const crystalCoreNode = glb.getObjectByName('crystalCore');
+      const droneNode = glb.getObjectByName('companionDrone');
+      const leftArmNode = glb.getObjectByName('leftArm');
+      const rightArmNode = glb.getObjectByName('rightArm');
+      const leftForearmNode = glb.getObjectByName('leftForearmGroup');
+      const rightForearmNode = glb.getObjectByName('rightForearmGroup');
+      const leftLegNode = glb.getObjectByName('leftLeg');
+      const rightLegNode = glb.getObjectByName('rightLeg');
+      const leftLowerLegNode = glb.getObjectByName('leftLowerLegGroup');
+      const rightLowerLegNode = glb.getObjectByName('rightLowerLegGroup');
+
+      if (torsoNode && leftLegNode && rightLegNode) {
+        while (this.visualRoot.children.length > 0) {
+          this.visualRoot.remove(this.visualRoot.children[0]);
+        }
+        this.visualRoot.add(torsoNode, leftLegNode, rightLegNode);
+        if (droneNode) this.visualRoot.add(droneNode);
+
+        this.torso = torsoNode;
+        this.head = headNode || this.head;
+        this.crystalCore = crystalCoreNode || this.crystalCore;
+        this.companionDrone = droneNode || this.companionDrone;
+        this.leftArm = leftArmNode || this.leftArm;
+        this.rightArm = rightArmNode || this.rightArm;
+        this.leftForearmGroup = leftForearmNode || this.leftForearmGroup;
+        this.rightForearmGroup = rightForearmNode || this.rightForearmGroup;
+        this.leftLeg = leftLegNode || this.leftLeg;
+        this.rightLeg = rightLegNode || this.rightLeg;
+        this.leftLowerLegGroup = leftLowerLegNode || this.leftLowerLegGroup;
+        this.rightLowerLegGroup = rightLowerLegNode || this.rightLowerLegGroup;
+        this.isGLBActive = true;
+      }
+    } catch (e) {
+      console.warn('[Explorer] GLB model load failed, retaining procedural fallback:', e);
+    }
   }
 
   _buildCharacterFromSheet() {
