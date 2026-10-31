@@ -390,63 +390,65 @@ export class Explorer {
       console.warn('Proc textures not available in environment:', e);
     }
 
+    // Realistic Hard-Surface EVA Flight Suit PBR (Elite Dangerous aesthetic)
     this.armorMat = new THREE.MeshStandardMaterial({
-      color: 0xd8dad3,
-      roughness: 0.58,
-      metalness: 0.12,
+      color: 0x788088,
+      roughness: 0.38,
+      metalness: 0.68,
       normalMap: carbonFiberMap,
-      normalScale: carbonFiberMap ? new THREE.Vector2(0.35, 0.35) : undefined,
+      normalScale: carbonFiberMap ? new THREE.Vector2(0.4, 0.4) : undefined,
       flatShading: false
     });
 
     this.darkMat = new THREE.MeshStandardMaterial({
-      color: 0x2c353b,
-      roughness: 0.68,
-      metalness: 0.22,
+      color: 0x1f2428,
+      roughness: 0.76,
+      metalness: 0.18,
       normalMap: carbonFiberMap,
       normalScale: carbonFiberMap ? new THREE.Vector2(0.5, 0.5) : undefined,
       flatShading: false
     });
 
     this.visorMat = new THREE.MeshStandardMaterial({
-      color: 0x16242c,
-      emissive: 0x08151c,
-      roughness: 0.22,
-      metalness: 0.82,
+      color: 0x4a3512,
+      emissive: 0x1a1105,
+      emissiveIntensity: 0.25,
+      roughness: 0.10,
+      metalness: 0.96,
       flatShading: false
     });
 
     this.crystalMat = new THREE.MeshStandardMaterial({
-      color: 0x00f5d4,
-      emissive: 0x00bbf9,
-      emissiveIntensity: 0.92,
+      color: 0x38bdf8,
+      emissive: 0x0284c7,
+      emissiveIntensity: 1.1,
       roughness: 0.18,
-      metalness: 0.35,
+      metalness: 0.45,
       flatShading: false
     });
 
     this.conduitMat = new THREE.MeshBasicMaterial({
-      color: 0x00f5d4
+      color: 0x38bdf8
     });
 
     this.accentMat = new THREE.MeshStandardMaterial({
-      color: 0x48cae4,
-      emissive: 0x0096c7,
-      emissiveIntensity: 0.6,
-      roughness: 0.3,
+      color: 0x38bdf8,
+      emissive: 0x0284c7,
+      emissiveIntensity: 0.45,
+      roughness: 0.35,
       flatShading: false
     });
 
     this.soleMat = new THREE.MeshStandardMaterial({
-      color: 0x1c2227,
-      roughness: 0.88,
+      color: 0x14181c,
+      roughness: 0.90,
       flatShading: false
     });
 
     this.crestMat = new THREE.MeshStandardMaterial({
-      color: 0xc4c8bf,
-      roughness: 0.45,
-      metalness: 0.65,
+      color: 0x94a3b8,
+      roughness: 0.32,
+      metalness: 0.82,
       normalMap: metalPanelsMap,
       normalScale: metalPanelsMap ? new THREE.Vector2(0.4, 0.4) : undefined,
       flatShading: false

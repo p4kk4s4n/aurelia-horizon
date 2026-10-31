@@ -34,7 +34,7 @@
     import { cubeToSphere, buildCubeSphereData } from '../src/world/cubeSphere.js';
     import { evaluateGravity } from '../src/world/gravity.js';
     import { ShipRepairSystem, SHIP_PART_DEFS } from '../src/ship/repair.js';
-    import { UI_COLOR_SCHEMES, SettingsManager } from '../src/ui/settings.js';
+    import { UI_COLOR_SCHEMES, SettingsManager, APP_VERSION, compareSemver, extractVersionFromCommitMessage } from '../src/ui/settings.js';
     import { InputManager, DEFAULT_KEYBINDINGS } from '../src/input.js';
     import { TouchControlsManager } from '../src/ui/touchControls.js';
     import { Explorer } from '../src/player/explorer.js';
@@ -1284,11 +1284,11 @@
     assert(mockRenderer.shadowMap.enabled === false, 'Quality Low disables shadow mapping');
 
     settingsMgr.applyGraphicsQuality('high', false);
-    assert(postManager.enabled === true && postManager.bloomIntensity === 0.85, 'Quality High enables bloom with 0.85 intensity');
+    assert(postManager.enabled === true && postManager.bloomIntensity === 0.55, 'Quality High enables bloom with 0.55 intensity');
     assert(mockRenderer.shadowMap.enabled === true, 'Quality High enables shadow mapping');
 
     settingsMgr.applyGraphicsQuality('ultra', false);
-    assert(postManager.enabled === true && postManager.bloomIntensity === 1.25, 'Quality Ultra scales bloom intensity to 1.25');
+    assert(postManager.enabled === true && postManager.bloomIntensity === 0.85, 'Quality Ultra scales bloom intensity to 0.85');
 
     // 23F: Exosuit, Starfighter & Enemy PBR Normal Mapping
     assert(ammoExplorer.armorMat.normalMap !== null, 'Exosuit armor material binds hexagonal carbon-fiber normal map');
@@ -1307,6 +1307,33 @@
       if (c.isMesh && c.castShadow) bugMeshCastsShadow = true;
     });
     assert(bugMeshCastsShadow === true, 'BugAlienTrooper meshes cast dynamic shadows');
+
+    // 24. v1.18.0 Hard-Surface Space Sim Realism & GitHub Version Manager
+    // 24A: Version Resolution & Semantic Versioning Utilities
+    assert(APP_VERSION === '1.18.0', 'APP_VERSION constant is updated to 1.18.0');
+    assert(compareSemver('1.18.0', '1.13.0') === 1, 'compareSemver detects 1.18.0 is newer than 1.13.0');
+    assert(compareSemver('1.13.0', '1.18.0') === -1, 'compareSemver detects 1.13.0 is older than 1.18.0');
+    assert(compareSemver('1.18.0', '1.18.0') === 0, 'compareSemver detects identical versions');
+    assert(extractVersionFromCommitMessage('feat: v1.18.0 Hard-Surface Realism') === '1.18.0', 'extractVersionFromCommitMessage extracts semver from commit title');
+    assert(extractVersionFromCommitMessage('Release 1.17.2 bugfixes') === '1.17.2', 'extractVersionFromCommitMessage extracts version without leading v');
+    assert(extractVersionFromCommitMessage('routine maintenance patch') === null, 'extractVersionFromCommitMessage returns null for version-less commits');
+
+    // 24B: Elite Dangerous Hard-Surface Space Sim Lighting & Astronomy
+    assert(skyRes.stars.geometry.attributes.position.count === 6000, 'Starfield renders 6,000 spectral stars with galactic plane clustering');
+    assert(skyRes.sunLight.intensity >= 3.0, 'sunLight intensity elevated to >=3.0 for high-contrast deep space illumination');
+    assert(skyRes.hemiLight.intensity <= 0.35, 'hemiLight ambient intensity dialed to <=0.35 for realistic dark planetary terminator');
+
+    // 24C: Hard-Surface PBR Flight Suit & Aerospace Starfighter
+    assert(ammoExplorer.visorMat.metalness >= 0.95, 'Explorer EVA helmet visor features gold-iridium solar shielding (metalness >= 0.95)');
+    assert(ammoExplorer.armorMat.metalness >= 0.60, 'Explorer armor plates utilize titanium composite alloy');
+    assert(pbrShip.visualRoot.children.length > 0, 'Starfighter visualRoot constructed with aerospace hard-surface components');
+
+    // 24D: Grounded Planetary Topography & Marine Optics
+    const pOcean = system.planet.oceanController ? system.planet.oceanController.mesh : oceanTestMesh;
+    assert(pOcean.material.uniforms.uShallowColor.value.getHexString() === '165b68', 'Ocean wave shader utilizes realistic marine coastal sea-green (0x165b68)');
+    assert(pOcean.material.uniforms.uDeepColor.value.getHexString() === '041524', 'Ocean wave shader utilizes dark oceanic navy (0x041524)');
+    assert(system.moons[0].moonTheme.low[0] > 0.2, 'Moon I (Lumen) uses realistic Apollo silicate regolith grey palette');
+    assert(system.moons[2].moonTheme.hasRing === true, 'Moon III (Goliath) maintains scarred ice-silicate titan planetary ring');
 
     const summary = `SUMMARY: ${passed} passed, ${failed} failed`;
     logs.push('', summary);

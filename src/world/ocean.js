@@ -100,11 +100,11 @@ export function createDeepOceanMesh(body, segments = 80) {
   // Custom Shader Material for realistic depth coloring and wave motion
   const oceanUniforms = {
     uTime: { value: 0 },
-    uShallowColor: { value: new THREE.Color(0x00f5d4) }, // Vivid alien cyan shallows
-    uMidColor: { value: new THREE.Color(0x0077b6) },     // Rich tropical azure
-    uDeepColor: { value: new THREE.Color(0x022b52) },    // Deep bathyal navy
-    uAbyssColor: { value: new THREE.Color(0x01040e) },   // Midnight Hadal trench abyss
-    uFoamColor: { value: new THREE.Color(0xffffff) },
+    uShallowColor: { value: new THREE.Color(0x165b68) }, // Realistic sea-green / coastal shelf
+    uMidColor: { value: new THREE.Color(0x0a2e46) },     // Deep marine blue
+    uDeepColor: { value: new THREE.Color(0x041524) },    // Dark oceanic navy
+    uAbyssColor: { value: new THREE.Color(0x01050a) },   // Pitch-black Hadal abyss
+    uFoamColor: { value: new THREE.Color(0xdce7eb) },    // Seafoam whitewater
     uSunDir: { value: new THREE.Vector3(1, 0.65, 0.45).normalize() },
     uNormalMap: { value: waterNormalMap }
   };

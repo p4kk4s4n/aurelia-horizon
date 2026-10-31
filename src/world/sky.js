@@ -1,34 +1,69 @@
 import * as THREE from 'three';
+import { createBasaltNormalMap } from './procTextures.js';
 
 /**
  * Procedural Sky, Radiant Animated Sun with Solar Corona & Solar Flares,
  * Starfield, and Destructible Orbital Targets.
+ * Hard-Surface Space Sim Realism (Elite Dangerous / Star Citizen aesthetic).
  */
 export function createSkyAndSpaceTargets(scene) {
-  // 1. Starfield (large radius, dense twinkling stars)
-  const starCount = 4200;
+  // 1. Starfield (6,000 pinpoint stars with Planck blackbody stellar classification & galactic plane)
+  const starCount = 6000;
   const starPos = new Float32Array(starCount * 3);
   const starCol = new Float32Array(starCount * 3);
 
-  for (let i = 0; i < starCount; i++) {
-    const r = 18000 + Math.random() * 8000;
-    const theta = Math.random() * Math.PI * 2;
-    const phi = Math.acos(2 * Math.random() - 1);
-    starPos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
-    starPos[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
-    starPos[i * 3 + 2] = r * Math.cos(phi);
+  // Spectral star palette (O/B blue, A white, F/G pale yellow, K warm orange, M red)
+  const SPECTRAL_COLORS = [
+    [0.62, 0.70, 1.00], // O/B Blue-White (25%)
+    [0.82, 0.88, 1.00], // A White (25%)
+    [1.00, 0.96, 0.90], // F/G Yellow-White (30%)
+    [1.00, 0.82, 0.60], // K Warm Orange (12%)
+    [1.00, 0.58, 0.42]  // M Red Giant (8%)
+  ];
 
-    const tint = Math.random();
-    starCol[i * 3] = tint > 0.7 ? 0.75 : 1.0;
-    starCol[i * 3 + 1] = tint > 0.3 ? 0.92 : 0.82;
-    starCol[i * 3 + 2] = 1.0;
+  for (let i = 0; i < starCount; i++) {
+    const isMilkyWay = Math.random() < 0.42; // 42% clustered along galactic plane
+    const r = 18000 + Math.random() * 8500;
+    const theta = Math.random() * Math.PI * 2;
+    let phi;
+    if (isMilkyWay) {
+      // Clustered near equator with incline
+      const offset = (Math.random() - 0.5) * 0.38;
+      phi = Math.PI * 0.5 + offset;
+    } else {
+      phi = Math.acos(2 * Math.random() - 1);
+    }
+
+    const x = r * Math.sin(phi) * Math.cos(theta);
+    const y = r * Math.sin(phi) * Math.sin(theta);
+    const z = r * Math.cos(phi);
+
+    // Incline galactic plane by 32 degrees
+    const inc = 0.55;
+    starPos[i * 3] = x;
+    starPos[i * 3 + 1] = y * Math.cos(inc) - z * Math.sin(inc);
+    starPos[i * 3 + 2] = y * Math.sin(inc) + z * Math.cos(inc);
+
+    // Pick spectral color
+    const rnd = Math.random();
+    let col = SPECTRAL_COLORS[2];
+    if (rnd < 0.25) col = SPECTRAL_COLORS[0];
+    else if (rnd < 0.50) col = SPECTRAL_COLORS[1];
+    else if (rnd < 0.80) col = SPECTRAL_COLORS[2];
+    else if (rnd < 0.92) col = SPECTRAL_COLORS[3];
+    else col = SPECTRAL_COLORS[4];
+
+    const brightness = 0.65 + Math.random() * 0.35;
+    starCol[i * 3] = col[0] * brightness;
+    starCol[i * 3 + 1] = col[1] * brightness;
+    starCol[i * 3 + 2] = col[2] * brightness;
   }
 
   const starGeo = new THREE.BufferGeometry();
   starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
   starGeo.setAttribute('color', new THREE.BufferAttribute(starCol, 3));
   const starMat = new THREE.PointsMaterial({
-    size: 22,
+    size: 18,
     vertexColors: true,
     sizeAttenuation: true,
     fog: false
@@ -36,12 +71,12 @@ export function createSkyAndSpaceTargets(scene) {
   const stars = new THREE.Points(starGeo, starMat);
   scene.add(stars);
 
-  // 2. Solar Direction & Atmospheric Lighting
+  // 2. High-Contrast Solar Direction & Vacuum Lighting (Elite Dangerous space lighting)
   const sunDir = new THREE.Vector3(1, 0.65, 0.45).normalize();
   const sunDistance = 12500;
   const sunCenter = sunDir.clone().multiplyScalar(sunDistance);
 
-  const sunLight = new THREE.DirectionalLight(0xfff5dd, 2.3);
+  const sunLight = new THREE.DirectionalLight(0xfff9f0, 3.2);
   sunLight.position.copy(sunDir).multiplyScalar(9000);
   sunLight.castShadow = true;
   sunLight.shadow.mapSize.width = 2048;
@@ -56,13 +91,14 @@ export function createSkyAndSpaceTargets(scene) {
   sunLight.shadow.bias = -0.0003;
   scene.add(sunLight);
 
-  const hemiLight = new THREE.HemisphereLight(0x72efdd, 0x1b1433, 0.8);
+  // Dark cosmic ambient illumination for dramatic day/night terminator
+  const hemiLight = new THREE.HemisphereLight(0x4a607a, 0x10141a, 0.32);
   scene.add(hemiLight);
 
   // Volumetric Sun Rays (Crepuscular God Rays)
   const godRaysUniforms = {
     uTime: { value: 0 },
-    uColor: { value: new THREE.Color(0xfff4d0) }
+    uColor: { value: new THREE.Color(0xfffae8) }
   };
   const godRaysGeo = new THREE.CylinderGeometry(480 * 0.95, 480 * 7.5, 9500, 32, 1, true);
   godRaysGeo.rotateX(Math.PI / 2);
@@ -84,7 +120,7 @@ export function createSkyAndSpaceTargets(scene) {
         float ray2 = cos(vUv.x * 16.0 - uTime * 0.25);
         float rays = max(0.0, ray1 * 0.5 + ray2 * 0.5);
         float falloff = (1.0 - vUv.y) * rays;
-        gl_FragColor = vec4(uColor, falloff * 0.12);
+        gl_FragColor = vec4(uColor, falloff * 0.05);
       }
     `,
     transparent: true,
@@ -301,10 +337,32 @@ export function createSkyAndSpaceTargets(scene) {
 
   scene.add(sunGroup);
 
-  // 6. Destructible Orbital Asteroids & Rogue Sentinel Drones (rescaled for 2x planetary system)
+  // 6. Realistic Destructible Carbonaceous Asteroids & High-Tech Recon Drones
   const targets = [];
   const astGeo = new THREE.DodecahedronGeometry(22, 1);
   const droneCoreGeo = new THREE.OctahedronGeometry(14, 0);
+
+  const basaltNormal = createBasaltNormalMap(128);
+
+  // Carbonaceous Silicate Asteroid PBR Material
+  const astMat = new THREE.MeshStandardMaterial({
+    color: 0x4a4642,
+    roughness: 0.88,
+    metalness: 0.22,
+    normalMap: basaltNormal,
+    normalScale: new THREE.Vector2(0.5, 0.5),
+    flatShading: false
+  });
+
+  // Aerospace Alloy Sentinel Drone PBR Material
+  const droneMat = new THREE.MeshStandardMaterial({
+    color: 0x242a30,
+    emissive: 0x180a0a,
+    emissiveIntensity: 0.4,
+    roughness: 0.35,
+    metalness: 0.78,
+    flatShading: false
+  });
 
   for (let i = 0; i < 48; i++) {
     const isDrone = i % 3 === 0;
@@ -312,15 +370,7 @@ export function createSkyAndSpaceTargets(scene) {
     const bandRadius = 1450 + (i % 7) * 450;
     const yOff = Math.sin(i * 1.9) * 280;
 
-    const mat = new THREE.MeshStandardMaterial({
-      color: isDrone ? 0xff2a85 : 0x7b6d8d,
-      emissive: isDrone ? 0xb5179e : 0x241934,
-      emissiveIntensity: isDrone ? 0.95 : 0.3,
-      roughness: 0.55,
-      flatShading: true
-    });
-
-    const mesh = new THREE.Mesh(isDrone ? droneCoreGeo : astGeo, mat);
+    const mesh = new THREE.Mesh(isDrone ? droneCoreGeo : astGeo, isDrone ? droneMat : astMat);
     const scale = isDrone ? 1.2 : 0.9 + (i % 4) * 0.5;
     mesh.scale.setScalar(scale);
     mesh.position.set(Math.cos(angle) * bandRadius, yOff, Math.sin(angle) * bandRadius);
@@ -368,8 +418,8 @@ export function createSkyAndSpaceTargets(scene) {
         r.mesh.scale.set(1.0, rayPulse, 1.0);
       });
 
-      // 4. Subtle directional light intensity breathing
-      sunLight.intensity = 2.3 + Math.sin(time * 2.8) * 0.12;
+      // 4. Subtle directional light intensity breathing (G-type starlight)
+      sunLight.intensity = 3.2 + Math.sin(time * 2.8) * 0.08;
 
       // 5. Keep starfield centered around active camera so it never clips or drifts
       if (camera) {

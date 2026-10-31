@@ -68,6 +68,26 @@ const STORAGE_DIALOG_POS_KEY = 'aurelia_dialog_position';
 const GITHUB_REPO = 'p4kk4s4n/aurelia-horizon';
 const GITHUB_BRANCH = 'main';
 
+export const APP_VERSION = '1.18.0';
+
+export function compareSemver(vA, vB) {
+  if (!vA || !vB) return 0;
+  const parse = (v) => String(v).replace(/^v/i, '').split('.').map((n) => parseInt(n, 10) || 0);
+  const a = parse(vA);
+  const b = parse(vB);
+  for (let i = 0; i < 3; i++) {
+    const diff = (a[i] || 0) - (b[i] || 0);
+    if (diff !== 0) return diff > 0 ? 1 : -1;
+  }
+  return 0;
+}
+
+export function extractVersionFromCommitMessage(msg) {
+  if (!msg) return null;
+  const match = msg.match(/\bv?(\d+\.\d+\.\d+)\b/i);
+  return match ? match[1] : null;
+}
+
 export class SettingsManager {
   constructor(onNotice, touchControls = null, input = null) {
     this.onNotice = onNotice;
@@ -559,13 +579,13 @@ export class SettingsManager {
         this.postProcessing.setEnabled(false);
       } else if (this.currentQuality === 'medium') {
         this.postProcessing.setEnabled(true);
-        this.postProcessing.setBloomIntensity(0.5);
+        this.postProcessing.setBloomIntensity(0.35);
       } else if (this.currentQuality === 'high') {
         this.postProcessing.setEnabled(true);
-        this.postProcessing.setBloomIntensity(0.85);
+        this.postProcessing.setBloomIntensity(0.55);
       } else if (this.currentQuality === 'ultra') {
         this.postProcessing.setEnabled(true);
-        this.postProcessing.setBloomIntensity(1.25);
+        this.postProcessing.setBloomIntensity(0.85);
       }
       this.postProcessing.setSize(window.innerWidth, window.innerHeight);
     }
@@ -824,22 +844,65 @@ export class SettingsManager {
   }
 
   async _initLocalVersionInfo() {
+    let resolvedVer = APP_VERSION;
+    const savedSha = localStorage.getItem(STORAGE_SHA_KEY) || 'latest';
+
     try {
-      const resp = await fetch('./version.json');
+      const resp = await fetch(`./version.json?t=${Date.now()}`, { cache: 'no-store' });
       if (resp.ok) {
         const data = await resp.json();
-        const savedVer = localStorage.getItem(STORAGE_VER_KEY) || data.version;
-        localStorage.setItem(STORAGE_VER_KEY, data.version);
-        const savedSha = localStorage.getItem(STORAGE_SHA_KEY) || 'local';
-        if (this.elInstalledVer) {
-          this.elInstalledVer.textContent = `v${data.version} (${savedSha})`;
+        if (data && data.version) {
+          if (compareSemver(data.version, resolvedVer) > 0) {
+            resolvedVer = data.version;
+          }
         }
       }
-    } catch (_) {
-      if (this.elInstalledVer) {
-        this.elInstalledVer.textContent = 'v1.1.0';
-      }
+    } catch (_) {}
+
+    const savedVer = localStorage.getItem(STORAGE_VER_KEY);
+    if (savedVer && compareSemver(savedVer, resolvedVer) > 0) {
+      resolvedVer = savedVer;
     }
+    localStorage.setItem(STORAGE_VER_KEY, resolvedVer);
+
+    if (this.elInstalledVer) {
+      this.elInstalledVer.textContent = `v${resolvedVer} (${savedSha})`;
+    }
+
+    // Proactively query GitHub main branch commit quietly so latest build is visible immediately
+    this._checkRemoteCommitQuietly();
+  }
+
+  async _checkRemoteCommitQuietly() {
+    try {
+      const apiResp = await fetch(
+        `https://api.github.com/repos/${GITHUB_REPO}/commits/${GITHUB_BRANCH}`,
+        { cache: 'no-store', headers: { Accept: 'application/vnd.github.v3+json' } }
+      );
+      if (apiResp.ok) {
+        const commitData = await apiResp.json();
+        if (commitData && commitData.sha) {
+          const remoteSha = commitData.sha.slice(0, 7);
+          const commitMsg = (commitData.commit?.message || '').split('\n')[0];
+          const parsedVer = extractVersionFromCommitMessage(commitMsg);
+          const currentVer = localStorage.getItem(STORAGE_VER_KEY) || APP_VERSION;
+          let latestVer = currentVer;
+          if (parsedVer && compareSemver(parsedVer, latestVer) > 0) {
+            latestVer = parsedVer;
+          }
+          if (this.elLatestVer) {
+            this.elLatestVer.textContent = `v${latestVer} (${remoteSha})`;
+          }
+          const installedSha = localStorage.getItem(STORAGE_SHA_KEY);
+          if (!installedSha || installedSha === 'local' || installedSha === 'latest') {
+            localStorage.setItem(STORAGE_SHA_KEY, remoteSha);
+            if (this.elInstalledVer) {
+              this.elInstalledVer.textContent = `v${latestVer} (${remoteSha})`;
+            }
+          }
+        }
+      }
+    } catch (_) {}
   }
 
   _setStatus(msg, stateClass = '') {
@@ -870,6 +933,10 @@ export class SettingsManager {
           if (commitData && commitData.sha) {
             remoteSha = commitData.sha.slice(0, 7);
             remoteCommitMsg = (commitData.commit?.message || '').split('\n')[0];
+            const parsedCommitVer = extractVersionFromCommitMessage(remoteCommitMsg);
+            if (parsedCommitVer) {
+              remoteVersion = parsedCommitVer;
+            }
           }
         }
       } catch (_) {
@@ -882,7 +949,11 @@ export class SettingsManager {
         const verResp = await fetch(rawUrl, { cache: 'no-store' });
         if (verResp.ok) {
           const vData = await verResp.json();
-          remoteVersion = vData.version;
+          if (vData && vData.version) {
+            if (!remoteVersion || compareSemver(vData.version, remoteVersion) > 0) {
+              remoteVersion = vData.version;
+            }
+          }
         }
       } catch (_) {}
 
@@ -891,13 +962,19 @@ export class SettingsManager {
           const localOriginResp = await fetch(`./version.json?t=${Date.now()}`, { cache: 'no-store' });
           if (localOriginResp.ok) {
             const vData = await localOriginResp.json();
-            remoteVersion = vData.version;
+            if (vData && vData.version) {
+              remoteVersion = vData.version;
+            }
           }
         } catch (_) {}
       }
 
+      if (!remoteVersion || compareSemver(APP_VERSION, remoteVersion) > 0) {
+        remoteVersion = APP_VERSION;
+      }
+
       const installedSha = localStorage.getItem(STORAGE_SHA_KEY);
-      const installedVer = localStorage.getItem(STORAGE_VER_KEY) || '1.0.0';
+      const installedVer = localStorage.getItem(STORAGE_VER_KEY) || APP_VERSION;
 
       const latestLabel = `v${remoteVersion || installedVer} (${remoteSha || 'latest'})`;
       if (this.elLatestVer) {
@@ -905,8 +982,8 @@ export class SettingsManager {
       }
 
       const hasNewSha = Boolean(remoteSha && installedSha && remoteSha !== installedSha);
-      const hasNewVer = Boolean(remoteVersion && remoteVersion !== installedVer);
-      const isFirstShaSync = Boolean(remoteSha && !installedSha);
+      const hasNewVer = Boolean(remoteVersion && compareSemver(remoteVersion, installedVer) > 0);
+      const isFirstShaSync = Boolean(remoteSha && (!installedSha || installedSha === 'local' || installedSha === 'latest'));
 
       if (!forceRecache && !hasNewSha && !hasNewVer) {
         if (isFirstShaSync) {

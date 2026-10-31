@@ -312,51 +312,51 @@ export function populatePlanetDecor(body, noise, qualityOverride = null) {
   else if (qualitySetting === 'medium') densityMult = 0.8;
   else if (qualitySetting === 'ultra') densityMult = 1.4;
 
-  // Materials
+  // Materials (Grounded Xenobiology & Hard-Sci-Fi Realism)
   const trunkMat = new THREE.MeshStandardMaterial({
-    color: 0x3b2d54,
-    roughness: 0.8,
+    color: 0x3a2e25,
+    roughness: 0.85,
     flatShading: false
   });
 
   const capMat = new THREE.MeshStandardMaterial({
-    color: 0x00f5d4,
-    emissive: 0x00a896,
-    emissiveIntensity: 0.75,
-    roughness: 0.35,
+    color: 0x2b4c3f,
+    emissive: 0x0f2b23,
+    emissiveIntensity: 0.35,
+    roughness: 0.45,
     flatShading: false
   });
 
   const palmMat = new THREE.MeshStandardMaterial({
-    color: 0x2ec4b6,
-    emissive: 0x0b525b,
-    emissiveIntensity: 0.35,
-    roughness: 0.6,
+    color: 0x2f4838,
+    emissive: 0x14281c,
+    emissiveIntensity: 0.2,
+    roughness: 0.55,
     flatShading: false
   });
 
   const fernMat = new THREE.MeshStandardMaterial({
-    color: 0x80ed99,
-    emissive: 0x38b000,
-    emissiveIntensity: 0.45,
-    roughness: 0.5,
+    color: 0x3d6647,
+    emissive: 0x1c3824,
+    emissiveIntensity: 0.25,
+    roughness: 0.52,
     flatShading: false
   });
 
   const tendrilMat = new THREE.MeshStandardMaterial({
-    color: 0xff9f1c,
-    emissive: 0xf72585,
-    emissiveIntensity: 0.65,
-    roughness: 0.4,
+    color: 0xb45309,
+    emissive: 0x78350f,
+    emissiveIntensity: 0.35,
+    roughness: 0.45,
     flatShading: false
   });
 
   const crystalMat = new THREE.MeshStandardMaterial({
-    color: 0xff4dff,
-    emissive: 0xd9048e,
-    emissiveIntensity: 0.95,
-    roughness: 0.2,
-    metalness: 0.55,
+    color: 0x94a3b8,
+    emissive: 0x475569,
+    emissiveIntensity: 0.4,
+    roughness: 0.18,
+    metalness: 0.65,
     flatShading: false
   });
 

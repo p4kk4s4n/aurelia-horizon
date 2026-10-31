@@ -26,37 +26,37 @@ try {
   // Graceful fallback if headless/mocked
 }
 
-// Materials for Crimson Hive & Bug Aliens
+// Materials for Hard-Sci-Fi Biomechanical Dreadnought & Wasp-Warrior Forces (Elite Dangerous aesthetic)
 const darkChitinMat = new THREE.MeshStandardMaterial({
-  color: 0x1a1224,
-  roughness: 0.52,
-  metalness: 0.62,
+  color: 0x181c1a,
+  roughness: 0.42,
+  metalness: 0.72,
   normalMap: metalPanelsMap,
   normalScale: metalPanelsMap ? new THREE.Vector2(0.35, 0.35) : undefined,
   flatShading: false
 });
 
 const violetCarapaceMat = new THREE.MeshStandardMaterial({
-  color: 0x34234c,
-  roughness: 0.40,
-  metalness: 0.55,
+  color: 0x242828,
+  roughness: 0.35,
+  metalness: 0.65,
   normalMap: metalPanelsMap,
   normalScale: metalPanelsMap ? new THREE.Vector2(0.4, 0.4) : undefined,
   flatShading: false
 });
 
 const redArmorMat = new THREE.MeshStandardMaterial({
-  color: 0x7a112c,
-  roughness: 0.38,
-  metalness: 0.52,
+  color: 0x5c1d18,
+  roughness: 0.32,
+  metalness: 0.70,
   normalMap: metalPanelsMap,
   normalScale: metalPanelsMap ? new THREE.Vector2(0.35, 0.35) : undefined,
   flatShading: false
 });
 
 const darkSpireRockMat = new THREE.MeshStandardMaterial({
-  color: 0x1f162c,
-  roughness: 0.82,
+  color: 0x242327,
+  roughness: 0.85,
   metalness: 0.25,
   normalMap: basaltMap,
   normalScale: basaltMap ? new THREE.Vector2(0.5, 0.5) : undefined,
@@ -64,100 +64,100 @@ const darkSpireRockMat = new THREE.MeshStandardMaterial({
 });
 
 const obsidianTrimMat = new THREE.MeshStandardMaterial({
-  color: 0x130e1a,
-  roughness: 0.48,
-  metalness: 0.58,
+  color: 0x111314,
+  roughness: 0.25,
+  metalness: 0.85,
   flatShading: false
 });
 
 const cyanCrystalMat = new THREE.MeshStandardMaterial({
-  color: 0x00f5d4,
-  emissive: 0x00b4d8,
+  color: 0x38bdf8,
+  emissive: 0x0284c7,
   emissiveIntensity: 1.15,
   roughness: 0.18,
-  metalness: 0.3,
-  flatShading: false
-});
-
-const magentaCrystalMat = new THREE.MeshStandardMaterial({
-  color: 0xe024ff,
-  emissive: 0x9b1de8,
-  emissiveIntensity: 1.35,
-  roughness: 0.22,
   metalness: 0.35,
   flatShading: false
 });
 
-const amberCrystalMat = new THREE.MeshStandardMaterial({
-  color: 0xff9f1c,
-  emissive: 0xf77f00,
+const magentaCrystalMat = new THREE.MeshStandardMaterial({
+  color: 0xf59e0b,
+  emissive: 0xd97706,
   emissiveIntensity: 1.25,
-  roughness: 0.25,
+  roughness: 0.20,
+  metalness: 0.40,
+  flatShading: false
+});
+
+const amberCrystalMat = new THREE.MeshStandardMaterial({
+  color: 0xf97316,
+  emissive: 0xc2410c,
+  emissiveIntensity: 1.25,
+  roughness: 0.22,
   flatShading: false
 });
 
 const wingMat = new THREE.MeshStandardMaterial({
-  color: 0xbdb5cc,
+  color: 0x8a929a,
   transparent: true,
-  opacity: 0.52,
-  roughness: 0.32,
-  metalness: 0.12,
+  opacity: 0.45,
+  roughness: 0.28,
+  metalness: 0.25,
   side: THREE.DoubleSide,
   depthWrite: false
 });
 
 const crimsonGlowMat = new THREE.MeshBasicMaterial({
-  color: 0xff1e46
+  color: 0xef4444
 });
 
 const cyanConduitMat = new THREE.MeshBasicMaterial({
-  color: 0x00f5d4
+  color: 0x38bdf8
 });
 
 const magentaGlowMat = new THREE.MeshBasicMaterial({
-  color: 0xff1eff
+  color: 0xff6b00
 });
 
 const amberEyeMat = new THREE.MeshBasicMaterial({
-  color: 0xffa01c
+  color: 0xfbbf24
 });
 
 const deepVioletPanelMat = new THREE.MeshStandardMaterial({
-  color: 0x2e1f42,
-  roughness: 0.38,
-  metalness: 0.58,
+  color: 0x1f2224,
+  roughness: 0.32,
+  metalness: 0.75,
   normalMap: metalPanelsMap,
   normalScale: metalPanelsMap ? new THREE.Vector2(0.4, 0.4) : undefined,
   flatShading: false
 });
 
 const royalCarapaceMat = new THREE.MeshStandardMaterial({
-  color: 0x3d2b58,
-  roughness: 0.32,
-  metalness: 0.62,
+  color: 0x2a2f33,
+  roughness: 0.28,
+  metalness: 0.78,
   normalMap: metalPanelsMap,
   normalScale: metalPanelsMap ? new THREE.Vector2(0.45, 0.45) : undefined,
   flatShading: false
 });
 
 const collectorBezelMat = new THREE.MeshStandardMaterial({
-  color: 0x0f0b16,
-  roughness: 0.55,
-  metalness: 0.72,
+  color: 0x121518,
+  roughness: 0.45,
+  metalness: 0.85,
   flatShading: false
 });
 
 const crystalCoreMat = new THREE.MeshStandardMaterial({
-  color: 0xff2aff,
-  emissive: 0xe024ff,
-  emissiveIntensity: 1.6,
+  color: 0xff6b00,
+  emissive: 0xdd4b00,
+  emissiveIntensity: 1.4,
   roughness: 0.15,
-  metalness: 0.35,
+  metalness: 0.45,
   flatShading: false
 });
 
 const cyanLineMat = new THREE.MeshBasicMaterial({
-  color: 0x00f5d4
+  color: 0x38bdf8
 });
 
 /**

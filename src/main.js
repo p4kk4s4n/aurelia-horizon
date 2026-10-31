@@ -24,15 +24,15 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
-renderer.toneMappingExposure = 1.1;
+renderer.toneMappingExposure = 1.05;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x050814);
-const spaceFogColor = new THREE.Color(0x0b192c);
-const underwaterFogColor = new THREE.Color(0x003554);
-scene.fog = new THREE.FogExp2(spaceFogColor, 0.00010);
+scene.background = new THREE.Color(0x010205);
+const spaceFogColor = new THREE.Color(0x010408);
+const underwaterFogColor = new THREE.Color(0x002233);
+scene.fog = new THREE.FogExp2(spaceFogColor, 0.000025);
 
 const camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.5, 35000);
 

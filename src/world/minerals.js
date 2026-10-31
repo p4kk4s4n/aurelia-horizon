@@ -33,29 +33,29 @@ export class MineralDeposit {
 
   _buildMesh() {
     if (this.type === 'titanium') {
-      // Titanium: Faceted bronze-gold metallic jagged cluster
-      const baseGeo = new THREE.DodecahedronGeometry(1.4, 0);
+      // Titanium: Raw igneous matrix with metallic titanium-iron alloy veins
+      const baseGeo = new THREE.DodecahedronGeometry(1.4, 1);
       const veinMat = new THREE.MeshStandardMaterial({
-        color: 0xcd7f32,
-        roughness: 0.35,
-        metalness: 0.85,
-        emissive: 0x5a2d0c,
-        emissiveIntensity: 0.4,
-        flatShading: true
+        color: 0x33363b,
+        roughness: 0.65,
+        metalness: 0.55,
+        emissive: 0x141619,
+        emissiveIntensity: 0.2,
+        flatShading: false
       });
       const rockMesh = new THREE.Mesh(baseGeo, veinMat);
       rockMesh.scale.set(1.2, 0.85, 1.1);
       this.group.add(rockMesh);
 
-      // Embedded metallic nuggets
-      const nuggetGeo = new THREE.OctahedronGeometry(0.55, 0);
+      // Embedded metallic titanium-bronze nuggets
+      const nuggetGeo = new THREE.OctahedronGeometry(0.55, 1);
       const nuggetMat = new THREE.MeshStandardMaterial({
-        color: 0xffd166,
-        roughness: 0.2,
-        metalness: 0.95,
-        emissive: 0xff9f1c,
-        emissiveIntensity: 0.65,
-        flatShading: true
+        color: 0x948b81,
+        roughness: 0.24,
+        metalness: 0.92,
+        emissive: 0x4a433d,
+        emissiveIntensity: 0.45,
+        flatShading: false
       });
       const nugget1 = new THREE.Mesh(nuggetGeo, nuggetMat);
       nugget1.position.set(0.65, 0.45, 0.35);
@@ -66,32 +66,32 @@ export class MineralDeposit {
       this.mainMaterial = veinMat;
       this.nuggetMaterial = nuggetMat;
     } else if (this.type === 'void_crystal') {
-      // Void Aetherium: Hyper-resonant royal-violet & deep-magenta obelisk spires with levitating cyan aether diamond
+      // Void Aetherium: Dark chondritic impactite with hyper-dense violet-amber aether inclusions
       const voidGroup = new THREE.Group();
 
-      // Obsidian basal rock matrix
-      const baseRockGeo = new THREE.DodecahedronGeometry(1.5, 0);
+      // Basal impactite rock matrix
+      const baseRockGeo = new THREE.DodecahedronGeometry(1.5, 1);
       const baseMat = new THREE.MeshStandardMaterial({
-        color: 0x150f21,
-        roughness: 0.72,
-        metalness: 0.45,
-        flatShading: true
+        color: 0x16181b,
+        roughness: 0.78,
+        metalness: 0.35,
+        flatShading: false
       });
       const rockMesh = new THREE.Mesh(baseRockGeo, baseMat);
       rockMesh.scale.set(1.4, 0.65, 1.3);
       rockMesh.position.y = 0.35;
       voidGroup.add(rockMesh);
 
-      // Multi-shard violet-magenta crystal cluster
+      // Multi-shard deep violet crystal cluster
       const voidMat = new THREE.MeshStandardMaterial({
-        color: 0x9b2226,
-        emissive: 0xd900ff,
-        emissiveIntensity: 1.5,
+        color: 0x4c1d95,
+        emissive: 0x3b0764,
+        emissiveIntensity: 0.85,
         roughness: 0.18,
-        metalness: 0.42,
+        metalness: 0.55,
         transparent: true,
-        opacity: 0.94,
-        flatShading: true
+        opacity: 0.92,
+        flatShading: false
       });
 
       const heights = [2.6, 2.1, 1.7, 1.4, 1.1];
@@ -107,15 +107,15 @@ export class MineralDeposit {
         voidGroup.add(shard);
       }
 
-      // Levitating Central Cyan Aether Core
-      const aetherGeo = new THREE.OctahedronGeometry(0.46, 0);
+      // Levitating Central Amber/Aether Core
+      const aetherGeo = new THREE.OctahedronGeometry(0.46, 1);
       const aetherMat = new THREE.MeshStandardMaterial({
-        color: 0x00f5d4,
-        emissive: 0x00f5d4,
-        emissiveIntensity: 2.2,
+        color: 0x38bdf8,
+        emissive: 0x0284c7,
+        emissiveIntensity: 1.4,
         roughness: 0.12,
-        metalness: 0.3,
-        flatShading: true
+        metalness: 0.45,
+        flatShading: false
       });
       const aetherCore = new THREE.Mesh(aetherGeo, aetherMat);
       aetherCore.position.set(0, 1.85, 0);
@@ -125,17 +125,17 @@ export class MineralDeposit {
       this.mainMaterial = voidMat;
       this.aetherMaterial = aetherMat;
     } else {
-      // Crystal: High-luminescence cyan/violet crystalline spire cluster
+      // Silica Crystal: Natural vitreous quartz prism cluster
       const crystalGroup = new THREE.Group();
       const cryMat = new THREE.MeshStandardMaterial({
-        color: 0x00f5d4,
-        emissive: 0x00f5d4,
-        emissiveIntensity: 1.2,
-        roughness: 0.15,
-        metalness: 0.4,
+        color: 0x78a6ba,
+        emissive: 0x1e3a47,
+        emissiveIntensity: 0.5,
+        roughness: 0.14,
+        metalness: 0.32,
         transparent: true,
-        opacity: 0.92,
-        flatShading: true
+        opacity: 0.90,
+        flatShading: false
       });
 
       const heights = [2.2, 1.6, 1.3, 0.9];

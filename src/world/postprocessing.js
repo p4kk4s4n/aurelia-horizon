@@ -11,8 +11,8 @@ export class PostProcessingManager {
     this.camera = camera;
 
     this.enabled = options.enabled !== undefined ? options.enabled : true;
-    this.bloomIntensity = options.bloomIntensity !== undefined ? options.bloomIntensity : 0.85;
-    this.bloomThreshold = options.bloomThreshold !== undefined ? options.bloomThreshold : 0.72;
+    this.bloomIntensity = options.bloomIntensity !== undefined ? options.bloomIntensity : 0.55;
+    this.bloomThreshold = options.bloomThreshold !== undefined ? options.bloomThreshold : 0.84;
 
     const size = new THREE.Vector2();
     renderer.getSize(size);

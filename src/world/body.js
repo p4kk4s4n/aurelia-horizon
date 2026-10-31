@@ -70,15 +70,15 @@ export class CelestialBody {
   sampleBiomeColor(nx, ny, nz, r) {
     if (!this.isMoon) {
       const h = r - this.seaLevelRadius;
-      if (h < -85.0) return [0.005, 0.02, 0.09]; // Midnight Hadal Abyss
-      if (h < -45.0) return [0.01, 0.06, 0.18];  // Deep Bathyal Trench
-      if (h < -16.0) return [0.03, 0.16, 0.32];  // Mid ocean seabed
-      if (h < -3.0)  return [0.06, 0.34, 0.44];  // Turquoise shelf lagoon
-      if (h < 2.5)   return [0.95, 0.84, 0.56];  // Tropical golden coral sand
-      if (h < 14.0)  return [0.11, 0.72, 0.48];  // Lush alien teal-emerald jungle
-      if (h < 26.0)  return [0.06, 0.52, 0.44];  // Deep canopy
-      if (h < 38.0)  return [0.36, 0.32, 0.46];  // Purple highland rock
-      return [0.78, 0.92, 0.96];                 // Mineral-capped peak
+      if (h < -85.0) return [0.015, 0.035, 0.055]; // Midnight Hadal Abyss Basalt
+      if (h < -45.0) return [0.030, 0.065, 0.100]; // Deep Bathyal Trench Silt
+      if (h < -16.0) return [0.070, 0.140, 0.180]; // Submerged Continental Shelf
+      if (h < -3.0)  return [0.120, 0.260, 0.280]; // Coastal Slate Shallows
+      if (h < 2.5)   return [0.680, 0.630, 0.520]; // Weathered Feldspar Beach Dunes
+      if (h < 14.0)  return [0.260, 0.350, 0.220]; // Temperate Olive/Sage Steppe
+      if (h < 26.0)  return [0.150, 0.240, 0.160]; // Deep Conifer Forest Canopy
+      if (h < 38.0)  return [0.340, 0.330, 0.310]; // Weathered Granite Highland Shield
+      return [0.880, 0.910, 0.940];                 // Glacial Snow-Capped Peak
     }
 
     const theme = this.moonTheme;
@@ -119,8 +119,8 @@ export class CelestialBody {
       const atmoGeo = new THREE.SphereGeometry(this.radius + this.atmosphereHeight, 48, 36);
       const atmoMat = new THREE.ShaderMaterial({
         uniforms: {
-          uColor: { value: new THREE.Color(this.isMoon ? 0x90e0ef : 0x00f5d4) },
-          uRimColor: { value: new THREE.Color(this.isMoon ? 0xd0f4de : 0x48bfe3) },
+          uColor: { value: new THREE.Color(this.isMoon ? 0x64748b : 0x38bdf8) },
+          uRimColor: { value: new THREE.Color(this.isMoon ? 0x94a3b8 : 0xbae6fd) },
           uSunDir: { value: new THREE.Vector3(1, 0.65, 0.45).normalize() }
         },
         vertexShader: `
@@ -141,9 +141,9 @@ export class CelestialBody {
           uniform vec3 uSunDir;
           void main() {
             float rim = 1.0 - max(0.0, dot(vViewDir, vNormal));
-            float intensity = pow(rim, 3.2) * 1.45;
+            float intensity = pow(rim, 4.2) * 1.5;
             vec3 col = mix(uColor, uRimColor, rim);
-            gl_FragColor = vec4(col, min(0.65, intensity));
+            gl_FragColor = vec4(col, min(0.45, intensity));
           }
         `,
         transparent: true,
@@ -160,10 +160,10 @@ export class CelestialBody {
       const ringGeo = new THREE.RingGeometry(this.radius * 1.45, this.radius * 2.15, 64);
       ringGeo.rotateX(Math.PI * 0.42);
       const ringMat = new THREE.MeshBasicMaterial({
-        color: 0xc77dff,
+        color: 0x64748b,
         side: THREE.DoubleSide,
         transparent: true,
-        opacity: 0.38
+        opacity: 0.35
       });
       this.ringMesh = new THREE.Mesh(ringGeo, ringMat);
       this.group.add(this.ringMesh);
@@ -335,11 +335,11 @@ export function createSolarSystem(scene) {
       orbitAngle: 0.4,
       orbitInclination: 0.15,
       moonTheme: {
-        low: [0.14, 0.28, 0.42],
-        mid: [0.35, 0.68, 0.84],
-        high: [0.78, 0.96, 1.0],
-        crystalColor: 0x00f5d4,
-        crystalEmissive: 0x00bbf9
+        low: [0.24, 0.25, 0.27],
+        mid: [0.44, 0.45, 0.48],
+        high: [0.68, 0.70, 0.73],
+        crystalColor: 0x78dcca,
+        crystalEmissive: 0x2a9d8f
       }
     }),
     new CelestialBody({
@@ -360,17 +360,17 @@ export function createSolarSystem(scene) {
       orbitAngle: 2.35,
       orbitInclination: -0.2,
       moonTheme: {
-        low: [0.22, 0.11, 0.14],
-        mid: [0.58, 0.27, 0.14],
-        high: [0.96, 0.64, 0.22],
-        crystalColor: 0xff9f1c,
-        crystalEmissive: 0xf72585
+        low: [0.15, 0.12, 0.10],
+        mid: [0.45, 0.25, 0.14],
+        high: [0.72, 0.46, 0.20],
+        crystalColor: 0xf59e0b,
+        crystalEmissive: 0xd97706
       }
     }),
     new CelestialBody({
       id: 'goliath',
       name: 'Moon III: Goliath (Large Ringed Titan)',
-      description: 'Massive violet-ringed outer moon with deep basins',
+      description: 'Massive scarred ice-silicate titan with deep impact basins',
       radius: 310,
       surfaceGravity: 19.5,
       soiRadius: 960,
@@ -385,11 +385,11 @@ export function createSolarSystem(scene) {
       orbitAngle: 4.4,
       orbitInclination: 0.28,
       moonTheme: {
-        low: [0.18, 0.14, 0.32],
-        mid: [0.38, 0.28, 0.58],
-        high: [0.76, 0.62, 0.94],
-        crystalColor: 0x9b5de5,
-        crystalEmissive: 0x7209b7,
+        low: [0.22, 0.25, 0.28],
+        mid: [0.40, 0.45, 0.50],
+        high: [0.72, 0.80, 0.88],
+        crystalColor: 0x818cf8,
+        crystalEmissive: 0x4f46e5,
         hasRing: true
       }
     })

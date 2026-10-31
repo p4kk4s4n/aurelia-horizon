@@ -1,4 +1,4 @@
-const CACHE_NAME = 'p4kk4s4n-aurelia-horizon-v16';
+const CACHE_NAME = 'p4kk4s4n-aurelia-horizon-v18';
 const ASSETS = [
   './',
   './index.html',
@@ -14,10 +14,12 @@ const ASSETS = [
   './src/world/cubeSphere.js',
   './src/world/gravity.js',
   './src/world/procGeo.js',
+  './src/world/procTextures.js',
   './src/world/decor.js',
   './src/world/ocean.js',
   './src/world/body.js',
   './src/world/sky.js',
+  './src/world/postprocessing.js',
   './src/world/minerals.js',
   './src/world/fauna.js',
   './src/world/enemyFaction.js',
@@ -28,6 +30,8 @@ const ASSETS = [
   './src/ship/ship.js',
   './src/ui/hud.js',
   './src/ui/settings.js',
+  './src/ui/storyDialog.js',
+  './src/ui/completionModal.js',
   './src/ui/touchControls.js',
   './src/ui/navMarkers.js',
   './src/ui/inventoryModal.js',
@@ -85,13 +89,31 @@ self.addEventListener('message', (event) => {
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
   const url = new URL(event.request.url);
-  // Always use network-first for version.json or GitHub API checks
+
+  // Always use network-first with cache-busting for version.json and GitHub API
   if (url.pathname.endsWith('/version.json') || url.hostname === 'api.github.com' || url.hostname === 'raw.githubusercontent.com') {
     event.respondWith(
       fetch(event.request, { cache: 'no-store' }).catch(() => caches.match(event.request))
     );
     return;
   }
+
+  // Network-first for html/js/css so new updates deploy seamlessly without stale cache lock
+  const isCodeAsset = url.pathname.endsWith('.html') || url.pathname.endsWith('.js') || url.pathname.endsWith('.css') || url.pathname.endsWith('/');
+  if (isCodeAsset) {
+    event.respondWith(
+      fetch(event.request).then((networkResp) => {
+        if (networkResp.ok) {
+          const cloned = networkResp.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, cloned));
+        }
+        return networkResp;
+      }).catch(() => caches.match(event.request))
+    );
+    return;
+  }
+
+  // Cache-first for large static media assets (icons, sounds, models)
   event.respondWith(
     caches.match(event.request).then((cached) => cached || fetch(event.request))
   );
