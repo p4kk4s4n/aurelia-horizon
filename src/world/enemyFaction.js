@@ -26,36 +26,37 @@ try {
   // Graceful fallback if headless/mocked
 }
 
-// Materials for Hard-Sci-Fi Biomechanical Dreadnought & Wasp-Warrior Forces (Elite Dangerous aesthetic)
+// Materials faithfully matching Model Sheets (Bug-Warrior Input 3, Enemy Craft Input 4, Hive Base Input 5):
+// Iridescent dark purple chitin, metallic violet carapaces, radiant magenta crystal cores & spikes, radiant cyan energy conduits
 const darkChitinMat = new THREE.MeshStandardMaterial({
-  color: 0x181c1a,
-  roughness: 0.42,
-  metalness: 0.72,
+  color: 0x241c30,
+  roughness: 0.40,
+  metalness: 0.65,
   normalMap: metalPanelsMap,
   normalScale: metalPanelsMap ? new THREE.Vector2(0.35, 0.35) : undefined,
   flatShading: false
 });
 
 const violetCarapaceMat = new THREE.MeshStandardMaterial({
-  color: 0x242828,
-  roughness: 0.35,
-  metalness: 0.65,
+  color: 0x3d2e50,
+  roughness: 0.32,
+  metalness: 0.62,
   normalMap: metalPanelsMap,
   normalScale: metalPanelsMap ? new THREE.Vector2(0.4, 0.4) : undefined,
   flatShading: false
 });
 
 const redArmorMat = new THREE.MeshStandardMaterial({
-  color: 0x5c1d18,
-  roughness: 0.32,
-  metalness: 0.70,
+  color: 0x582442,
+  roughness: 0.35,
+  metalness: 0.65,
   normalMap: metalPanelsMap,
   normalScale: metalPanelsMap ? new THREE.Vector2(0.35, 0.35) : undefined,
   flatShading: false
 });
 
 const darkSpireRockMat = new THREE.MeshStandardMaterial({
-  color: 0x242327,
+  color: 0x221a2c,
   roughness: 0.85,
   metalness: 0.25,
   normalMap: basaltMap,
@@ -64,100 +65,100 @@ const darkSpireRockMat = new THREE.MeshStandardMaterial({
 });
 
 const obsidianTrimMat = new THREE.MeshStandardMaterial({
-  color: 0x111314,
-  roughness: 0.25,
-  metalness: 0.85,
+  color: 0x16131c,
+  roughness: 0.30,
+  metalness: 0.80,
   flatShading: false
 });
 
 const cyanCrystalMat = new THREE.MeshStandardMaterial({
-  color: 0x38bdf8,
-  emissive: 0x0284c7,
-  emissiveIntensity: 1.15,
-  roughness: 0.18,
+  color: 0x00f5d4,
+  emissive: 0x00d2b4,
+  emissiveIntensity: 1.35,
+  roughness: 0.15,
   metalness: 0.35,
   flatShading: false
 });
 
 const magentaCrystalMat = new THREE.MeshStandardMaterial({
-  color: 0xf59e0b,
-  emissive: 0xd97706,
-  emissiveIntensity: 1.25,
-  roughness: 0.20,
+  color: 0xf72585,
+  emissive: 0xf72585,
+  emissiveIntensity: 1.45,
+  roughness: 0.18,
   metalness: 0.40,
   flatShading: false
 });
 
 const amberCrystalMat = new THREE.MeshStandardMaterial({
-  color: 0xf97316,
-  emissive: 0xc2410c,
+  color: 0xf59e0b,
+  emissive: 0xd97706,
   emissiveIntensity: 1.25,
   roughness: 0.22,
   flatShading: false
 });
 
 const wingMat = new THREE.MeshStandardMaterial({
-  color: 0x8a929a,
+  color: 0xa296bc,
   transparent: true,
-  opacity: 0.45,
-  roughness: 0.28,
+  opacity: 0.65,
+  roughness: 0.25,
   metalness: 0.25,
   side: THREE.DoubleSide,
   depthWrite: false
 });
 
 const crimsonGlowMat = new THREE.MeshBasicMaterial({
-  color: 0xef4444
+  color: 0xf72585
 });
 
 const cyanConduitMat = new THREE.MeshBasicMaterial({
-  color: 0x38bdf8
+  color: 0x00f5d4
 });
 
 const magentaGlowMat = new THREE.MeshBasicMaterial({
-  color: 0xff6b00
+  color: 0xf72585
 });
 
 const amberEyeMat = new THREE.MeshBasicMaterial({
-  color: 0xfbbf24
+  color: 0x241a2e
 });
 
 const deepVioletPanelMat = new THREE.MeshStandardMaterial({
-  color: 0x1f2224,
+  color: 0x382c4a,
   roughness: 0.32,
-  metalness: 0.75,
+  metalness: 0.65,
   normalMap: metalPanelsMap,
   normalScale: metalPanelsMap ? new THREE.Vector2(0.4, 0.4) : undefined,
   flatShading: false
 });
 
 const royalCarapaceMat = new THREE.MeshStandardMaterial({
-  color: 0x2a2f33,
+  color: 0x443658,
   roughness: 0.28,
-  metalness: 0.78,
+  metalness: 0.68,
   normalMap: metalPanelsMap,
   normalScale: metalPanelsMap ? new THREE.Vector2(0.45, 0.45) : undefined,
   flatShading: false
 });
 
 const collectorBezelMat = new THREE.MeshStandardMaterial({
-  color: 0x121518,
+  color: 0x141618,
   roughness: 0.45,
   metalness: 0.85,
   flatShading: false
 });
 
 const crystalCoreMat = new THREE.MeshStandardMaterial({
-  color: 0xff6b00,
-  emissive: 0xdd4b00,
-  emissiveIntensity: 1.4,
+  color: 0xf72585,
+  emissive: 0xf72585,
+  emissiveIntensity: 1.6,
   roughness: 0.15,
   metalness: 0.45,
   flatShading: false
 });
 
 const cyanLineMat = new THREE.MeshBasicMaterial({
-  color: 0x38bdf8
+  color: 0x00f5d4
 });
 
 /**
@@ -252,6 +253,29 @@ export class EnemyPodShip {
     this.crystalCore = new THREE.Mesh(crystalGeo, crystalCoreMat);
     this.crystalCore.position.set(0, -0.98, -0.15);
     this.group.add(this.crystalCore);
+
+    // Vertical Slatted Cage Grill over Crystal Core (as seen in Input 4 Model Sheet)
+    for (const sx of [-0.14, 0, 0.14]) {
+      const slatGeo = new THREE.BoxGeometry(0.04, 0.22, 1.35);
+      slatGeo.translate(sx, -0.92, -0.15);
+      const slatMesh = new THREE.Mesh(slatGeo, obsidianTrimMat);
+      this.group.add(slatMesh);
+    }
+
+    // Lateral Octagonal Violet Sensor Arrays on flanks (Input 4 side & iso views)
+    for (const side of [-1, 1]) {
+      const sensorGeo = new THREE.CylinderGeometry(0.52, 0.52, 0.08, 8);
+      sensorGeo.rotateZ(Math.PI / 2);
+      sensorGeo.translate(side * 1.38, 0, 0.45);
+      const sensorMesh = new THREE.Mesh(sensorGeo, royalCarapaceMat);
+      this.group.add(sensorMesh);
+
+      const sensorTrimGeo = new THREE.TorusGeometry(0.50, 0.025, 4, 8);
+      sensorTrimGeo.rotateY(Math.PI / 2);
+      sensorTrimGeo.translate(side * 1.40, 0, 0.45);
+      const trimMesh = new THREE.Mesh(sensorTrimGeo, cyanLineMat);
+      this.group.add(trimMesh);
+    }
 
     // 4. Glowing Cyan Panel Seam Traces
     const seamPoints = [

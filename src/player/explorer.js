@@ -390,65 +390,66 @@ export class Explorer {
       console.warn('Proc textures not available in environment:', e);
     }
 
-    // Realistic Hard-Surface EVA Flight Suit PBR (Elite Dangerous aesthetic)
+    // Faithfully matching Model Sheet Input 1:
+    // Warm off-white / bone-cream composite armor plates, dark slate joints, dark smoky visor, radiant cyan power crystal
     this.armorMat = new THREE.MeshStandardMaterial({
-      color: 0x788088,
+      color: 0xdcd7cf,
       roughness: 0.38,
-      metalness: 0.68,
+      metalness: 0.62,
       normalMap: carbonFiberMap,
       normalScale: carbonFiberMap ? new THREE.Vector2(0.4, 0.4) : undefined,
       flatShading: false
     });
 
     this.darkMat = new THREE.MeshStandardMaterial({
-      color: 0x1f2428,
-      roughness: 0.76,
-      metalness: 0.18,
+      color: 0x2b363e,
+      roughness: 0.65,
+      metalness: 0.25,
       normalMap: carbonFiberMap,
       normalScale: carbonFiberMap ? new THREE.Vector2(0.5, 0.5) : undefined,
       flatShading: false
     });
 
     this.visorMat = new THREE.MeshStandardMaterial({
-      color: 0x4a3512,
-      emissive: 0x1a1105,
-      emissiveIntensity: 0.25,
-      roughness: 0.10,
+      color: 0x1f2830,
+      emissive: 0x081018,
+      emissiveIntensity: 0.15,
+      roughness: 0.12,
       metalness: 0.96,
       flatShading: false
     });
 
     this.crystalMat = new THREE.MeshStandardMaterial({
-      color: 0x38bdf8,
-      emissive: 0x0284c7,
-      emissiveIntensity: 1.1,
-      roughness: 0.18,
-      metalness: 0.45,
+      color: 0x00f5d4,
+      emissive: 0x00d2b4,
+      emissiveIntensity: 1.3,
+      roughness: 0.15,
+      metalness: 0.40,
       flatShading: false
     });
 
     this.conduitMat = new THREE.MeshBasicMaterial({
-      color: 0x38bdf8
+      color: 0x00f5d4
     });
 
     this.accentMat = new THREE.MeshStandardMaterial({
-      color: 0x38bdf8,
-      emissive: 0x0284c7,
-      emissiveIntensity: 0.45,
-      roughness: 0.35,
+      color: 0x00f5d4,
+      emissive: 0x00c4aa,
+      emissiveIntensity: 0.55,
+      roughness: 0.30,
       flatShading: false
     });
 
     this.soleMat = new THREE.MeshStandardMaterial({
-      color: 0x14181c,
-      roughness: 0.90,
+      color: 0x202930,
+      roughness: 0.85,
       flatShading: false
     });
 
     this.crestMat = new THREE.MeshStandardMaterial({
-      color: 0x94a3b8,
-      roughness: 0.32,
-      metalness: 0.82,
+      color: 0xd5d0c7,
+      roughness: 0.35,
+      metalness: 0.65,
       normalMap: metalPanelsMap,
       normalScale: metalPanelsMap ? new THREE.Vector2(0.4, 0.4) : undefined,
       flatShading: false
@@ -572,7 +573,7 @@ export class Explorer {
     const domeMesh = new THREE.Mesh(domeGeo, armorMat);
     this.head.add(domeMesh);
 
-    // Crown Crest (sagittal crest ridge sweeping over the crown)
+    // Crown Crest (ornamental 3-pronged sagittal fan crest matching Model Sheet Input 1)
     const crestGroup = new THREE.Group();
     const crestSeg1 = new THREE.Mesh(new THREE.ConeGeometry(0.09, 0.35, Math.max(4, Math.floor(cylSegs / 3))), crestMat);
     crestSeg1.rotation.set(Math.PI * 0.35, 0, 0);
@@ -585,7 +586,18 @@ export class Explorer {
     const crestSeg3 = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.18, 0.48), crestMat);
     crestSeg3.position.set(0, 0.32, -0.04);
 
-    crestGroup.add(crestSeg1, crestSeg2, crestSeg3);
+    // Left and right flaring forehead crown ridges (as seen in Input 1 front view)
+    const sideCrestGeo = new THREE.ConeGeometry(0.065, 0.28, 4);
+    sideCrestGeo.rotateX(Math.PI * 0.30);
+    sideCrestGeo.rotateZ(0.35);
+    const leftCrestFin = new THREE.Mesh(sideCrestGeo, crestMat);
+    leftCrestFin.position.set(-0.11, 0.33, -0.08);
+
+    const rightCrestFin = new THREE.Mesh(sideCrestGeo.clone(), crestMat);
+    rightCrestFin.geometry.rotateZ(-0.70);
+    rightCrestFin.position.set(0.11, 0.33, -0.08);
+
+    crestGroup.add(crestSeg1, crestSeg2, crestSeg3, leftCrestFin, rightCrestFin);
     this.head.add(crestGroup);
 
     // Dark Faceted Visor Plate (angled front faceplate)
@@ -601,12 +613,13 @@ export class Explorer {
     chinMesh.position.set(0, -0.16, -0.22);
     this.head.add(chinMesh);
 
-    // Temple Sensor Pods (left & right ears)
-    const podGeo = new THREE.OctahedronGeometry(0.09, Math.max(0, Math.floor(preset.mult - 1)));
-    podGeo.scale(0.8, 1.2, 1.0);
+    // Temple Sensor Pods (triangular faceted ear nodules matching Input 1)
+    const podGeo = new THREE.ConeGeometry(0.09, 0.15, 3);
+    podGeo.rotateZ(Math.PI / 2);
     const leftPod = new THREE.Mesh(podGeo, darkMat);
     leftPod.position.set(-0.36, 0.02, 0);
-    const rightPod = new THREE.Mesh(podGeo, darkMat);
+    const rightPod = new THREE.Mesh(podGeo.clone(), darkMat);
+    rightPod.geometry.rotateZ(Math.PI);
     rightPod.position.set(0.36, 0.02, 0);
     this.head.add(leftPod, rightPod);
 
@@ -747,11 +760,16 @@ export class Explorer {
     const leftForearm = new THREE.Mesh(armForeGeo, armorMat);
     this.leftForearmGroup.add(leftForearm);
 
-    // Wrist console / communicator pad on left forearm
-    const wristPadGeo = new THREE.BoxGeometry(0.08, 0.16, 0.07);
-    const wristPad = new THREE.Mesh(wristPadGeo, accentMat);
-    wristPad.position.set(-0.08, -0.20, 0.02);
-    this.leftForearmGroup.add(wristPad);
+    // Wrist console / communicator pad on left forearm (matching Model Sheet Input 1)
+    const wristPadHousing = new THREE.BoxGeometry(0.08, 0.16, 0.07);
+    const wristHousingMesh = new THREE.Mesh(wristPadHousing, darkMat);
+    wristHousingMesh.position.set(-0.08, -0.20, 0.02);
+    this.leftForearmGroup.add(wristHousingMesh);
+
+    const wristScreenGeo = new THREE.BoxGeometry(0.02, 0.11, 0.045);
+    const wristScreen = new THREE.Mesh(wristScreenGeo, accentMat);
+    wristScreen.position.set(-0.125, -0.20, 0.02);
+    this.leftForearmGroup.add(wristScreen);
 
     // Left Tactical Glove
     const handGeo = new THREE.BoxGeometry(0.09, 0.14, 0.12);

@@ -85,54 +85,55 @@ export class Ship {
       console.warn('Proc textures not available in environment:', e);
     }
 
-    // Aerospace Military-Spec PBR Materials (Elite Dangerous / Star Citizen aesthetic)
+    // Matching SPPSHIP Model Sheet (Input 2):
+    // Warm off-white / bone-cream upper deck, dark naval slate-blue lower chine & bumpers, radiant cyan crystal thrusters & optics
     const armorMat = new THREE.MeshStandardMaterial({
-      color: 0x4a525d,
-      roughness: 0.34,
-      metalness: 0.78,
+      color: 0xdcd7cf,
+      roughness: 0.35,
+      metalness: 0.68,
       normalMap: metalPanelsMap,
       normalScale: metalPanelsMap ? new THREE.Vector2(0.45, 0.45) : undefined,
       flatShading: false
     });
     const darkMat = new THREE.MeshStandardMaterial({
-      color: 0x1a1e24,
-      roughness: 0.62,
+      color: 0x303e48,
+      roughness: 0.55,
       metalness: 0.45,
       normalMap: metalPanelsMap,
       normalScale: metalPanelsMap ? new THREE.Vector2(0.5, 0.5) : undefined,
       flatShading: false
     });
     const accentMat = new THREE.MeshStandardMaterial({
-      color: 0xd97706,
-      emissive: 0x78350f,
-      emissiveIntensity: 0.25,
-      roughness: 0.38,
+      color: 0x00f5d4,
+      emissive: 0x00c4aa,
+      emissiveIntensity: 0.35,
+      roughness: 0.35,
       metalness: 0.50,
       flatShading: false
     });
     const canopyMat = new THREE.MeshStandardMaterial({
-      color: 0x241c0c,
-      emissive: 0x0f0b04,
+      color: 0x1c252d,
+      emissive: 0x081018,
       emissiveIntensity: 0.15,
-      roughness: 0.08,
-      metalness: 0.95,
+      roughness: 0.10,
+      metalness: 0.94,
       transparent: true,
-      opacity: 0.94,
+      opacity: 0.95,
       flatShading: false
     });
     const crystalMat = new THREE.MeshStandardMaterial({
-      color: 0x38bdf8,
-      emissive: 0x0284c7,
-      emissiveIntensity: 1.2,
+      color: 0x00f5d4,
+      emissive: 0x00f5d4,
+      emissiveIntensity: 1.35,
       roughness: 0.15,
       metalness: 0.35,
       flatShading: false
     });
     const conduitMat = new THREE.MeshStandardMaterial({
-      color: 0x0284c7,
-      emissive: 0x0369a1,
-      emissiveIntensity: 0.9,
-      roughness: 0.25,
+      color: 0x00f5d4,
+      emissive: 0x00d2b4,
+      emissiveIntensity: 1.1,
+      roughness: 0.20,
       flatShading: false
     });
     const gunMetalMat = new THREE.MeshStandardMaterial({
@@ -144,7 +145,7 @@ export class Ship {
       flatShading: false
     });
     const opticMat = new THREE.MeshBasicMaterial({
-      color: 0x38bdf8
+      color: 0x00f5d4
     });
 
     // 1. MAIN WEDGE FUSELAGE & CHINE (Lifting-Body Arrowhead)
@@ -261,7 +262,7 @@ export class Ship {
       { x: 0.98, y: 1.08, z: 4.3 }    // Lower-Right
     ];
 
-    this.flameMat = new THREE.MeshBasicMaterial({ color: 0x7dd3fc });
+    this.flameMat = new THREE.MeshBasicMaterial({ color: 0x00f5d4, transparent: true, opacity: 0.92 });
 
     thrusterLayout.forEach((pos) => {
       const collarGeo = new THREE.CylinderGeometry(0.48, 0.58, 0.65, 8);
