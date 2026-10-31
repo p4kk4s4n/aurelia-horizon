@@ -25,6 +25,7 @@ export class HUD {
     this.elThreatWarning = document.getElementById('hud-threat-warning');
     this.elSuitHealthBlock = document.getElementById('hud-suit-health-block');
     this.elSuitHealthBar = document.getElementById('hud-suit-health-bar');
+    this.elSuitHealthVal = document.getElementById('hud-suit-health-val');
     this.elOrbitTelemetry = document.getElementById('hud-orbit-telemetry');
     this.elAp = document.getElementById('hud-ap');
     this.elPe = document.getElementById('hud-pe');
@@ -32,9 +33,13 @@ export class HUD {
     this.elSasMode = document.getElementById('hud-sas-mode');
     this.elOxygenBlock = document.getElementById('hud-oxygen-block');
     this.elOxygenBar = document.getElementById('hud-oxygen-bar');
+    this.elOxygenVal = document.getElementById('hud-oxygen-val');
     this.elMinerals = document.getElementById('hud-minerals');
     this.elHullBlock = document.getElementById('hud-hull-block');
     this.elHullBar = document.getElementById('hud-hull-bar');
+    this.elHullVal = document.getElementById('hud-hull-val');
+    this.elBoostBlock = document.getElementById('hud-boost-block');
+    this.elBoostVal = document.getElementById('hud-boost-val');
     this.elVertSpd = document.getElementById('hud-vert-spd');
     this.elLandingStatus = document.getElementById('hud-landing-status');
     this.radarCanvas = document.getElementById('radar-canvas');
@@ -137,8 +142,9 @@ export class HUD {
       this.elTargets.textContent = `${ship.targetsDestroyed} Destroyed`;
     }
     if (this.elBoostBar) {
-      const pct = mode === 'PILOTING' ? ship.boostEnergy : explorer.jetpackFuel;
-      this.elBoostBar.style.width = `${Math.round(pct)}%`;
+      const pct = Math.round(mode === 'PILOTING' ? ship.boostEnergy : explorer.jetpackFuel);
+      this.elBoostBar.style.width = `${pct}%`;
+      if (this.elBoostVal) this.elBoostVal.textContent = `${pct}%`;
     }
     if (this.elOxygenBlock && this.elOxygenBar) {
       const showOxygen = (mode !== 'PILOTING' && (explorer.isSwimming || explorer.oxygen < 99.5));
@@ -147,6 +153,7 @@ export class HUD {
         const ox = Math.round(explorer.oxygen);
         this.elOxygenBar.style.width = `${ox}%`;
         this.elOxygenBar.style.background = ox < 25 ? '#ff4d6d' : '#00f5d4';
+        if (this.elOxygenVal) this.elOxygenVal.textContent = `${ox}%`;
       }
     }
     if (this.elMinerals && explorer.inventory) {
@@ -159,6 +166,7 @@ export class HUD {
       const hpPct = Math.round(((explorer.suitHealth ?? 100) / maxHp) * 100);
       this.elSuitHealthBar.style.width = `${Math.max(0, Math.min(100, hpPct))}%`;
       this.elSuitHealthBar.style.background = hpPct < 30 ? '#ff4d6d' : (hpPct < 65 ? '#ffbe0b' : '#00f5d4');
+      if (this.elSuitHealthVal) this.elSuitHealthVal.textContent = `${hpPct}%`;
     }
 
     if (this.elHullBlock && this.elHullBar) {
@@ -168,6 +176,7 @@ export class HUD {
         const hPct = Math.round(ship.hullIntegrity);
         this.elHullBar.style.width = `${hPct}%`;
         this.elHullBar.style.background = hPct < 35 ? '#ff4d6d' : (hPct < 70 ? '#ffbe0b' : '#00f5d4');
+        if (this.elHullVal) this.elHullVal.textContent = `${hPct}%`;
       }
     }
 

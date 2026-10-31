@@ -194,7 +194,7 @@ export class Explorer {
     return bolt;
   }
 
-  updatePlasmaProjectiles(dt, faunaSystem, onHitFauna) {
+  updatePlasmaProjectiles(dt, faunaSystem, onHitFauna, enemyFaction = null) {
     if (this.blasterCooldown > 0) {
       this.blasterCooldown = Math.max(0, this.blasterCooldown - dt);
     }
@@ -218,6 +218,14 @@ export class Explorer {
             if (onHitFauna) onHitFauna(res, e);
             break;
           }
+        }
+      }
+
+      if (!hit && enemyFaction && typeof enemyFaction.takeDamageAtPoint === 'function') {
+        const eHit = enemyFaction.takeDamageAtPoint(b.mesh.position, 1.2, b.damage);
+        if (eHit && eHit.hit) {
+          hit = true;
+          if (onHitFauna) onHitFauna(eHit, eHit.target);
         }
       }
 
@@ -1037,27 +1045,49 @@ export class Explorer {
     }
 
     if (this.isSwimming) {
-      // Swimming stroke animation with knee flutter kicks and arm pull-through
+      // True prone horizontal streamline swimming animation (body pitched ~-80° forward into water)
+      if (this.visualRoot) {
+        const swimTargetPitch = -1.38 + (this.pitch || 0) * 0.45;
+        this.visualRoot.rotation.x = THREE.MathUtils.lerp(this.visualRoot.rotation.x, swimTargetPitch, Math.min(1, 10 * dt));
+        this.visualRoot.position.y = THREE.MathUtils.lerp(this.visualRoot.position.y, -0.65, Math.min(1, 10 * dt));
+        this.visualRoot.position.z = THREE.MathUtils.lerp(this.visualRoot.position.z, 0.35, Math.min(1, 10 * dt));
+      }
+      if (this.head) {
+        // Raise head to look forward along swimming direction
+        this.head.rotation.x = THREE.MathUtils.lerp(this.head.rotation.x, 0.55, Math.min(1, 10 * dt));
+      }
+
       this.walkCycle += dt * (isSprinting ? 12 : 7);
       const stroke = Math.sin(this.walkCycle);
-      this.torso.rotation.x = 0.58; // Horizontal swimming tilt
+      this.torso.rotation.x = 0.05; // Streamlined spine continuous with pelvis
       this.torso.position.y = 1.55;
 
-      // Leg flutter kick with articulated knee flexion (bending backward towards +Z)
-      this.leftLeg.rotation.x = -0.35 + stroke * 0.32;
-      this.rightLeg.rotation.x = -0.35 - stroke * 0.32;
-      this.leftLowerLegGroup.rotation.x = -(0.25 + Math.max(0, -stroke) * 0.45);
-      this.rightLowerLegGroup.rotation.x = -(0.25 + Math.max(0, stroke) * 0.45);
+      // Leg flutter kick with streamlined horizontal alignment and knee flexion
+      this.leftLeg.rotation.x = stroke * 0.28;
+      this.rightLeg.rotation.x = -stroke * 0.28;
+      this.leftLowerLegGroup.rotation.x = -(0.20 + Math.max(0, -stroke) * 0.35);
+      this.rightLowerLegGroup.rotation.x = -(0.20 + Math.max(0, stroke) * 0.35);
 
-      // Arm swimming breaststroke / crawl stroke with elbow pull-through
-      this.leftArm.rotation.x = 0.65 + stroke * 0.65;
-      this.rightArm.rotation.x = 0.65 - stroke * 0.65;
-      this.leftArm.rotation.z = -0.25;
-      this.rightArm.rotation.z = 0.25;
-      this.leftForearmGroup.rotation.x = 0.55 + Math.max(0, stroke) * 0.55;
-      this.rightForearmGroup.rotation.x = 0.55 + Math.max(0, -stroke) * 0.55;
-      this.torso.rotation.y = stroke * 0.10;
-    } else if (isBoosting) {
+      // Arm crawl / breaststroke pull-through reaching forward along -Z and sweeping back
+      this.leftArm.rotation.x = -2.2 + stroke * 0.85;
+      this.rightArm.rotation.x = -2.2 - stroke * 0.85;
+      this.leftArm.rotation.z = -0.22;
+      this.rightArm.rotation.z = 0.22;
+      this.leftForearmGroup.rotation.x = 0.45 + Math.max(0, stroke) * 0.45;
+      this.rightForearmGroup.rotation.x = 0.45 + Math.max(0, -stroke) * 0.45;
+      this.torso.rotation.y = stroke * 0.08;
+    } else {
+      // Smoothly restore visualRoot orientation and position to neutral upright when not swimming
+      if (this.visualRoot) {
+        this.visualRoot.rotation.x = THREE.MathUtils.lerp(this.visualRoot.rotation.x, 0, Math.min(1, 10 * dt));
+        this.visualRoot.position.y = THREE.MathUtils.lerp(this.visualRoot.position.y, 0, Math.min(1, 10 * dt));
+        this.visualRoot.position.z = THREE.MathUtils.lerp(this.visualRoot.position.z, 0, Math.min(1, 10 * dt));
+      }
+      if (this.head && this.head.rotation.x !== 0) {
+        this.head.rotation.x = THREE.MathUtils.lerp(this.head.rotation.x, 0, Math.min(1, 10 * dt));
+      }
+
+      if (isBoosting) {
       // Jetpack flight attitude: legs trailing back, knees soft backward, arms forward/down
       this.torso.rotation.x = 0.08;
       this.torso.position.y = 1.55;
@@ -1191,14 +1221,8 @@ export class Explorer {
       this.rightArm.rotation.z = THREE.MathUtils.lerp(this.rightArm.rotation.z, 0.04, 0.15);
       this.leftForearmGroup.rotation.x = THREE.MathUtils.lerp(this.leftForearmGroup.rotation.x, 0.25, 0.15);
       this.rightForearmGroup.rotation.x = THREE.MathUtils.lerp(this.rightForearmGroup.rotation.x, 0.25, 0.15);
-
-      this.leftArm.rotation.x *= 0.82;
-      this.rightArm.rotation.x *= 0.82;
-      this.leftArm.rotation.z = THREE.MathUtils.lerp(this.leftArm.rotation.z, -0.04, 0.15);
-      this.rightArm.rotation.z = THREE.MathUtils.lerp(this.rightArm.rotation.z, 0.04, 0.15);
-      this.leftForearmGroup.rotation.x = THREE.MathUtils.lerp(this.leftForearmGroup.rotation.x, 0.25, 0.15);
-      this.rightForearmGroup.rotation.x = THREE.MathUtils.lerp(this.rightForearmGroup.rotation.x, 0.25, 0.15);
     }
+  }
 
     // Aim right arm forward when firing gauntlet mining laser
     if (this.isMining && this.rightArm && this.rightForearmGroup) {

@@ -12,7 +12,9 @@ export class ObjectiveSystem {
       moonsVisited: 0,
       maxDepthReached: 0,
       upgradesCrafted: 0,
-      inventoryOpened: false
+      inventoryOpened: false,
+      bugAliensDefeated: 0,
+      enemyPodsDestroyed: 0
     };
 
     this.discoveredSpecies = new Set(['hexapod_strider']);
@@ -82,6 +84,25 @@ export class ObjectiveSystem {
             isDone: (s) => s.maxDepthReached >= 45
           }
         ]
+      },
+      {
+        id: 'ch5_crimson_hive',
+        title: 'Phase V: Crimson Hive Assault & Goliath Fleet Interception',
+        shortTitle: 'CRIMSON HIVE ASSAULT',
+        tasks: [
+          {
+            id: 'outpost_bugs',
+            label: 'Assault Planetary Outpost & Defeat 3 Bug-Alien Troopers',
+            getProgress: (s) => `${Math.min(3, s.bugAliensDefeated || 0)}/3`,
+            isDone: (s) => (s.bugAliensDefeated || 0) >= 3
+          },
+          {
+            id: 'goliath_pods',
+            label: 'Fly to Moon III: Goliath & Destroy 3 Finned Pod Interceptors',
+            getProgress: (s) => `${Math.min(3, s.enemyPodsDestroyed || 0)}/3`,
+            isDone: (s) => (s.enemyPodsDestroyed || 0) >= 3
+          }
+        ]
       }
     ];
   }
@@ -94,6 +115,16 @@ export class ObjectiveSystem {
   recordFaunaDefeated(speciesKey) {
     this.stats.faunaDefeated += 1;
     if (speciesKey) this.discoveredSpecies.add(speciesKey);
+    this._checkCompletions();
+  }
+
+  recordBugAlienDefeated() {
+    this.stats.bugAliensDefeated = (this.stats.bugAliensDefeated || 0) + 1;
+    this._checkCompletions();
+  }
+
+  recordEnemyPodDestroyed() {
+    this.stats.enemyPodsDestroyed = (this.stats.enemyPodsDestroyed || 0) + 1;
     this._checkCompletions();
   }
 

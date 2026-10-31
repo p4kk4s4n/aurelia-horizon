@@ -282,6 +282,59 @@ export class Ship {
     this.leftFlame = this.engineFlames[1];
     this.rightFlame = this.engineFlames[2];
 
+    // 3B. Directional RCS Thrusters (Ventral Lift, Dorsal Retro, Port & Starboard Strafe)
+    this.rcsFlames = {
+      ventral: [],
+      dorsal: [],
+      port: [],
+      starboard: []
+    };
+
+    const rcsNozzleMat = darkMat;
+    const rcsFlameMat = new THREE.MeshBasicMaterial({ color: 0x00f5d4, transparent: true, opacity: 0.88 });
+
+    // Helper to create an RCS thruster nozzle with plume
+    const addRcsThruster = (pos, dirVec, category) => {
+      const thrusterGroup = new THREE.Group();
+      thrusterGroup.position.set(pos.x, pos.y, pos.z);
+
+      const nozzleGeo = new THREE.CylinderGeometry(0.12, 0.16, 0.22, 6);
+      const nozzle = new THREE.Mesh(nozzleGeo, rcsNozzleMat);
+      thrusterGroup.add(nozzle);
+
+      const pGeo = new THREE.ConeGeometry(0.16, 1.1, 6);
+      pGeo.translate(0, 0.55, 0);
+      const plume = new THREE.Mesh(pGeo, rcsFlameMat);
+      plume.visible = false;
+      thrusterGroup.add(plume);
+
+      // Orient thruster along dirVec
+      const defaultDir = new THREE.Vector3(0, 1, 0);
+      const q = new THREE.Quaternion().setFromUnitVectors(defaultDir, dirVec.clone().normalize());
+      thrusterGroup.quaternion.copy(q);
+
+      this.visualRoot.add(thrusterGroup);
+      this.rcsFlames[category].push(plume);
+    };
+
+    // Ventral (Bottom) Lift Thrusters (Plumes shoot -Y downward, pushing ship +Y upward)
+    addRcsThruster({ x: -1.4, y: 0.35, z: -0.6 }, new THREE.Vector3(0, -1, 0), 'ventral');
+    addRcsThruster({ x: 1.4, y: 0.35, z: -0.6 }, new THREE.Vector3(0, -1, 0), 'ventral');
+    addRcsThruster({ x: -1.2, y: 0.35, z: 2.2 }, new THREE.Vector3(0, -1, 0), 'ventral');
+    addRcsThruster({ x: 1.2, y: 0.35, z: 2.2 }, new THREE.Vector3(0, -1, 0), 'ventral');
+
+    // Dorsal (Top) Retro-Descent Thrusters (Plumes shoot +Y upward, pushing ship -Y downward)
+    addRcsThruster({ x: -1.1, y: 1.82, z: 0.6 }, new THREE.Vector3(0, 1, 0), 'dorsal');
+    addRcsThruster({ x: 1.1, y: 1.82, z: 0.6 }, new THREE.Vector3(0, 1, 0), 'dorsal');
+
+    // Port (Left) Thrusters (Plumes shoot -X to port, pushing ship +X to starboard)
+    addRcsThruster({ x: -2.3, y: 1.05, z: -0.4 }, new THREE.Vector3(-1, 0, 0), 'port');
+    addRcsThruster({ x: -2.2, y: 1.05, z: 1.4 }, new THREE.Vector3(-1, 0, 0), 'port');
+
+    // Starboard (Right) Thrusters (Plumes shoot +X to starboard, pushing ship -X to port)
+    addRcsThruster({ x: 2.3, y: 1.05, z: -0.4 }, new THREE.Vector3(1, 0, 0), 'starboard');
+    addRcsThruster({ x: 2.2, y: 1.05, z: 1.4 }, new THREE.Vector3(1, 0, 0), 'starboard');
+
     // 4. FLOATING OUTRIGGER CANARD FINS
     this.floatingFins = [];
 
@@ -493,9 +546,16 @@ export class Ship {
     this.group.quaternion.premultiply(align);
     this.localUp.copy(contact.groundNormal);
 
-    // Ensure engine flames are off while parked
+    // Ensure engine and RCS flames are off while parked
     for (let i = 0; i < this.engineFlames.length; i++) {
       this.engineFlames[i].visible = false;
+    }
+    if (this.rcsFlames) {
+      for (const k in this.rcsFlames) {
+        for (let i = 0; i < this.rcsFlames[k].length; i++) {
+          this.rcsFlames[k][i].visible = false;
+        }
+      }
     }
     if (this.beaconRing) {
       this.beaconRing.visible = true;
@@ -650,7 +710,7 @@ export class Ship {
     this.explosions.push({ mesh, age: 0, maxAge: 0.55 });
   }
 
-  updateProjectilesAndTargets(dt, spaceTargets) {
+  updateProjectilesAndTargets(dt, spaceTargets, enemyFaction = null, onEnemyHit = null) {
     if (this.fireCooldown > 0) this.fireCooldown = Math.max(0, this.fireCooldown - dt);
     if (this.weaponHeat > 0) this.weaponHeat = Math.max(0, this.weaponHeat - 28 * dt);
 
@@ -699,6 +759,21 @@ export class Ship {
             }
             break;
           }
+        }
+      }
+
+      if (!hit && enemyFaction && typeof enemyFaction.takeDamageAtPoint === 'function') {
+        const eHit = enemyFaction.takeDamageAtPoint(p.mesh.position, 4.0, 35);
+        if (eHit && eHit.hit) {
+          hit = true;
+          this._spawnExplosion(p.mesh.position, 0x00f5d4);
+          if (eHit.defeated) {
+            this._spawnExplosion(p.mesh.position, 0xff1e46);
+            if (eHit.targetType === 'enemy_pod') {
+              this.targetsDestroyed++;
+            }
+          }
+          if (onEnemyHit) onEnemyHit(eHit);
         }
       }
 
@@ -999,8 +1074,8 @@ export class Ship {
         const shipUpVector = new THREE.Vector3(0, 1, 0).applyQuaternion(this.group.quaternion).normalize();
         const tiltAngle = Math.acos(THREE.MathUtils.clamp(shipUpVector.dot(contact.groundNormal), -1, 1)) * (180 / Math.PI);
 
-        // Safe landing criteria: relative impact speed <= 12 m/s and surface tilt <= 25 deg
-        const isSafeLanding = impactSpeed <= 12.0 && tiltAngle <= 25.0;
+        // Safe landing criteria: relative impact speed <= 16.5 m/s and surface tilt <= 32 deg
+        const isSafeLanding = impactSpeed <= 16.5 && tiltAngle <= 32.0;
 
         if (isSafeLanding && thrustUp <= 0) {
           // Clean Touchdown
@@ -1027,16 +1102,16 @@ export class Ship {
             if (onNotice) onNotice(`Touchdown confirmed on ${body.name}. Safe landing!`);
           }
         } else if (thrustUp <= 0) {
-          // Unsafe Touchdown / Hard Impact
-          const excessSpeed = Math.max(0, impactSpeed - 12.0);
-          const tiltDamage = tiltAngle > 25.0 ? Math.round((tiltAngle - 25.0) * 0.8) : 0;
-          const speedDamage = Math.round(excessSpeed * 1.85);
-          const dmg = Math.min(65, Math.max(8, speedDamage + tiltDamage));
+          // Unsafe Touchdown / Hard Impact (reduced damage tolerance)
+          const excessSpeed = Math.max(0, impactSpeed - 16.5);
+          const tiltDamage = tiltAngle > 32.0 ? Math.round((tiltAngle - 32.0) * 0.35) : 0;
+          const speedDamage = Math.round(excessSpeed * 0.65);
+          const dmg = Math.min(22, Math.max(3, speedDamage + tiltDamage));
 
           this.hullIntegrity = Math.max(10, this.hullIntegrity - dmg);
           this.velocity.reflect(contact.groundNormal).multiplyScalar(0.38);
 
-          const reason = impactSpeed > 12.0 ? `Too Fast (${Math.round(impactSpeed)} m/s)` : `Excessive Tilt (${Math.round(tiltAngle)}°)`;
+          const reason = impactSpeed > 16.5 ? `Too Fast (${Math.round(impactSpeed)} m/s)` : `Excessive Tilt (${Math.round(tiltAngle)}°)`;
           if (onNotice) onNotice(`Hard Impact: ${reason}! Hull -${dmg}% (Integrity: ${this.hullIntegrity}%). Gather minerals to repair.`);
         }
       }
@@ -1047,17 +1122,67 @@ export class Ship {
     // Calculate real-time Keplerian orbital telemetry
     this.orbitalData = this.calculateOrbitParameters(body, grav);
 
-    // Animate rear 3-crystal propulsion exhaust flames
+    // Animate rear 3-crystal propulsion exhaust flames with dynamic pulsing boost
     const thrustActive = !this.landed && (Math.abs(thrustForward) > 0.05 || thrustUp > 0.05 || this.isBoosting || this.sasMode === 'CIRCULARIZE');
+    const tNow = performance.now();
     for (let i = 0; i < this.engineFlames.length; i++) {
       const flame = this.engineFlames[i];
       flame.visible = thrustActive;
       if (thrustActive) {
-        const flameScale = this.isBoosting ? 2.4 : 1.0 + Math.sin(performance.now() * 0.035 + i * 1.8) * 0.18;
-        flame.scale.set(1, 1, flameScale);
+        let flameScale = 1.0;
+        let flameWidth = 1.0;
+        if (this.isBoosting) {
+          flameScale = 2.45 + Math.sin(tNow * 0.055 + i * 1.9) * 0.42 + Math.cos(tNow * 0.09) * 0.18;
+          flameWidth = 1.35 + Math.sin(tNow * 0.04 + i) * 0.18;
+        } else {
+          flameScale = 1.0 + Math.sin(tNow * 0.035 + i * 1.8) * 0.18;
+          flameWidth = 1.0;
+        }
+        flame.scale.set(flameWidth, flameWidth, flameScale);
       }
     }
     this.flameMat.color.setHex(this.isBoosting ? 0xff9f1c : 0x00f5d4);
+
+    // Animate directional RCS thrusters (ventral lift, dorsal descent, port/starboard strafe)
+    if (this.rcsFlames) {
+      const rcsAscend = !this.landed && thrustUp > 0.05;
+      const rcsDescend = !this.landed && thrustUp < -0.05;
+      const rcsStrafeRight = !this.landed && thrustRight > 0.05;
+      const rcsStrafeLeft = !this.landed && thrustRight < -0.05;
+
+      for (let i = 0; i < this.rcsFlames.ventral.length; i++) {
+        const f = this.rcsFlames.ventral[i];
+        f.visible = rcsAscend;
+        if (rcsAscend) {
+          const s = 0.85 + Math.sin(tNow * 0.05 + i * 1.2) * 0.25;
+          f.scale.set(s, s * (1.0 + thrustUp * 0.4), s);
+        }
+      }
+      for (let i = 0; i < this.rcsFlames.dorsal.length; i++) {
+        const f = this.rcsFlames.dorsal[i];
+        f.visible = rcsDescend;
+        if (rcsDescend) {
+          const s = 0.85 + Math.sin(tNow * 0.05 + i * 1.2) * 0.25;
+          f.scale.set(s, s * (1.0 + Math.abs(thrustUp) * 0.4), s);
+        }
+      }
+      for (let i = 0; i < this.rcsFlames.port.length; i++) {
+        const f = this.rcsFlames.port[i];
+        f.visible = rcsStrafeRight;
+        if (rcsStrafeRight) {
+          const s = 0.85 + Math.sin(tNow * 0.05 + i * 1.2) * 0.25;
+          f.scale.set(s, s * (1.0 + thrustRight * 0.4), s);
+        }
+      }
+      for (let i = 0; i < this.rcsFlames.starboard.length; i++) {
+        const f = this.rcsFlames.starboard[i];
+        f.visible = rcsStrafeLeft;
+        if (rcsStrafeLeft) {
+          const s = 0.85 + Math.sin(tNow * 0.05 + i * 1.2) * 0.25;
+          f.scale.set(s, s * (1.0 + Math.abs(thrustRight) * 0.4), s);
+        }
+      }
+    }
 
     // Animate floating outrigger canard fins with hover bob
     if (this.floatingFins && this.floatingFins.length === 2) {

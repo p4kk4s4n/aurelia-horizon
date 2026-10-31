@@ -49,6 +49,7 @@
     import { CameraRig } from '../src/player/cameraRig.js';
     import { ObjectiveSystem } from '../src/world/objectives.js';
     import { InventoryModal, CRAFTING_RECIPES } from '../src/ui/inventoryModal.js';
+    import { EnemyFactionSystem, EnemyPodShip, BugAlienTrooper, EnemyOutpostBase } from '../src/world/enemyFaction.js';
     import * as THREE from 'three';
 
     const logs = [];
@@ -755,6 +756,144 @@
     assert(invModal.canCraft('exosuit') === true, 'InventoryModal canCraft returns true when resources are sufficient');
     const crafted = invModal.craftUpgrade('exosuit');
     assert(crafted === true && combatExplorer.maxSuitHealth === 150 && combatExplorer.craftedUpgrades.exosuit === true, 'Crafting Reinforced Exosuit upgrades maxSuitHealth to 150 HP');
+
+    // Test 21: Aurelia Horizon v1.13.0 Expansion
+    // 21A: Prone Horizontal Swimming Attitude
+    const swimExplorer = new Explorer(mockScene);
+    swimExplorer.spawnOnBody(system.planet, oceanDir);
+    swimExplorer.group.position.copy(oceanDir).multiplyScalar(system.planet.seaLevelRadius - 8);
+    swimExplorer.grounded = false;
+    for (let i = 0; i < 20; i++) {
+      swimExplorer.update(0.05, testInput, { dx: 0, dy: 0, wheel: 0 }, system.allBodies, flightShip);
+    }
+    assert(swimExplorer.visualRoot.rotation.x < -1.0, 'Submerged explorer body pitches into horizontal prone swimming streamline (rotation.x < -1.0 rad)');
+    assert(swimExplorer.visualRoot.position.y < -0.3, 'Submerged explorer lowers visualRoot into water column');
+    assert(swimExplorer.head.rotation.x > 0.3, 'Submerged explorer raises head to look forward along swim vector');
+    // Exit water onto solid dry land plateau
+    swimExplorer.spawnOnBody(system.planet, new THREE.Vector3(0, 1, 0));
+    swimExplorer.grounded = true;
+    for (let i = 0; i < 30; i++) {
+      swimExplorer.update(0.05, testInput, { dx: 0, dy: 0, wheel: 0 }, system.allBodies, flightShip);
+    }
+    assert(Math.abs(swimExplorer.visualRoot.rotation.x) < 0.1, 'Exiting water smoothly restores upright body posture');
+
+    // 21B: Separated Vitals HUD Bar & Configurable Dock Placement
+    assert(typeof settingsMgr.applyVitalsPosition === 'function', 'SettingsManager provides applyVitalsPosition method');
+    settingsMgr.applyVitalsPosition('top-center');
+    assert(settingsMgr.vitalsPosition === 'top-center' && localStorage.getItem('aurelia_vitals_position') === 'top-center', 'applyVitalsPosition docks vitals at top-center and saves to storage');
+    assert(document.body.dataset.vitalsPos === 'top-center', 'applyVitalsPosition sets body dataset.vitalsPos to top-center');
+    settingsMgr.applyVitalsPosition('top-left');
+    assert(settingsMgr.vitalsPosition === 'top-left' && document.body.dataset.vitalsPos === 'top-left', 'applyVitalsPosition docks vitals at top-left');
+    settingsMgr.applyVitalsPosition('top-right');
+    assert(settingsMgr.vitalsPosition === 'top-right' && document.body.dataset.vitalsPos === 'top-right', 'applyVitalsPosition docks vitals at top-right');
+    settingsMgr.applyVitalsPosition('top-center'); // restore default
+
+    // 21C: Dynamic Starfighter Boost & Directional RCS Thrusters
+    assert(flightShip.rcsFlames !== undefined, 'Starfighter has physical RCS thruster flame assemblies');
+    assert(flightShip.rcsFlames.ventral.length === 4, 'Starfighter has 4 ventral lift thrusters');
+    assert(flightShip.rcsFlames.dorsal.length === 2, 'Starfighter has 2 dorsal retro-descent thrusters');
+    assert(flightShip.rcsFlames.port.length === 2, 'Starfighter has 2 port lateral thrusters');
+    assert(flightShip.rcsFlames.starboard.length === 2, 'Starfighter has 2 starboard lateral thrusters');
+
+    // Ascend test (ventral fires)
+    flightShip.landed = false;
+    testInput.setVirtualKey('Space', true);
+    flightShip.updateFlight(0.05, testInput, { dx: 0, dy: 0, wheel: 0 }, system.allBodies);
+    testInput.setVirtualKey('Space', false);
+    assert(flightShip.rcsFlames.ventral[0].visible === true, 'Ascending fires ventral lift RCS thrusters');
+
+    // Descend test (dorsal fires)
+    testInput.setVirtualKey('KeyC', true);
+    flightShip.updateFlight(0.05, testInput, { dx: 0, dy: 0, wheel: 0 }, system.allBodies);
+    testInput.setVirtualKey('KeyC', false);
+    assert(flightShip.rcsFlames.dorsal[0].visible === true, 'Descending fires dorsal retro RCS thrusters');
+
+    // Strafe right test (port fires)
+    testInput.setVirtualKey('KeyD', true);
+    flightShip.updateFlight(0.05, testInput, { dx: 0, dy: 0, wheel: 0 }, system.allBodies);
+    testInput.setVirtualKey('KeyD', false);
+    assert(flightShip.rcsFlames.port[0].visible === true, 'Strafing right fires port RCS thrusters');
+
+    // Strafe left test (starboard fires)
+    testInput.setVirtualKey('KeyA', true);
+    flightShip.updateFlight(0.05, testInput, { dx: 0, dy: 0, wheel: 0 }, system.allBodies);
+    testInput.setVirtualKey('KeyA', false);
+    assert(flightShip.rcsFlames.starboard[0].visible === true, 'Strafing left fires starboard RCS thrusters');
+
+    // Dynamic boost flames
+    flightShip.landed = false;
+    flightShip.boostEnergy = 100;
+    testInput.setVirtualKey('ShiftLeft', true);
+    testInput.setVirtualKey('KeyW', true);
+    flightShip.updateFlight(0.05, testInput, { dx: 0, dy: 0, wheel: 0 }, system.allBodies);
+    testInput.setVirtualKey('KeyW', false);
+    testInput.setVirtualKey('ShiftLeft', false);
+    assert(flightShip.engineFlames[0].scale.z > 2.0 && flightShip.engineFlames[0].scale.x > 1.1, 'Afterburner boost dynamically scales length and width of propulsion plumes');
+
+    // 21D: Reduced Landing Damage
+    const surfContact = flightShip._resolveGroundContact(system.planet, new THREE.Vector3(0, 1, 0));
+    // Safe touchdown at 14.7 m/s (< 16.5 m/s):
+    flightShip.autoLandingAssist = false;
+    flightShip.hullIntegrity = 100;
+    flightShip.group.quaternion.identity();
+    flightShip.velocity.set(0, -14.0, 0);
+    flightShip.landed = false;
+    flightShip.group.position.set(0, surfContact.elevation + 0.05, 0);
+    flightShip.updateFlight(0.016, testInput, { dx: 0, dy: 0, wheel: 0 }, system.allBodies);
+    assert(flightShip.landed === true && flightShip.hullIntegrity === 100, 'Touchdown at 14.7 m/s (< 16.5 m/s) lands safely with 0 hull damage');
+
+    // Unsafe hard impact at 22 m/s:
+    flightShip.autoLandingAssist = false;
+    flightShip.hullIntegrity = 100;
+    flightShip.group.quaternion.identity();
+    flightShip.velocity.set(0, -22.0, 0);
+    flightShip.landed = false;
+    flightShip.group.position.set(0, surfContact.elevation + 0.05, 0);
+    flightShip.updateFlight(0.016, testInput, { dx: 0, dy: 0, wheel: 0 }, system.allBodies);
+    const damageDealt = 100 - flightShip.hullIntegrity;
+    assert(damageDealt > 0 && damageDealt <= 22, 'Hard impact at 22 m/s deals reduced damage <= 22% (was >45%)');
+    settingsMgr.applyAutoLandingAssist(true); // Restore default
+
+    // 21E: Hostile Bug-Alien Faction (Goliath Pod Fleet & Planetary Base)
+    const enemySystem = new EnemyFactionSystem(mockScene, system.planet, system.moons);
+    assert(enemySystem.pods.length === 8, 'EnemyFactionSystem spawns 8 finned pod interceptors');
+    const allPodsOnGoliath = enemySystem.pods.every(p => p.moon.id === 'goliath');
+    assert(allPodsOnGoliath === true, 'All finned pod interceptors defend ONLY Moon III: Goliath');
+
+    assert(enemySystem.outpost !== null && enemySystem.outpost.position instanceof THREE.Vector3, 'EnemyFactionSystem builds single planetary outpost base on Aurelia Prime');
+    assert(enemySystem.bugAliens.length === 6, 'EnemyFactionSystem spawns 6 bug-alien troopers around the planetary outpost');
+
+    // Test fire-on-sight:
+    let boltFired = false;
+    const testTrooper = enemySystem.bugAliens[0];
+    const nearTrooperPos = testTrooper.group.position.clone().add(new THREE.Vector3(5, 0, 0));
+    testTrooper.fireCooldown = 0;
+    testTrooper.update(0.016, nearTrooperPos, (muzzle, dir, spd, dmg) => {
+      boltFired = true;
+    });
+    assert(boltFired === true, 'Bug-Alien Trooper fires crimson bio-plasma bolt on sight when player is within range');
+
+    // Test projectile damage to bug alien
+    const bugHit = enemySystem.takeDamageAtPoint(testTrooper.group.position, 1.5, 100);
+    assert(bugHit.hit === true && bugHit.targetType === 'bug_alien' && bugHit.defeated === true, 'Player weapon damages and defeats Bug-Alien Trooper');
+
+    // Test projectile damage to pod ship
+    const testPod = enemySystem.pods[0];
+    const podHit = enemySystem.takeDamageAtPoint(testPod.group.position, 2.5, 100);
+    assert(podHit.hit === true && podHit.targetType === 'enemy_pod' && podHit.defeated === true, 'Player weapon damages and defeats Goliath Finned Pod Ship');
+
+    // 21F: Phase V Crimson Hive Objective System
+    assert(objSys.chapters.some(c => c.id === 'ch5_crimson_hive'), 'ObjectiveSystem contains Phase V Crimson Hive Assault & Goliath Interception');
+    objSys.recordBugAlienDefeated();
+    objSys.recordBugAlienDefeated();
+    objSys.recordBugAlienDefeated();
+    assert(objSys.stats.bugAliensDefeated === 3, 'recordBugAlienDefeated tracks bug alien neutralizations');
+    objSys.recordEnemyPodDestroyed();
+    objSys.recordEnemyPodDestroyed();
+    objSys.recordEnemyPodDestroyed();
+    assert(objSys.stats.enemyPodsDestroyed === 3, 'recordEnemyPodDestroyed tracks pod fleet interceptions');
+    const ch5 = objSys.chapters.find(c => c.id === 'ch5_crimson_hive');
+    assert(ch5.tasks.every(t => t.isDone(objSys.stats)), 'Phase V tasks complete when 3 bug aliens defeated and 3 pods destroyed');
 
     const summary = `SUMMARY: ${passed} passed, ${failed} failed`;
     logs.push('', summary);

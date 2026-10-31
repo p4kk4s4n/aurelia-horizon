@@ -63,6 +63,7 @@ const STORAGE_SCALE_KEY = 'aurelia_ui_scale';
 const STORAGE_AUTOSCALE_KEY = 'aurelia_ui_autoscale';
 const STORAGE_SHA_KEY = 'aurelia_installed_sha';
 const STORAGE_VER_KEY = 'aurelia_installed_version';
+const STORAGE_VITALS_POS_KEY = 'aurelia_vitals_position';
 const GITHUB_REPO = 'p4kk4s4n/aurelia-horizon';
 const GITHUB_BRANCH = 'main';
 
@@ -116,6 +117,10 @@ export class SettingsManager {
     this.applyUIScale(this.uiScale, false);
 
     this.currentQuality = localStorage.getItem('aurelia_graphics_quality') || 'high';
+    this.vitalsPosContainer = document.getElementById('vitals-pos-options');
+    this.vitalsPosition = localStorage.getItem(STORAGE_VITALS_POS_KEY) || 'top-center';
+    this.applyVitalsPosition(this.vitalsPosition, false);
+
     this.planet = null;
     this.moons = [];
     this.allBodies = [];
@@ -123,6 +128,7 @@ export class SettingsManager {
     this._renderTouchSettings();
     this._renderGraphicsSettings();
     this._renderFlightSettings();
+    this._renderVitalsSettings();
     this._renderKeybindings();
     this.applyTheme(this.currentThemeId);
     this._bindEvents();
@@ -397,6 +403,36 @@ export class SettingsManager {
         };
       });
     }
+  }
+
+  applyVitalsPosition(pos, save = true) {
+    const valid = ['top-center', 'top-left', 'top-right'];
+    if (!valid.includes(pos)) pos = 'top-center';
+    this.vitalsPosition = pos;
+    if (save) {
+      localStorage.setItem(STORAGE_VITALS_POS_KEY, pos);
+    }
+    document.body.dataset.vitalsPos = pos;
+    const vitalsEl = document.getElementById('hud-vitals');
+    if (vitalsEl) {
+      vitalsEl.classList.remove('pos-top-center', 'pos-top-left', 'pos-top-right');
+      vitalsEl.classList.add(`pos-${pos}`);
+    }
+    this._renderVitalsSettings();
+  }
+
+  _renderVitalsSettings() {
+    if (!this.vitalsPosContainer) return;
+    this.vitalsPosContainer.querySelectorAll('button').forEach((btn) => {
+      const pos = btn.dataset.pos;
+      btn.classList.toggle('active', pos === this.vitalsPosition);
+      btn.onclick = () => {
+        this.applyVitalsPosition(pos, true);
+        if (this.onNotice) {
+          this.onNotice(`Vitals HUD moved to ${btn.textContent.trim()}`, 1800);
+        }
+      };
+    });
   }
 
   _renderGraphicsSettings() {

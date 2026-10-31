@@ -56,6 +56,41 @@
     <div id="hud-compass" class="compass-bar">Locating beacons...</div>
   </header>
 
+  <!-- Standalone Vitals HUD Panel (Health/Shield, Starfighter Hull, Boost Energy, Oxygen) -->
+  <section id="hud-vitals" class="vitals-panel pos-top-center" aria-label="Explorer &amp; Ship Vitals">
+    <div id="hud-suit-health-block" class="vitals-block">
+      <div class="vitals-header">
+        <span class="vitals-label">EXOSUIT SHIELD</span>
+        <strong id="hud-suit-health-val" class="vitals-val">100%</strong>
+      </div>
+      <div class="gauge-track"><div id="hud-suit-health-bar" class="gauge-fill" style="background: #00f5d4; width: 100%;"></div></div>
+    </div>
+
+    <div id="hud-hull-block" class="vitals-block" style="display: none;">
+      <div class="vitals-header">
+        <span class="vitals-label">STARFIGHTER HULL</span>
+        <strong id="hud-hull-val" class="vitals-val">100%</strong>
+      </div>
+      <div class="gauge-track"><div id="hud-hull-bar" class="gauge-fill" style="background: #00f5d4; width: 100%;"></div></div>
+    </div>
+
+    <div id="hud-boost-block" class="vitals-block">
+      <div class="vitals-header">
+        <span class="vitals-label">BOOST / JETPACK</span>
+        <strong id="hud-boost-val" class="vitals-val">100%</strong>
+      </div>
+      <div class="gauge-track"><div id="hud-boost-bar" class="gauge-fill" style="width: 100%;"></div></div>
+    </div>
+
+    <div id="hud-oxygen-block" class="vitals-block" style="display: none;">
+      <div class="vitals-header">
+        <span class="vitals-label">SUIT OXYGEN</span>
+        <strong id="hud-oxygen-val" class="vitals-val">100%</strong>
+      </div>
+      <div class="gauge-track"><div id="hud-oxygen-bar" class="gauge-fill" style="background: #00f5d4; width: 100%;"></div></div>
+    </div>
+  </section>
+
   <!-- Left Telemetry & Ship Status Panel -->
   <aside id="hud-left">
     <div class="panel-header">
@@ -80,26 +115,6 @@
       <div class="stat-row"><span>Ship Repair</span><strong id="hud-parts">0/5 Installed</strong></div>
       <div class="stat-row"><span>Moons Landed</span><strong id="hud-moons">0 / 3 Moons Landed</strong></div>
       <div class="stat-row"><span>Targets Blasted</span><strong id="hud-targets">0 Destroyed</strong></div>
-
-      <div id="hud-suit-health-block" class="gauge-block">
-        <div class="gauge-label">EXOSUIT INTEGRITY &amp; SHIELD</div>
-        <div class="gauge-track"><div id="hud-suit-health-bar" class="gauge-fill" style="background: #00f5d4; width: 100%;"></div></div>
-      </div>
-
-      <div id="hud-hull-block" class="gauge-block" style="display: none;">
-        <div class="gauge-label">STARFIGHTER HULL INTEGRITY</div>
-        <div class="gauge-track"><div id="hud-hull-bar" class="gauge-fill" style="background: #00f5d4; width: 100%;"></div></div>
-      </div>
-
-      <div class="gauge-block">
-        <div class="gauge-label">BOOST / JETPACK ENERGY</div>
-        <div class="gauge-track"><div id="hud-boost-bar" class="gauge-fill"></div></div>
-      </div>
-
-      <div id="hud-oxygen-block" class="gauge-block" style="display: none;">
-        <div class="gauge-label">SUIT OXYGEN SUPPLY</div>
-        <div class="gauge-track"><div id="hud-oxygen-bar" class="gauge-fill" style="background: #00f5d4; width: 100%;"></div></div>
-      </div>
 
       <div class="quick-actions">
         <div class="panel-subtitle">FAST TRAVEL &amp; PHASES (KEYS 1-5)</div>
@@ -292,7 +307,7 @@
             <button type="button" class="pill-btn" data-assist="false">Manual (Pilot Controlled • Impact Damage Active)</button>
           </div>
           <div class="setting-detail-note" style="margin-top: 6px; font-size: 0.82em; color: var(--hud-muted);">
-            When enabled, the flight computer automatically cancels lateral drift and brakes descent below 70m to ensure touchdown speed &le; 12 m/s.
+            When enabled, the flight computer automatically cancels lateral drift and brakes descent below 70m to ensure touchdown speed &le; 16.5 m/s.
           </div>
         </div>
 
@@ -304,6 +319,22 @@
           </div>
           <div class="setting-detail-note" style="margin-top: 6px; font-size: 0.82em; color: var(--hud-muted);">
             Persistent mode holds engine thrust output (0–100%) like an aircraft or spaceplane throttle.
+          </div>
+        </div>
+      </section>
+
+      <section class="settings-section">
+        <h3>VITALS HUD BAR POSITION</h3>
+        <p class="section-desc">Choose screen dock placement for your Exosuit Shield, Starfighter Hull, Oxygen &amp; Boost meters:</p>
+        <div class="settings-subsection">
+          <span class="setting-label">Vitals Dock Placement</span>
+          <div id="vitals-pos-options" class="pill-group">
+            <button type="button" class="pill-btn active" data-pos="top-center">Top Center</button>
+            <button type="button" class="pill-btn" data-pos="top-left">Top Left</button>
+            <button type="button" class="pill-btn" data-pos="top-right">Top Right</button>
+          </div>
+          <div class="setting-detail-note" style="margin-top: 6px; font-size: 0.82em; color: var(--hud-muted);">
+            Docking Top Left or Top Right automatically offsets adjacent telemetry and radar panels so gauges remain unobstructed.
           </div>
         </div>
       </section>

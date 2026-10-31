@@ -1,4 +1,4 @@
-const CACHE_NAME = 'p4kk4s4n-aurelia-horizon-v14';
+const CACHE_NAME = 'p4kk4s4n-aurelia-horizon-v16';
 const ASSETS = [
   './',
   './index.html',
@@ -20,6 +20,7 @@ const ASSETS = [
   './src/world/sky.js',
   './src/world/minerals.js',
   './src/world/fauna.js',
+  './src/world/enemyFaction.js',
   './src/world/objectives.js',
   './src/player/explorer.js',
   './src/player/cameraRig.js',

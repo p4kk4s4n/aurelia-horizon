@@ -14,6 +14,7 @@ import { MineralSystem } from './world/minerals.js';
 import { FaunaSystem } from './world/fauna.js';
 import { ObjectiveSystem } from './world/objectives.js';
 import { InventoryModal } from './ui/inventoryModal.js';
+import { EnemyFactionSystem } from './world/enemyFaction.js';
 
 const canvas = document.getElementById('game-canvas');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -45,6 +46,7 @@ ship.placeOnBody(planet, new THREE.Vector3(0.055, 0.997, 0.045));
 const repairSystem = new ShipRepairSystem(scene, planet);
 const mineralSystem = new MineralSystem(scene, planet, moons);
 const faunaSystem = new FaunaSystem(scene, planet, moons);
+const enemyFaction = new EnemyFactionSystem(scene, planet, moons, (msg, dur) => hud.showNotice(msg, dur));
 const cameraRig = new CameraRig(camera);
 const input = new InputManager(canvas);
 const hud = new HUD();
@@ -74,7 +76,16 @@ window.addEventListener('appinstalled', () => {
 });
 
 const navMarkers = new NavMarkerSystem(camera);
-navMarkers.setBodies(allBodies);
+const navBodies = [
+  ...allBodies,
+  {
+    id: 'outpost_base',
+    name: 'Crimson Hive Outpost',
+    getWorldPosition: () => enemyFaction.outpost.position,
+    radius: 18
+  }
+];
+navMarkers.setBodies(navBodies);
 navMarkers.onSelectTarget = (targetBody) => {
   ship.targetBody = targetBody;
   ship.sasMode = 'TARGET';
@@ -171,13 +182,18 @@ function computeCompassText() {
     if (nearest) {
       return `Carrying ${repairSystem.carriedParts.length} Component(s) — Ship: ${Math.round(distToShip)}m | Next: ${nearest.part.name} (${Math.round(nearest.distance)}m)`;
     }
+    if (enemyFaction && enemyFaction.outpost) {
+      const distToOutpost = explorer.group.position.distanceTo(enemyFaction.outpost.position);
+      return `Ship: ${Math.round(distToShip)}m | Crimson Hive Outpost: ${Math.round(distToOutpost)}m`;
+    }
     return `All Components Collected! Return to Starfighter (${Math.round(distToShip)}m)`;
   } else {
     // In ship: show distances to the 3 moons
     const moonDists = moons.map((m) => {
       const d = Math.max(0, Math.round(ship.group.position.distanceTo(m.getWorldPosition()) - m.radius));
       const tag = ship.visitedMoons.has(m.id) ? '✓' : '';
-      return `${m.name.split(':')[0]} (${m.id.toUpperCase()})${tag}: ${d}m`;
+      const fleetTag = m.id === 'goliath' ? ' [HOSTILE PODS]' : '';
+      return `${m.name.split(':')[0]} (${m.id.toUpperCase()})${tag}${fleetTag}: ${d}m`;
     });
     return moonDists.join('  •  ');
   }
@@ -205,8 +221,12 @@ export const gameAPI = {
     faunaCount: faunaSystem.entities.length,
     suitHealth: explorer.suitHealth,
     touchScheme: touchControls.scheme,
-    touchVisibility: touchControls.visibility
+    touchVisibility: touchControls.visibility,
+    vitalsPosition: settings.vitalsPosition,
+    bugAliensCount: enemyFaction.bugAliens.length,
+    enemyPodsCount: enemyFaction.pods.length
   }),
+  setVitalsPosition: (pos) => settings.applyVitalsPosition(pos),
   openSettings: (open = true) => settings.toggleModal(open),
   openInventory: (open = true) => inventoryModal.toggle(open),
   toggleFirstPerson: () => cameraRig.toggleFirstPerson(explorer, (msg) => hud.showNotice(msg)),
@@ -563,6 +583,91 @@ if (urlView === 'char_back') {
   ship.vRelHoriz = 32.2;
   ship.hullIntegrity = 82;
   hud.updateMinerals({ titanium: 18, crystal: 9 });
+} else if (urlView === 'swim_horiz') {
+  // Prone horizontal streamline swimming showcase
+  let oceanDir = new THREE.Vector3(0, -1, 0);
+  let minR = Infinity;
+  for (let u = -1; u <= 1; u += 0.25) {
+    for (let v = -1; v <= 1; v += 0.25) {
+      for (let w = -1; w <= 1; w += 0.25) {
+        const d = new THREE.Vector3(u, v, w);
+        if (d.lengthSq() < 0.1) continue;
+        d.normalize();
+        const r = planet.getSurfaceRadiusAtDir(d.x, d.y, d.z);
+        if (r < minR) {
+          minR = r;
+          oceanDir = d;
+        }
+      }
+    }
+  }
+  explorer.spawnOnBody(planet, oceanDir);
+  explorer.group.position.copy(oceanDir).multiplyScalar(planet.seaLevelRadius - 2.5);
+  explorer.isSwimming = true;
+  explorer.isSubmerged = false;
+  explorer.waterDepth = 2.5;
+  explorer.cameraDistance = 4.8;
+  explorer.pitch = 0.05;
+  if (explorer.visualRoot) {
+    explorer.visualRoot.rotation.x = -1.38;
+    explorer.visualRoot.position.y = -0.65;
+    explorer.visualRoot.position.z = 0.35;
+  }
+  if (explorer.head) explorer.head.rotation.x = 0.55;
+  if (explorer.leftArm) explorer.leftArm.rotation.x = -2.2;
+  if (explorer.rightArm) explorer.rightArm.rotation.x = -1.5;
+} else if (urlView === 'ship_rcs') {
+  // Starfighter flight with dynamic boost flames and RCS thrusters active
+  repairSystem.giveAndInstallAll();
+  ship.setRepairedVisual(true);
+  gameMode = 'PILOTING';
+  explorer.group.visible = false;
+  ship.landed = false;
+  ship.group.position.set(0, planet.radius + 380, 200);
+  ship.group.quaternion.setFromEuler(new THREE.Euler(-0.15, 0.45, -0.2));
+  ship.isBoosting = true;
+  ship.boostEnergy = 85;
+  ship.hullIntegrity = 94;
+  // Trigger RCS thrusters for visual showcase
+  if (ship.rcsFlames) {
+    for (const f of ship.rcsFlames.ventral) f.visible = true;
+    for (const f of ship.rcsFlames.port) f.visible = true;
+  }
+  for (const f of ship.engineFlames) {
+    f.visible = true;
+    f.scale.set(1.4, 1.4, 2.7);
+  }
+} else if (urlView === 'alien_base') {
+  // Planetary Crimson Hive Outpost Base & Bug-Alien Troopers firing on sight
+  const outpostDir = enemyFaction.outpost.direction;
+  const perp = new THREE.Vector3(1, 0, 0).cross(outpostDir).normalize();
+  const playerDir = outpostDir.clone().multiplyScalar(planet.radius || 360).addScaledVector(perp, 24.0).normalize();
+  explorer.spawnOnBody(planet, playerDir);
+  explorer.cameraDistance = 9.5;
+  explorer.pitch = 0.15;
+  // Bug aliens oriented and firing on sight
+  for (const trooper of enemyFaction.bugAliens) {
+    trooper.update(0.016, explorer.group.position, (muzzle, dir, spd, dmg) => {
+      enemyFaction.spawnCrimsonBolt(muzzle, dir, spd, dmg);
+    });
+  }
+} else if (urlView === 'goliath_pods') {
+  // Space dogfight around Moon III: Goliath against Finned Pod Interceptors
+  repairSystem.giveAndInstallAll();
+  ship.setRepairedVisual(true);
+  gameMode = 'PILOTING';
+  explorer.group.visible = false;
+  ship.landed = false;
+  const gMoon = enemyFaction.goliathMoon;
+  const gPos = gMoon.getWorldPosition();
+  ship.group.position.set(gPos.x, gPos.y + 45, gPos.z + gMoon.radius + 80);
+  ship.group.lookAt(gPos);
+  ship.velocity.set(0, 0, -35);
+  for (const pod of enemyFaction.pods) {
+    pod.update(0.016, ship.group.position, (muzzle, dir, spd, dmg) => {
+      enemyFaction.spawnCrimsonBolt(muzzle, dir, spd, dmg);
+    });
+  }
 }
 
 // Collapsible HUD panels on small screens
@@ -617,10 +722,24 @@ function animate(now) {
   planet.updateOcean(elapsedTime);
   skyTargets.update(elapsedTime, camera);
 
-  // 3. Update rotating repair parts, mineral nodes, alien fauna & projectiles
+  // 3. Update rotating repair parts, mineral nodes, alien fauna, enemy faction & projectiles
   repairSystem.update(dt, elapsedTime);
   mineralSystem.update(dt);
-  ship.updateProjectilesAndTargets(dt, spaceTargets);
+  ship.updateProjectilesAndTargets(dt, spaceTargets, enemyFaction, (hitResult) => {
+    hud.triggerHitmarker(0.25);
+    if (hitResult.defeated) {
+      if (hitResult.targetType === 'enemy_pod') {
+        objectiveSystem.recordEnemyPodDestroyed();
+        hud.showNotice('Destroyed Goliath Finned Pod Interceptor! (+1 Pod Neutralized)', 3.5);
+      } else if (hitResult.targetType === 'bug_alien') {
+        objectiveSystem.recordBugAlienDefeated();
+        if (explorer && explorer.inventory) {
+          explorer.inventory.chitin_shell = (explorer.inventory.chitin_shell || 0) + 1;
+        }
+        hud.showNotice('Neutralized Bug-Alien Trooper! (+1 Chitin Shell)', 3.5);
+      }
+    }
+  });
 
   let promptText = '';
   let targetedFauna = null;
@@ -664,17 +783,48 @@ function animate(now) {
     }
   });
 
-  // Update on-foot plasma projectiles & fauna hits
+  // Update hostile Crimson Hive Bug Aliens & Goliath Pod Fleet
+  enemyFaction.update(dt, gameMode, explorer, ship, (damage, mode) => {
+    if (mode === 'EXPLORING') {
+      const res = explorer.takeDamage(damage);
+      hud.showNotice(`⚠ Hit by Crimson Hive bio-plasma! (-${damage} Shield HP)`, 2.0);
+      hud.triggerHitmarker(0.35);
+      if (res.respawned) {
+        explorer.suitHealth = explorer.maxSuitHealth;
+        const safeExit = findSafeExitSpot(ship, explorer.currentBody || planet);
+        explorer.group.position.copy(safeExit.position);
+        explorer.localUp.copy(safeExit.up);
+        hud.showNotice('Exosuit emergency teleported to Starfighter beacon! Suit shield recharged.', 4.5);
+      }
+    } else if (mode === 'PILOTING') {
+      ship.hullIntegrity = Math.max(10, ship.hullIntegrity - damage);
+      hud.showNotice(`⚠ Starfighter struck by Goliath Pod fire! (-${damage}% Hull)`, 2.0);
+      hud.triggerHitmarker(0.35);
+    }
+  });
+
+  // Update on-foot plasma projectiles & fauna/enemy hits
   explorer.updatePlasmaProjectiles(dt, faunaSystem, (hitResult) => {
     hud.triggerHitmarker(0.25);
     if (hitResult.defeated) {
-      if (hitResult.dropItem && explorer.inventory[hitResult.dropItem] !== undefined) {
-        explorer.inventory[hitResult.dropItem] += 1;
+      if (hitResult.targetType === 'bug_alien') {
+        objectiveSystem.recordBugAlienDefeated();
+        if (explorer.inventory) {
+          explorer.inventory.chitin_shell = (explorer.inventory.chitin_shell || 0) + 1;
+        }
+        hud.showNotice('Neutralized Bug-Alien Trooper! (+1 Chitin Shell)', 3.5);
+      } else if (hitResult.targetType === 'enemy_pod') {
+        objectiveSystem.recordEnemyPodDestroyed();
+        hud.showNotice('Destroyed Goliath Finned Pod Interceptor!', 3.5);
+      } else {
+        if (hitResult.dropItem && explorer.inventory[hitResult.dropItem] !== undefined) {
+          explorer.inventory[hitResult.dropItem] += 1;
+        }
+        objectiveSystem.recordFaunaDefeated(hitResult.speciesKey);
+        hud.showNotice(`Neutralized ${hitResult.speciesName}! Harvested +1 ${hitResult.dropLabel}!`, 3.5);
       }
-      objectiveSystem.recordFaunaDefeated(hitResult.speciesKey);
-      hud.showNotice(`Neutralized ${hitResult.speciesName}! Harvested +1 ${hitResult.dropLabel}!`, 3.5);
     }
-  });
+  }, enemyFaction);
 
   // Dynamic Keyboard shortcuts for Fast Travel (1: Base, 2: Planet Orbit, 3/4/5: Moons I-III)
   if (input.wasActionPressed('quickRepair') || input.wasPressed('Digit1') || input.wasPressed('Numpad1')) gameAPI.teleportToBase();
