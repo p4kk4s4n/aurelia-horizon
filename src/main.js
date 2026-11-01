@@ -18,6 +18,7 @@ import { EnemyFactionSystem } from './world/enemyFaction.js';
 import { StoryDialogSystem } from './ui/storyDialog.js';
 import { CompletionModal } from './ui/completionModal.js';
 import { PostProcessingManager } from './world/postprocessing.js';
+import { PlanetaryMapSystem } from './ui/planetaryMap.js';
 
 const canvas = document.getElementById('game-canvas');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
@@ -77,6 +78,10 @@ const inventoryModal = new InventoryModal({
   explorer,
   ship,
   objectiveSystem,
+  onNotice: (msg, dur) => hud.showNotice(msg, dur)
+});
+const planetaryMapSystem = new PlanetaryMapSystem({
+  allBodies,
   onNotice: (msg, dur) => hud.showNotice(msg, dur)
 });
 const touchControls = new TouchControlsManager(input, (msg, dur) => hud.showNotice(msg, dur));
@@ -217,20 +222,27 @@ function disembarkShip() {
 }
 
 function computeCompassText() {
+  let waypointPrefix = '';
+  if (planetaryMapSystem?.customWaypoint && planetaryMapSystem.customWaypoint.pos) {
+    const actorPos = gameMode === 'PILOTING' ? ship.group.position : explorer.group.position;
+    const dist = Math.round(actorPos.distanceTo(planetaryMapSystem.customWaypoint.pos));
+    waypointPrefix = `[WAYPOINT: ${dist}m] | `;
+  }
+
   if (gameMode === 'EXPLORING') {
     const nearest = repairSystem.getNearestUncollectedPart(explorer.group.position);
     const distToShip = explorer.group.position.distanceTo(ship.group.position);
     if (nearest && repairSystem.carriedParts.length === 0) {
-      return `Nearest Component: ${nearest.part.name} (${Math.round(nearest.distance)}m) | Ship: ${Math.round(distToShip)}m`;
+      return `${waypointPrefix}Nearest Component: ${nearest.part.name} (${Math.round(nearest.distance)}m) | Ship: ${Math.round(distToShip)}m`;
     }
     if (nearest) {
-      return `Carrying ${repairSystem.carriedParts.length} Component(s) — Ship: ${Math.round(distToShip)}m | Next: ${nearest.part.name} (${Math.round(nearest.distance)}m)`;
+      return `${waypointPrefix}Carrying ${repairSystem.carriedParts.length} Component(s) — Ship: ${Math.round(distToShip)}m | Next: ${nearest.part.name} (${Math.round(nearest.distance)}m)`;
     }
     if (enemyFaction && enemyFaction.outpost) {
       const distToOutpost = explorer.group.position.distanceTo(enemyFaction.outpost.position);
-      return `Ship: ${Math.round(distToShip)}m | Crimson Hive Outpost: ${Math.round(distToOutpost)}m`;
+      return `${waypointPrefix}Ship: ${Math.round(distToShip)}m | Crimson Hive Outpost: ${Math.round(distToOutpost)}m`;
     }
-    return `All Components Collected! Return to Starfighter (${Math.round(distToShip)}m)`;
+    return `${waypointPrefix}All Components Collected! Return to Starfighter (${Math.round(distToShip)}m)`;
   } else {
     // In ship: show distances to the 3 moons
     const moonDists = moons.map((m) => {
@@ -239,7 +251,7 @@ function computeCompassText() {
       const fleetTag = m.id === 'goliath' ? ' [HOSTILE PODS]' : '';
       return `${m.name.split(':')[0]} (${m.id.toUpperCase()})${tag}${fleetTag}: ${d}m`;
     });
-    return moonDists.join('  •  ');
+    return `${waypointPrefix}${moonDists.join('  •  ')}`;
   }
 }
 
@@ -261,6 +273,7 @@ export const gameAPI = {
     graphicsQuality: settings.currentQuality,
     settingsOpen: settings.isOpen,
     inventoryOpen: inventoryModal.isOpen,
+    mapModalOpen: planetaryMapSystem.isOpen,
     firstPerson: cameraRig.firstPerson,
     faunaCount: faunaSystem.entities.length,
     suitHealth: explorer.suitHealth,
@@ -355,12 +368,18 @@ export const gameAPI = {
     if (gameMode !== 'PILOTING') boardShip();
     ship.fireCooldown = 0;
     ship.fireCannons();
-  }
+  },
+  toggleMap: () => {
+    const activeBody = gameMode === 'PILOTING' ? ship.currentBody : explorer.currentBody;
+    return planetaryMapSystem.toggleModal(undefined, activeBody);
+  },
+  planetaryMap: planetaryMapSystem
 };
 window.gameDebug = gameAPI;
 window.explorer = explorer;
 window.input = input;
 window.ship = ship;
+window.planetaryMap = planetaryMapSystem;
 
 // Bind fast-travel & top HUD quick buttons
 document.getElementById('btn-quick-repair')?.addEventListener('click', () => gameAPI.teleportToBase());
@@ -370,6 +389,10 @@ document.getElementById('btn-moon-2')?.addEventListener('click', () => gameAPI.t
 document.getElementById('btn-moon-3')?.addEventListener('click', () => gameAPI.teleportToMoon(2));
 document.getElementById('btn-toggle-view')?.addEventListener('click', () => {
   cameraRig.toggleFirstPerson(explorer, (msg) => hud.showNotice(msg));
+});
+document.getElementById('btn-open-map')?.addEventListener('click', () => {
+  const activeBody = gameMode === 'PILOTING' ? ship.currentBody : explorer.currentBody;
+  planetaryMapSystem.toggleModal(undefined, activeBody);
 });
 
 // Update dynamic keybinding labels across HUD footer & sidebar buttons
@@ -386,6 +409,7 @@ function updateDynamicUIControls() {
     const fireFoot = input.getActionKeyLabel('fireWeapon');
     const viewKey = input.getActionKeyLabel('toggleCameraView');
     const invKey = input.getActionKeyLabel('openInventory');
+    const mapKey = input.getActionKeyLabel('openMap');
 
     const fThrust = input.getActionKeyLabel('flightThrustForward');
     const rThrust = input.getActionKeyLabel('flightThrustBackward');
@@ -401,8 +425,8 @@ function updateDynamicUIControls() {
     const exit = input.getActionKeyLabel('flightDisembark');
 
     footer.innerHTML = `
-      <div><strong>ON FOOT:</strong> [${fwd}/${left}/${bwd}/${right}] Move &bull; [${sprint}] Sprint &bull; [${jump}] Jump/Jet &bull; [Click/${fireFoot}] Plasma Blaster &amp; Mine &bull; [${viewKey}] 1P/3P View &bull; [${invKey}] Inventory &bull; [${act}] Interact</div>
-      <div><strong>STARFIGHTER (NEWTONIAN):</strong> [${fThrust}/${rThrust}] Thrust &bull; [${sLeft}/${sRight}] Strafe &bull; [${rollL}/${rollR}] 6DoF Roll &bull; [${asc}/${dsc}] Ascend/Descend &bull; [${boost}] Boost &bull; [${sas}] SAS Assist &bull; [${fire}/Click] Pulse Cannons &bull; [${exit}] Disembark</div>
+      <div><strong>ON FOOT:</strong> [${fwd}/${left}/${bwd}/${right}] Move &bull; [${sprint}] Sprint &bull; [${jump}] Jump/Jet &bull; [Click/${fireFoot}] Plasma Blaster &amp; Mine &bull; [${viewKey}] 1P/3P View &bull; [${invKey}] Inventory &bull; [${mapKey}] Map &bull; [${act}] Interact</div>
+      <div><strong>STARFIGHTER (NEWTONIAN):</strong> [${fThrust}/${rThrust}] Thrust &bull; [${sLeft}/${sRight}] Strafe &bull; [${rollL}/${rollR}] 6DoF Roll &bull; [${asc}/${dsc}] Ascend/Descend &bull; [${boost}] Boost &bull; [${sas}] SAS Assist &bull; [${fire}/Click] Pulse Cannons &bull; [${exit}] Disembark &bull; [${mapKey}] Map</div>
     `;
   }
 
@@ -410,6 +434,8 @@ function updateDynamicUIControls() {
   if (btnView) btnView.textContent = `1P/3P [${input.getActionKeyLabel('toggleCameraView')}]`;
   const btnInv = document.getElementById('btn-open-inventory');
   if (btnInv) btnInv.textContent = `INV [${input.getActionKeyLabel('openInventory')}]`;
+  const btnMap = document.getElementById('btn-open-map');
+  if (btnMap) btnMap.textContent = `MAP [${input.getActionKeyLabel('openMap')}]`;
 
   const btnBase = document.getElementById('btn-quick-repair');
   if (btnBase) btnBase.textContent = `[${input.getActionKeyLabel('quickRepair')}] Base`;
@@ -798,21 +824,29 @@ function animate(now) {
   let targetedFauna = null;
   let nearbyHostile = null;
 
+  // Toggle Tactical Planetary Map Modal with [M]
+  if (input.wasActionPressed('openMap') || input.wasPressed('KeyM')) {
+    if (!settings.isOpen && !inventoryModal.isOpen) {
+      const activeBody = gameMode === 'PILOTING' ? ship.currentBody : explorer.currentBody;
+      planetaryMapSystem.toggleModal(undefined, activeBody);
+    }
+  }
+
   // Toggle Inventory Modal with [I] or [Tab]
   if (input.wasActionPressed('openInventory') || input.wasPressed('KeyI') || input.wasPressed('Tab')) {
-    if (!settings.isOpen) {
+    if (!settings.isOpen && !planetaryMapSystem.isOpen) {
       inventoryModal.toggle();
     }
   }
 
   // Toggle First-Person / Third-Person Camera View with [V]
   if (input.wasActionPressed('toggleCameraView') || input.wasPressed('KeyV')) {
-    if (!settings.isOpen && !inventoryModal.isOpen && gameMode === 'EXPLORING') {
+    if (!settings.isOpen && !inventoryModal.isOpen && !planetaryMapSystem.isOpen && gameMode === 'EXPLORING') {
       cameraRig.toggleFirstPerson(explorer, (msg) => hud.showNotice(msg));
     }
   }
 
-  if (settings.isOpen || inventoryModal.isOpen) {
+  if (settings.isOpen || inventoryModal.isOpen || planetaryMapSystem.isOpen) {
     navMarkers.navLayer.style.display = 'none';
     input.consumeFrame();
     postProcessing.render(scene, camera);
@@ -1096,6 +1130,25 @@ function animate(now) {
     ship,
     explorer,
     promptText
+  });
+
+  const dominantBody = (gameMode === 'PILOTING' ? ship.currentBody : explorer.currentBody) || planet;
+  const actorForward = gameMode === 'PILOTING'
+    ? new THREE.Vector3(0, 0, -1).applyQuaternion(ship.group.quaternion).normalize()
+    : (cameraRig.firstPerson
+        ? camera.getWorldDirection(new THREE.Vector3()).normalize()
+        : new THREE.Vector3(0, 0, -1).applyQuaternion(explorer.group.quaternion).normalize());
+
+  planetaryMapSystem.update(dt, {
+    actorPos: activePos,
+    actorForward,
+    dominantBody,
+    altitude: gameMode === 'PILOTING' ? ship.altitude : explorer.altitude,
+    biomeName: explorer.currentBiome?.name || 'Surface',
+    ship,
+    repairSystem,
+    mineralSystem,
+    enemyFaction
   });
 
   postProcessing.render(scene, camera);

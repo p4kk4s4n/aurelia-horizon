@@ -22,6 +22,24 @@
   <h2>Aurelia Horizon — Core Mechanics Test Suite</h2>
   <pre id="test-output">Running tests...</pre>
 
+  <div id="test-mock-hud" style="display: none;">
+    <button id="btn-open-map" type="button">MAP [M]</button>
+    <aside id="hud-minimap">
+      <div id="minimap-title">AURELIA SCANNER</div>
+      <button id="btn-minimap-range" type="button">300m</button>
+      <button id="btn-minimap-expand" type="button">MAP</button>
+      <button id="btn-toggle-minimap" type="button">−</button>
+      <canvas id="minimap-canvas" width="180" height="180"></canvas>
+    </aside>
+    <div id="planetary-map-modal">
+      <button id="btn-close-map" type="button">&times;</button>
+      <div id="map-body-tabs">
+        <button class="map-tab-btn" data-body-id="aurelia" type="button">Aurelia</button>
+      </div>
+      <canvas id="planetary-map-canvas" width="860" height="430"></canvas>
+    </div>
+  </div>
+
   <script>
     window.onerror = function(msg, url, line, col, err) {
       document.getElementById('test-output').textContent += '\n\nGLOBAL ERROR: ' + msg + ' at ' + url + ':' + line + ':' + col + '\n' + (err ? err.stack : '');
@@ -58,6 +76,16 @@
       createStrataPlateCoralVariants,
       createVentSpireVariants
     } from '../src/world/decor.js';
+    import {
+      project3DToEquirectangular,
+      projectEquirectangularTo3D,
+      computeTangentPlaneHeading,
+      projectToLocalRadar,
+      generateBasemapTexture,
+      PlanetaryMiniMap,
+      PlanetaryMapModal,
+      PlanetaryMapSystem
+    } from '../src/ui/planetaryMap.js';
     import { FAUNA_SPECIES, FaunaEntity, FaunaSystem } from '../src/world/fauna.js';
     import { CameraRig } from '../src/player/cameraRig.js';
     import { ObjectiveSystem, ACHIEVEMENTS, STORAGE_CAMPAIGN_KEY } from '../src/world/objectives.js';
@@ -1337,10 +1365,10 @@
 
     // 24. v1.18.0 Hard-Surface Space Sim Realism & GitHub Version Manager
     // 24A: Version Resolution & Semantic Versioning Utilities
-    assert(APP_VERSION === '1.22.1', 'APP_VERSION constant is updated to 1.22.1');
-    assert(compareSemver('1.22.1', '1.13.0') === 1, 'compareSemver detects 1.22.1 is newer than 1.13.0');
-    assert(compareSemver('1.13.0', '1.22.1') === -1, 'compareSemver detects 1.13.0 is older than 1.22.1');
-    assert(compareSemver('1.22.1', '1.22.1') === 0, 'compareSemver detects identical versions');
+    assert(APP_VERSION === '1.22.2', 'APP_VERSION constant is updated to 1.22.2');
+    assert(compareSemver('1.22.2', '1.13.0') === 1, 'compareSemver detects 1.22.2 is newer than 1.13.0');
+    assert(compareSemver('1.13.0', '1.22.2') === -1, 'compareSemver detects 1.13.0 is older than 1.22.2');
+    assert(compareSemver('1.22.2', '1.22.2') === 0, 'compareSemver detects identical versions');
     assert(extractVersionFromCommitMessage('feat: v1.18.0 Hard-Surface Realism') === '1.18.0', 'extractVersionFromCommitMessage extracts semver from commit title');
     assert(extractVersionFromCommitMessage('Release 1.17.2 bugfixes') === '1.17.2', 'extractVersionFromCommitMessage extracts version without leading v');
     assert(extractVersionFromCommitMessage('routine maintenance patch') === null, 'extractVersionFromCommitMessage returns null for version-less commits');
@@ -1872,6 +1900,89 @@
     assert(marineNearSpawn150 >= 10, `Aurelia Prime populates rich coastal reef clusters near player spawn (${marineNearSpawn150} instances within 150m)`);
     assert(anyMarineOnDryLand === false, 'Zero marine flora are placed on dry land or beach dunes (all base positions below seaLevelRadius)');
     assert(anyMarinePokingAboveSea === false, 'Zero marine flora poke or protrude above ocean surface into the atmosphere');
+
+    // 31. Tactical Planetary Mini-Map, Equirectangular Projection & Waypoint Navigation System
+    // 31A: Forward spherical-to-planar projection
+    const center0 = new THREE.Vector3(0, 0, 0);
+    const pNorth = new THREE.Vector3(0, 720, 0);
+    const projNorth = project3DToEquirectangular(pNorth, center0);
+    assert(Math.abs(projNorth.lat - 90) < 1e-4, 'project3DToEquirectangular projects North Pole to +90° Latitude');
+    assert(Math.abs(projNorth.v - 0.0) < 1e-4, 'project3DToEquirectangular maps North Pole to v = 0.0');
+
+    const pSouth = new THREE.Vector3(0, -720, 0);
+    const projSouth = project3DToEquirectangular(pSouth, center0);
+    assert(Math.abs(projSouth.lat - (-90)) < 1e-4, 'project3DToEquirectangular projects South Pole to -90° Latitude');
+    assert(Math.abs(projSouth.v - 1.0) < 1e-4, 'project3DToEquirectangular maps South Pole to v = 1.0');
+
+    const pPrime = new THREE.Vector3(0, 0, 720);
+    const projPrime = project3DToEquirectangular(pPrime, center0);
+    assert(Math.abs(projPrime.lat) < 1e-4 && Math.abs(projPrime.lon) < 1e-4, 'project3DToEquirectangular maps Prime Meridian intersection to Lat 0°, Lon 0°');
+    assert(Math.abs(projPrime.u - 0.5) < 1e-4 && Math.abs(projPrime.v - 0.5) < 1e-4, 'project3DToEquirectangular maps (0, 0, R) to center UV (0.5, 0.5)');
+
+    const pEast = new THREE.Vector3(720, 0, 0);
+    const projEast = project3DToEquirectangular(pEast, center0);
+    assert(Math.abs(projEast.lon - 90) < 1e-4, 'project3DToEquirectangular maps +X to +90° East Longitude');
+    assert(Math.abs(projEast.u - 0.75) < 1e-4, 'project3DToEquirectangular maps +90° East Longitude to u = 0.75');
+
+    // 31B: Reverse spherical projection round-trip accuracy
+    const revPoint = projectEquirectangularTo3D(0.75, 0.5, system.planet);
+    const projRoundTrip = project3DToEquirectangular(revPoint, system.planet.getWorldPosition());
+    assert(Math.abs(projRoundTrip.u - 0.75) < 1e-3, 'projectEquirectangularTo3D produces valid round-trip u coordinate');
+    assert(Math.abs(projRoundTrip.v - 0.5) < 1e-3, 'projectEquirectangularTo3D produces valid round-trip v coordinate');
+    assert(revPoint.length() >= system.planet.radius - 200, 'projectEquirectangularTo3D projects onto valid surface radius');
+
+    // 31C: Tangent plane heading calculation & polar singularity safety
+    const headingEquatorNorth = computeTangentPlaneHeading(new THREE.Vector3(0, 0, 720), new THREE.Vector3(0, 1, 0), center0);
+    assert(Math.abs(headingEquatorNorth) < 1e-3, 'computeTangentPlaneHeading computes 0 rad for North facing vector at Equator');
+
+    const headingEquatorEast = computeTangentPlaneHeading(new THREE.Vector3(0, 0, 720), new THREE.Vector3(1, 0, 0), center0);
+    assert(Math.abs(headingEquatorEast - Math.PI / 2) < 1e-3, 'computeTangentPlaneHeading computes +PI/2 rad for East facing vector at Equator');
+
+    const headingPolarSafe = computeTangentPlaneHeading(new THREE.Vector3(0, 720, 0), new THREE.Vector3(0, 0, -1), center0);
+    assert(!Number.isNaN(headingPolarSafe), 'computeTangentPlaneHeading evaluates safely at exact pole without NaN');
+
+    // 31D: Local tactical radar projection
+    const radarPos = new THREE.Vector3(0, 0, 720);
+    const radarFwd = new THREE.Vector3(0, 1, 0); // Facing North
+    const targetAhead = new THREE.Vector3(0, 100, 720); // 100m North
+    const radarProjAhead = projectToLocalRadar(targetAhead, radarPos, radarFwd, center0, 300, 80);
+    assert(radarProjAhead.inRange === true, 'projectToLocalRadar identifies target within 300m scan range');
+    assert(Math.abs(radarProjAhead.x) < 1.0, 'projectToLocalRadar places target directly ahead on radar centerline (x ≈ 0)');
+    assert(radarProjAhead.y < -10, 'projectToLocalRadar places target ahead in negative Y (UP) on radar screen');
+
+    const targetRight = new THREE.Vector3(100, 0, 720); // 100m East
+    const radarProjRight = projectToLocalRadar(targetRight, radarPos, radarFwd, center0, 300, 80);
+    assert(radarProjRight.x > 10, 'projectToLocalRadar places target to the right in positive X on radar screen');
+
+    // 31E: Procedural Topological Basemap Generation & Caching
+    const basemapPlanet = generateBasemapTexture(system.planet, 128, 64);
+    assert(basemapPlanet !== null && basemapPlanet.width === 128 && basemapPlanet.height === 64, 'generateBasemapTexture creates valid 128x64 canvas for Aurelia Prime');
+    const basemapCached = generateBasemapTexture(system.planet, 128, 64);
+    assert(basemapPlanet === basemapCached, 'generateBasemapTexture caches and returns identical canvas instance on subsequent calls');
+
+    // 31F: Keybinding registration & top HUD button
+    assert(DEFAULT_KEYBINDINGS.openMap !== undefined, 'DEFAULT_KEYBINDINGS registers openMap action');
+    assert(DEFAULT_KEYBINDINGS.openMap.primary === 'KeyM', 'openMap primary shortcut is bound to KeyM');
+    assert(document.getElementById('btn-open-map') !== null, 'Top HUD includes MAP [M] quick-access button');
+
+    // 31G: PlanetaryMiniMap & PlanetaryMapModal
+    const testMiniMap = new PlanetaryMiniMap({ onOpenFullMap: () => {} });
+    assert(testMiniMap.scanRange === 300, 'PlanetaryMiniMap initializes with default 300m tactical range');
+    testMiniMap.btnRange?.click();
+    assert(testMiniMap.scanRange === 1000, 'PlanetaryMiniMap range button toggles to 1000m range');
+    testMiniMap.btnRange?.click();
+    assert(testMiniMap.scanRange === 300, 'PlanetaryMiniMap range button toggles back to 300m range');
+
+    const testMapModal = new PlanetaryMapModal({ allBodies: system.bodies, onNotice: () => {} });
+    assert(testMapModal.isOpen === false, 'PlanetaryMapModal starts closed');
+    testMapModal.toggle(true);
+    assert(testMapModal.isOpen === true, 'PlanetaryMapModal toggles open');
+    testMapModal.setWaypoint({ body: system.planet, pos: new THREE.Vector3(100, 720, 0), lat: 45, lon: 15, u: 0.54, v: 0.25 });
+    assert(testMapModal.customWaypoint !== null, 'PlanetaryMapModal sets custom waypoint');
+    testMapModal.clearWaypoint();
+    assert(testMapModal.customWaypoint === null, 'PlanetaryMapModal clears custom waypoint');
+    testMapModal.toggle(false);
+    assert(testMapModal.isOpen === false, 'PlanetaryMapModal toggles closed');
 
     const summary = `SUMMARY: ${passed} passed, ${failed} failed`;
     logs.push('', summary);

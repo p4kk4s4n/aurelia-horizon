@@ -55,6 +55,7 @@ export const DEFAULT_KEYBINDINGS = {
   flightDisembark: { label: 'Disembark (Landed)', category: 'flight', primary: 'KeyE', secondary: '' },
 
   // System & Fast Travel Shortcuts
+  openMap: { label: 'Tactical Planetary Map & Scanner', category: 'system', primary: 'KeyM', secondary: '' },
   toggleSettings: { label: 'Settings & Updates', category: 'system', primary: 'KeyP', secondary: '' },
   quickRepair: { label: 'Fast Travel: Aurelia Base Camp', category: 'shortcuts', primary: 'Digit1', secondary: 'Numpad1' },
   quickOrbit: { label: 'Fast Travel: Planet Orbit View', category: 'shortcuts', primary: 'Digit2', secondary: 'Numpad2' },

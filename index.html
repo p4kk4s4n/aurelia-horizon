@@ -53,6 +53,7 @@
           <div class="top-quick-btns">
             <button id="btn-toggle-view" class="top-pill-btn" type="button" title="Toggle First-Person / Third-Person View [V]">1P/3P [V]</button>
             <button id="btn-open-inventory" class="top-pill-btn" type="button" title="Open Exosuit Inventory, Crafting &amp; Xenology Codex [I]">INV [I]</button>
+            <button id="btn-open-map" class="top-pill-btn" type="button" title="Open Tactical Planetary Map &amp; Surface Scanner [M]">MAP [M]</button>
           </div>
         </div>
         <div id="hud-objective-tasks" class="objective-tasks-bar"></div>
@@ -172,12 +173,36 @@
       </aside>
     </div>
 
+    <!-- Bottom Left Flow Zone (Dedicated Planetary Surface Mini-Map) -->
+    <div id="zone-bottom-left" class="hud-zone zone-bottom-left">
+      <aside id="hud-minimap" class="minimap-panel">
+        <div class="panel-header">
+          <div id="minimap-title" class="panel-title">AURELIA SCANNER</div>
+          <div class="minimap-header-actions">
+            <button id="btn-minimap-range" class="mini-hud-btn" type="button" title="Toggle Scan Range (300m / 1000m)">300m</button>
+            <button id="btn-minimap-expand" class="mini-hud-btn" type="button" title="Open Full Tactical Planetary Map [M]">&#x26F6; MAP [M]</button>
+            <button id="btn-toggle-minimap" class="panel-toggle-btn" type="button" aria-label="Toggle Surface Mini-Map">−</button>
+          </div>
+        </div>
+        <div class="panel-body minimap-body">
+          <canvas id="minimap-canvas" width="180" height="180"></canvas>
+          <div class="minimap-legend">
+            <span><i class="dot you"></i> You</span>
+            <span><i class="dot ship"></i> Ship</span>
+            <span><i class="dot part"></i> Part</span>
+            <span><i class="dot mineral"></i> Ore</span>
+            <span><i class="dot base"></i> Base</span>
+          </div>
+        </div>
+      </aside>
+    </div>
+
     <!-- Bottom Center Flow Zone (Controls Guide, Interaction Prompt) -->
     <div id="zone-bottom-center" class="hud-zone zone-bottom-center">
       <!-- Bottom Controls Guide -->
       <footer id="hud-controls">
-        <div><strong>ON FOOT:</strong> [WASD] Move • [Shift] Sprint • [Space] Jump / Hold Jetpack • [Mouse] Look • [E] Collect / Install / Board</div>
-        <div><strong>STARFIGHTER (NEWTONIAN):</strong> [W/S] Thrust • [A/D] Strafe • [Q/E] 6DoF Roll • [Space/Ctrl] Ascend/Descend • [Shift] Afterburner Boost • [O] Cycle SAS Flight Assist • [Click/F] Pulse Cannons • [E] Disembark (Landed)</div>
+        <div><strong>ON FOOT:</strong> [WASD] Move • [Shift] Sprint • [Space] Jump / Hold Jetpack • [Mouse] Look • [E] Collect / Install / Board • [M] Planetary Map</div>
+        <div><strong>STARFIGHTER (NEWTONIAN):</strong> [W/S] Thrust • [A/D] Strafe • [Q/E] 6DoF Roll • [Space/Ctrl] Ascend/Descend • [Shift] Afterburner Boost • [O] Cycle SAS Flight Assist • [Click/F] Pulse Cannons • [E] Disembark (Landed) • [M] Map</div>
       </footer>
 
       <!-- Interaction Prompt (Elevated cleanly above controls) -->
@@ -216,6 +241,7 @@
     <div id="touch-foot-actions" class="touch-actions-cluster">
       <button id="btn-touch-view" class="touch-btn action-view" type="button">1P/3P<br><small>VIEW</small></button>
       <button id="btn-touch-inv" class="touch-btn action-inv" type="button">INV<br><small>CRAFT</small></button>
+      <button id="btn-touch-map" class="touch-btn action-map" type="button">MAP<br><small>SURF</small></button>
       <button id="btn-touch-foot-fire" class="touch-btn action-fire" type="button">FIRE<br><small>PLASMA</small></button>
       <button id="btn-touch-sprint" class="touch-btn action-sprint" type="button">RUN</button>
       <button id="btn-touch-jump" class="touch-btn action-jump" type="button">JUMP<br><small>JET</small></button>
@@ -490,6 +516,61 @@
           <div id="inv-missions-list" class="inv-missions-list"></div>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- Tactical Planetary Surface Map Modal -->
+  <div id="planetary-map-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="map-modal-title" aria-hidden="true">
+    <div class="map-modal-dialog">
+      <header class="map-modal-header">
+        <div class="map-title-row">
+          <h2 id="map-modal-title" class="map-modal-title">&#x1F30D; TACTICAL PLANETARY SURFACE MAP</h2>
+          <div class="map-body-tabs" id="map-body-tabs">
+            <button class="map-tab-btn active" data-body-id="aurelia" type="button">Aurelia Prime</button>
+            <button class="map-tab-btn" data-body-id="lumen" type="button">Moon I: Lumen</button>
+            <button class="map-tab-btn" data-body-id="pyra" type="button">Moon II: Pyra</button>
+            <button class="map-tab-btn" data-body-id="goliath" type="button">Moon III: Goliath</button>
+          </div>
+        </div>
+        <button id="btn-close-map" class="close-btn" type="button" aria-label="Close Map [ESC / M]">&times;</button>
+      </header>
+
+      <div class="map-modal-toolbar">
+        <div class="map-filters">
+          <label class="map-filter-label"><input type="checkbox" id="filter-map-player" checked> <span>Player</span></label>
+          <label class="map-filter-label"><input type="checkbox" id="filter-map-ship" checked> <span>Ship</span></label>
+          <label class="map-filter-label"><input type="checkbox" id="filter-map-parts" checked> <span>Parts</span></label>
+          <label class="map-filter-label"><input type="checkbox" id="filter-map-minerals" checked> <span>Minerals</span></label>
+          <label class="map-filter-label"><input type="checkbox" id="filter-map-bases" checked> <span>Outposts</span></label>
+          <label class="map-filter-label"><input type="checkbox" id="filter-map-waypoint" checked> <span>Waypoint</span></label>
+        </div>
+        <div class="map-zoom-controls">
+          <button id="btn-map-zoom-in" class="map-tool-btn" type="button" title="Zoom In">+</button>
+          <button id="btn-map-zoom-out" class="map-tool-btn" type="button" title="Zoom Out">&minus;</button>
+          <button id="btn-map-center-player" class="map-tool-btn" type="button" title="Center on Player">&#x2316; Center</button>
+          <button id="btn-map-clear-waypoint" class="map-tool-btn" type="button" title="Clear Custom Waypoint">&#x2715; Clear Pin</button>
+          <button id="btn-map-reset" class="map-tool-btn" type="button" title="Reset View">&#x21BA; Reset</button>
+        </div>
+      </div>
+
+      <div class="map-canvas-container" id="map-canvas-container">
+        <canvas id="planetary-map-canvas" width="860" height="430"></canvas>
+        <div class="map-crosshair-telemetry" id="map-cursor-telemetry">CURSOR: Lat 0.0&deg; | Lon 0.0&deg;</div>
+      </div>
+
+      <footer class="map-modal-footer">
+        <div class="map-telemetry-strip" id="map-telemetry-strip">
+          <span>BODY: <strong id="map-telemetry-body">Aurelia Prime</strong></span>
+          <span>LAT: <strong id="map-telemetry-lat">--</strong></span>
+          <span>LON: <strong id="map-telemetry-lon">--</strong></span>
+          <span>ALT: <strong id="map-telemetry-alt">--</strong></span>
+          <span>BIOME: <strong id="map-telemetry-biome">--</strong></span>
+          <span>WAYPOINT: <strong id="map-telemetry-waypoint">None</strong></span>
+        </div>
+        <div class="map-help-hint">
+          <span>Click terrain to set Waypoint &bull; Drag to Pan &bull; Wheel to Zoom &bull; Right-Click to Clear &bull; [ESC / M] to Close</span>
+        </div>
+      </footer>
     </div>
   </div>
 

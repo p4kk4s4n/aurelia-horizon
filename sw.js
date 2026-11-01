@@ -1,4 +1,4 @@
-const CACHE_NAME = 'p4kk4s4n-aurelia-horizon-v25';
+const CACHE_NAME = 'p4kk4s4n-aurelia-horizon-v26';
 const ASSETS = [
   './',
   './index.html',
@@ -36,6 +36,7 @@ const ASSETS = [
   './src/ui/touchControls.js',
   './src/ui/navMarkers.js',
   './src/ui/inventoryModal.js',
+  './src/ui/planetaryMap.js',
   './vendor/three/three.module.js',
   './vendor/three/GLTFLoader.js',
   './vendor/utils/BufferGeometryUtils.js',

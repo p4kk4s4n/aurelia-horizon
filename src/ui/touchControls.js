@@ -39,6 +39,7 @@ export class TouchControlsManager {
     this.btnFootFire = document.getElementById('btn-touch-foot-fire');
     this.btnTouchView = document.getElementById('btn-touch-view');
     this.btnTouchInv = document.getElementById('btn-touch-inv');
+    this.btnTouchMap = document.getElementById('btn-touch-map');
 
     this.btnFire = document.getElementById('btn-touch-fire');
     this.btnBoost = document.getElementById('btn-touch-boost');
@@ -434,6 +435,7 @@ export class TouchControlsManager {
     bindTap(this.btnInteract, 'KeyE', 'interact');
     bindTap(this.btnTouchView, 'KeyV', 'toggleCameraView');
     bindTap(this.btnTouchInv, 'KeyI', 'openInventory');
+    bindTap(this.btnTouchMap, 'KeyM', 'openMap');
 
     // Sprint toggle button
     this.btnSprint?.addEventListener('pointerdown', (e) => {
