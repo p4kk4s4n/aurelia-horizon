@@ -495,18 +495,396 @@ export function createAbyssalTendrilPodVariants(count = 4) {
   return variants;
 }
 
-export function createKelpVariants(count = 4) {
+/**
+ * Species 6 (Aquatic 1): Aurelian Prismatic Ribbon-Kelp (Alien Ribbon Seaweed)
+ * Cluster of 4-6 undulating, twisting faceted ribbon blades rising 14m-22m
+ * with floating faceted icosahedral bioluminescent spore lanterns.
+ */
+export function createRibbonKelpVariants(count = 4) {
   const variants = [];
   for (let v = 0; v < count; v++) {
-    const rng = mulberry32(7001 + v * 41);
-    const height = 10.0 + rng() * 8.5;
-    const spine = bezierSpine(rng, height, 0.45, 8);
-    const kelpGeo = tubeAlongSpine(spine, (t) => 0.42 * (1 - t * 0.5), 4);
-    kelpGeo.scale(2.4, 1.0, 0.2);
-    variants.push(kelpGeo);
+    const rng = mulberry32(7001 + v * 53);
+    const bladeGeos = [];
+    const sporeGeos = [];
+    const numBlades = 4 + Math.floor(rng() * 3); // 4 to 6 blades per cluster
+
+    for (let b = 0; b < numBlades; b++) {
+      const bAngle = (b / numBlades) * Math.PI * 2 + (rng() - 0.5) * 0.4;
+      const bRad = 0.5 + rng() * 0.8;
+      const baseOffsetX = Math.cos(bAngle) * bRad;
+      const baseOffsetZ = Math.sin(bAngle) * bRad;
+      const height = 14.0 + rng() * 8.0;
+      const twistTotal = (rng() - 0.5) * Math.PI * 3.0;
+      const waveFreqX = 1.8 + rng() * 0.8;
+      const waveFreqZ = 1.6 + rng() * 0.8;
+      const waveAmpX = 1.2 + rng() * 1.0;
+      const waveAmpZ = 1.0 + rng() * 0.8;
+      const steps = 14;
+
+      const verts = [];
+      const indices = [];
+
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const y = t * height;
+        const waveX = Math.sin(t * Math.PI * waveFreqX) * waveAmpX * Math.sqrt(t);
+        const waveZ = Math.cos(t * Math.PI * waveFreqZ) * waveAmpZ * Math.sqrt(t);
+        const cx = baseOffsetX + waveX;
+        const cz = baseOffsetZ + waveZ;
+
+        // Blade width profile: narrow base, wide undulating middle, tapered tip
+        const width = (0.75 + Math.sin(t * Math.PI * 0.85) * 0.85) * (1 - t * 0.45);
+        const thick = 0.16 * width;
+        const twist = t * twistTotal;
+        const cosT = Math.cos(twist);
+        const sinT = Math.sin(twist);
+
+        // 4 diamond cross-section vertices: Left, Front, Right, Back
+        const lx = cx - width * cosT;
+        const lz = cz - width * sinT;
+        const rx = cx + width * cosT;
+        const rz = cz + width * sinT;
+        const fx = cx - thick * sinT;
+        const fz = cz + thick * cosT;
+        const kx = cx + thick * sinT;
+        const kz = cz - thick * cosT;
+
+        verts.push(lx, y, lz); // 4*i + 0
+        verts.push(fx, y, fz); // 4*i + 1
+        verts.push(rx, y, rz); // 4*i + 2
+        verts.push(kx, y, kz); // 4*i + 3
+
+        if (i > 0) {
+          const p = 4 * (i - 1);
+          const c = 4 * i;
+          // 4 facet quads
+          indices.push(p + 0, c + 0, c + 1);
+          indices.push(p + 0, c + 1, p + 1);
+          indices.push(p + 1, c + 1, c + 2);
+          indices.push(p + 1, c + 2, p + 2);
+          indices.push(p + 2, c + 2, c + 3);
+          indices.push(p + 2, c + 3, p + 3);
+          indices.push(p + 3, c + 3, c + 0);
+          indices.push(p + 3, c + 0, p + 0);
+        }
+      }
+
+      // Tip cap pyramid
+      const tipIdx = verts.length / 3;
+      const lastT = 1.0;
+      const tipX = baseOffsetX + Math.sin(lastT * Math.PI * waveFreqX) * waveAmpX;
+      const tipZ = baseOffsetZ + Math.cos(lastT * Math.PI * waveFreqZ) * waveAmpZ;
+      verts.push(tipX, height + 0.8, tipZ);
+      const topBase = 4 * steps;
+      indices.push(topBase + 0, tipIdx, topBase + 1);
+      indices.push(topBase + 1, tipIdx, topBase + 2);
+      indices.push(topBase + 2, tipIdx, topBase + 3);
+      indices.push(topBase + 3, tipIdx, topBase + 0);
+
+      const bGeo = new THREE.BufferGeometry();
+      bGeo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+      bGeo.setIndex(indices);
+      bGeo.computeVertexNormals();
+      bladeGeos.push(bGeo);
+
+      // Spores floating along this blade
+      const numSpores = 1 + Math.floor(rng() * 2);
+      for (let s = 0; s < numSpores; s++) {
+        const sT = 0.25 + rng() * 0.65;
+        const sY = sT * height;
+        const sX = baseOffsetX + Math.sin(sT * Math.PI * waveFreqX) * waveAmpX + (rng() - 0.5) * 1.2;
+        const sZ = baseOffsetZ + Math.cos(sT * Math.PI * waveFreqZ) * waveAmpZ + (rng() - 0.5) * 1.2;
+        const sporeRadius = 0.45 + rng() * 0.35;
+        const sGeo = new THREE.IcosahedronGeometry(sporeRadius, 0);
+        sGeo.translate(sX, sY, sZ);
+        sporeGeos.push(sGeo);
+      }
+    }
+
+    variants.push({
+      bladeGeo: mergeGeometries(bladeGeos),
+      sporeGeo: mergeGeometries(sporeGeos)
+    });
   }
   return variants;
 }
+
+/**
+ * Species 7 (Aquatic 2): Crystalline Staghorn Branch-Coral
+ * Arborescent multi-branching antler/staghorn coral cluster with vibrant violet-purple
+ * limbs and glowing neon-pink faceted termination crystal pyramid caps.
+ */
+export function createStaghornCoralVariants(count = 4) {
+  const variants = [];
+  for (let v = 0; v < count; v++) {
+    const rng = mulberry32(8101 + v * 37);
+    const branchGeos = [];
+    const tipGeos = [];
+
+    // Base trunk
+    const baseRadius = 0.65 + rng() * 0.2;
+    const baseHeight = 1.4 + rng() * 0.5;
+    const trunkGeo = new THREE.CylinderGeometry(baseRadius * 0.85, baseRadius, baseHeight, 6);
+    trunkGeo.translate(0, baseHeight * 0.5, 0);
+    branchGeos.push(trunkGeo);
+
+    // Primary antler limbs branching out
+    const numPrimary = 5 + Math.floor(rng() * 3); // 5 to 7 primary limbs
+    for (let p = 0; p < numPrimary; p++) {
+      const pAngle = (p / numPrimary) * Math.PI * 2 + (rng() - 0.5) * 0.35;
+      const flareAngle = 0.55 + rng() * 0.35; // ~32 to 52 degrees upward flare
+      const pLen = 2.4 + rng() * 1.6;
+      const pRadius = 0.36 + rng() * 0.12;
+
+      const pGeo = new THREE.CylinderGeometry(pRadius * 0.75, pRadius, pLen, 6);
+      pGeo.translate(0, pLen * 0.5, 0);
+
+      const dirP = new THREE.Vector3(
+        Math.cos(pAngle) * Math.sin(flareAngle),
+        Math.cos(flareAngle),
+        Math.sin(pAngle) * Math.sin(flareAngle)
+      ).normalize();
+
+      const qP = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dirP);
+      pGeo.applyQuaternion(qP);
+      pGeo.translate(0, baseHeight, 0);
+      branchGeos.push(pGeo);
+
+      const pTipPos = new THREE.Vector3(0, baseHeight, 0).addScaledVector(dirP, pLen);
+
+      // Sub-branches from primary tip
+      const numSub = 2 + Math.floor(rng() * 2); // 2 or 3 sub-branches
+      for (let s = 0; s < numSub; s++) {
+        const sSubAngle = pAngle + (s - (numSub - 1) * 0.5) * 0.8 + (rng() - 0.5) * 0.25;
+        const sFlare = flareAngle * 0.75 + (rng() - 0.5) * 0.25;
+        const sLen = 1.8 + rng() * 1.4;
+        const sRadius = pRadius * 0.65;
+
+        const dirS = new THREE.Vector3(
+          Math.cos(sSubAngle) * Math.sin(sFlare),
+          Math.cos(sFlare) + 0.35,
+          Math.sin(sSubAngle) * Math.sin(sFlare)
+        ).normalize();
+
+        const sGeo = new THREE.CylinderGeometry(sRadius * 0.6, sRadius, sLen, 5);
+        sGeo.translate(0, sLen * 0.5, 0);
+        const qS = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dirS);
+        sGeo.applyQuaternion(qS);
+        sGeo.translate(pTipPos.x, pTipPos.y, pTipPos.z);
+        branchGeos.push(sGeo);
+
+        // Terminal Crystal Pyramid Cap
+        const tipPos = pTipPos.clone().addScaledVector(dirS, sLen);
+        const tipRadius = sRadius * 0.85;
+        const tipLen = 0.95 + rng() * 0.55;
+        const tipGeo = new THREE.CylinderGeometry(0, tipRadius, tipLen, 6);
+        tipGeo.translate(0, tipLen * 0.5, 0);
+        tipGeo.applyQuaternion(qS);
+        tipGeo.translate(tipPos.x, tipPos.y, tipPos.z);
+        tipGeos.push(tipGeo);
+      }
+    }
+
+    variants.push({
+      branchGeo: mergeGeometries(branchGeos),
+      tipGeo: mergeGeometries(tipGeos)
+    });
+  }
+  return variants;
+}
+
+/**
+ * Species 8 (Aquatic 3): Bioluminescent Strata-Plate Coral
+ * Horizontally stepped tiered shelf plates with dark obsidian/indigo slate bodies
+ * and glowing electric-cyan perimeter border rings.
+ */
+export function createStrataPlateCoralVariants(count = 4) {
+  const variants = [];
+  for (let v = 0; v < count; v++) {
+    const rng = mulberry32(9201 + v * 47);
+    const plateGeos = [];
+    const edgeGeos = [];
+
+    const numTiers = 4 + Math.floor(rng() * 3); // 4 to 6 tiers
+    let currentY = 0.35;
+    const baseRadius = 2.8 + rng() * 1.2;
+
+    for (let k = 0; k < numTiers; k++) {
+      const tierT = k / (numTiers - 1);
+      const tierRadius = baseRadius * (1.0 - tierT * 0.45) * (0.85 + rng() * 0.3);
+      const tierThick = 0.32 + rng() * 0.18;
+      const segs = 12;
+
+      const pVerts = [];
+      const pIndices = [];
+      const eVerts = [];
+      const eIndices = [];
+
+      const phase = rng() * Math.PI * 2;
+      const waveFreq = 2.0 + Math.floor(rng() * 2);
+
+      pVerts.push(0, currentY + tierThick * 0.5, 0); // 0: center top
+      pVerts.push(0, currentY - tierThick * 0.5, 0); // 1: center bottom
+
+      for (let j = 0; j < segs; j++) {
+        const a = (j / segs) * Math.PI * 2;
+        const r = tierRadius * (1.0 + 0.18 * Math.sin(a * waveFreq + phase));
+        const px = Math.cos(a) * r;
+        const pz = Math.sin(a) * r;
+
+        pVerts.push(px, currentY + tierThick * 0.5, pz);
+        pVerts.push(px, currentY - tierThick * 0.5, pz);
+
+        const er = r * 1.04;
+        eVerts.push(Math.cos(a) * er, currentY + tierThick * 0.45, Math.sin(a) * er);
+        eVerts.push(Math.cos(a) * er, currentY - tierThick * 0.45, Math.sin(a) * er);
+
+        const curT = 2 + 2 * j;
+        const curB = 2 + 2 * j + 1;
+        const nxtT = 2 + 2 * ((j + 1) % segs);
+        const nxtB = 2 + 2 * ((j + 1) % segs) + 1;
+
+        pIndices.push(0, curT, nxtT);
+        pIndices.push(1, nxtB, curB);
+        pIndices.push(curT, curB, nxtB);
+        pIndices.push(curT, nxtB, nxtT);
+
+        const eCurT = 2 * j;
+        const eCurB = 2 * j + 1;
+        const eNxtT = 2 * ((j + 1) % segs);
+        const eNxtB = 2 * ((j + 1) % segs) + 1;
+        eIndices.push(eCurT, eCurB, eNxtB);
+        eIndices.push(eCurT, eNxtB, eNxtT);
+      }
+
+      const pGeo = new THREE.BufferGeometry();
+      pGeo.setAttribute('position', new THREE.Float32BufferAttribute(pVerts, 3));
+      pGeo.setIndex(pIndices);
+      pGeo.computeVertexNormals();
+      plateGeos.push(pGeo);
+
+      const eGeo = new THREE.BufferGeometry();
+      eGeo.setAttribute('position', new THREE.Float32BufferAttribute(eVerts, 3));
+      eGeo.setIndex(eIndices);
+      eGeo.computeVertexNormals();
+      edgeGeos.push(eGeo);
+
+      currentY += tierThick + 0.35 + rng() * 0.3;
+    }
+
+    const stemGeo = new THREE.CylinderGeometry(baseRadius * 0.4, baseRadius * 0.6, currentY, 6);
+    stemGeo.translate(0, currentY * 0.5, 0);
+    plateGeos.push(stemGeo);
+
+    variants.push({
+      plateGeo: mergeGeometries(plateGeos),
+      edgeGeo: mergeGeometries(edgeGeos)
+    });
+  }
+  return variants;
+}
+
+/**
+ * Species 9 (Aquatic 4): Volcanic Hadal Vent-Spire
+ * Clustered vertical hollow hexagonal chimney columns with open top bores,
+ * dark volcanic basalt exterior, and glowing hydrothermal lip rims.
+ */
+export function createVentSpireVariants(count = 4) {
+  const variants = [];
+  for (let v = 0; v < count; v++) {
+    const rng = mulberry32(10301 + v * 61);
+    const chimneyGeos = [];
+    const rimGeos = [];
+
+    const numPipes = 6 + Math.floor(rng() * 4); // 6 to 9 chimneys per cluster
+    for (let p = 0; p < numPipes; p++) {
+      const pAngle = (p / numPipes) * Math.PI * 2 + (rng() - 0.5) * 0.3;
+      const pDist = 0.6 + (p > 0 ? (0.6 + rng() * 1.5) : 0);
+      const px = Math.cos(pAngle) * pDist;
+      const pz = Math.sin(pAngle) * pDist;
+
+      const pHeight = 4.0 + (p === 0 ? 6.0 : (rng() * 7.5));
+      const rOuter = 0.55 + rng() * 0.45;
+      const rInner = rOuter * 0.65;
+      const segs = 6;
+
+      const cVerts = [];
+      const cIndices = [];
+      const rVerts = [];
+      const rIndices = [];
+
+      for (let s = 0; s < segs; s++) {
+        const a = (s / segs) * Math.PI * 2;
+        const ox = px + Math.cos(a) * rOuter;
+        const oz = pz + Math.sin(a) * rOuter;
+        const ix = px + Math.cos(a) * rInner;
+        const iz = pz + Math.sin(a) * rInner;
+
+        cVerts.push(ox, 0, oz);
+        cVerts.push(ox, pHeight, oz);
+        cVerts.push(ix, pHeight, iz);
+        cVerts.push(ix, Math.max(0.5, pHeight - 2.5), iz);
+
+        const curOB = 4 * s + 0;
+        const curOT = 4 * s + 1;
+        const curIT = 4 * s + 2;
+        const curIB = 4 * s + 3;
+
+        const nxt = (s + 1) % segs;
+        const nxtOB = 4 * nxt + 0;
+        const nxtOT = 4 * nxt + 1;
+        const nxtIT = 4 * nxt + 2;
+        const nxtIB = 4 * nxt + 3;
+
+        cIndices.push(curOB, curOT, nxtOT);
+        cIndices.push(curOB, nxtOT, nxtOB);
+
+        cIndices.push(curOT, curIT, nxtIT);
+        cIndices.push(curOT, nxtIT, nxtOT);
+
+        cIndices.push(curIT, curIB, nxtIB);
+        cIndices.push(curIT, nxtIB, nxtIT);
+
+        rVerts.push(ox, pHeight + 0.05, oz);
+        rVerts.push(ix, pHeight + 0.05, iz);
+        const rCurO = 2 * s + 0;
+        const rCurI = 2 * s + 1;
+        const rNxtO = 2 * nxt + 0;
+        const rNxtI = 2 * nxt + 1;
+        rIndices.push(rCurO, rCurI, rNxtI);
+        rIndices.push(rCurO, rNxtI, rNxtO);
+      }
+
+      const plugIdx = cVerts.length / 3;
+      cVerts.push(px, Math.max(0.5, pHeight - 2.5), pz);
+      for (let s = 0; s < segs; s++) {
+        const curIB = 4 * s + 3;
+        const nxtIB = 4 * ((s + 1) % segs) + 3;
+        cIndices.push(curIB, plugIdx, nxtIB);
+      }
+
+      const cGeo = new THREE.BufferGeometry();
+      cGeo.setAttribute('position', new THREE.Float32BufferAttribute(cVerts, 3));
+      cGeo.setIndex(cIndices);
+      cGeo.computeVertexNormals();
+      chimneyGeos.push(cGeo);
+
+      const rGeo = new THREE.BufferGeometry();
+      rGeo.setAttribute('position', new THREE.Float32BufferAttribute(rVerts, 3));
+      rGeo.setIndex(rIndices);
+      rGeo.computeVertexNormals();
+      rimGeos.push(rGeo);
+    }
+
+    variants.push({
+      chimneyGeo: mergeGeometries(chimneyGeos),
+      rimGeo: mergeGeometries(rimGeos)
+    });
+  }
+  return variants;
+}
+
+export const createKelpVariants = createRibbonKelpVariants;
 
 // Backwards-compatible aliases for legacy imports
 export const createMushroomVariants = createLucentMycenaVariants;
@@ -612,16 +990,93 @@ export function populatePlanetDecor(body, noise, qualityOverride = null) {
     roughness: 0.35
   });
 
-  // Oceanic Kelp & Floating Spore Particles
-  const kelpMat = new THREE.MeshStandardMaterial({
-    color: 0x058c7e,
-    emissive: 0x005f73,
-    emissiveIntensity: 0.45,
-    roughness: 0.3,
-    transparent: true,
-    opacity: 0.85,
+  // Aquatic Xenobotanical Materials (Aurelia Prime Ocean)
+  // Species 6 (Aquatic 1): Aurelian Prismatic Ribbon-Kelp
+  const ribbonKelpBladeMat = new THREE.MeshStandardMaterial({
+    color: 0x059669,
+    emissive: 0x064e3b,
+    emissiveIntensity: 0.35,
+    roughness: 0.32,
+    metalness: 0.15,
     side: THREE.DoubleSide
   });
+  const ribbonKelpSporeMat = new THREE.MeshStandardMaterial({
+    color: 0x00f5d4,
+    emissive: 0x00f5d4,
+    emissiveIntensity: 2.6,
+    roughness: 0.2
+  });
+
+  // Species 7 (Aquatic 2): Crystalline Staghorn Branch-Coral
+  const staghornBranchMat = new THREE.MeshStandardMaterial({
+    color: 0x7c3aed,
+    roughness: 0.38,
+    metalness: 0.25,
+    flatShading: false
+  });
+  const staghornTipMat = new THREE.MeshStandardMaterial({
+    color: 0xf43f5e,
+    emissive: 0xf43f5e,
+    emissiveIntensity: 2.8,
+    roughness: 0.18
+  });
+
+  // Species 8 (Aquatic 3): Bioluminescent Strata-Plate Coral
+  const strataPlateBodyMat = new THREE.MeshStandardMaterial({
+    color: 0x1e1b4b,
+    roughness: 0.62,
+    metalness: 0.2,
+    flatShading: false
+  });
+  const strataPlateEdgeMat = new THREE.MeshStandardMaterial({
+    color: 0x00f5d4,
+    emissive: 0x00f5d4,
+    emissiveIntensity: 3.2,
+    roughness: 0.2
+  });
+
+  // Species 9 (Aquatic 4): Volcanic Hadal Vent-Spire
+  const ventChimneyMat = new THREE.MeshStandardMaterial({
+    color: 0x1e293b,
+    roughness: 0.85,
+    metalness: 0.1,
+    flatShading: false
+  });
+  const ventRimMat = new THREE.MeshStandardMaterial({
+    color: 0x818cf8,
+    emissive: 0x818cf8,
+    emissiveIntensity: 2.6,
+    roughness: 0.25
+  });
+
+  // Dry Lunar Counterpart Materials (Pyra Volcanic Fumaroles & Lumen Crystal Antlers)
+  const pyraVentChimneyMat = new THREE.MeshStandardMaterial({
+    color: 0x1c1917,
+    roughness: 0.9,
+    metalness: 0.05,
+    flatShading: false
+  });
+  const pyraVentRimMat = new THREE.MeshStandardMaterial({
+    color: 0xf59e0b,
+    emissive: 0xd97706,
+    emissiveIntensity: 2.8,
+    roughness: 0.2
+  });
+
+  const lumenStaghornBranchMat = new THREE.MeshStandardMaterial({
+    color: 0x334155,
+    roughness: 0.32,
+    metalness: 0.35,
+    flatShading: false
+  });
+  const lumenStaghornTipMat = new THREE.MeshStandardMaterial({
+    color: 0x78dcca,
+    emissive: 0x2a9d8f,
+    emissiveIntensity: 2.8,
+    roughness: 0.2
+  });
+
+  // Oceanic Floating Spore Particles
   const sporeMat = new THREE.MeshBasicMaterial({
     color: 0xa855f7
   });
@@ -645,35 +1100,52 @@ export function populatePlanetDecor(body, noise, qualityOverride = null) {
     mycenaGillMat.emissive.setHex(body.moonTheme.crystalEmissive);
   }
 
-  // Strict Moon Species Counts: exactly 1 species per moon
+  // Terrestrial & Marine Species Counts
   let mycenaCount = 0;
   let arborCount = 0;
   let cactusCount = 0;
   let fernCount = 0;
   let tendrilCount = 0;
-  let kelpCount = 0;
   let sporeCount = 0;
+
+  // Aquatic species on Aurelia Prime
+  let ribbonKelpCount = 0;
+  let staghornCount = 0;
+  let strataPlateCount = 0;
+  let ventSpireCount = 0;
+
+  // Dry lunar counterpart species on moons
+  let pyraVentSpireCount = 0;
+  let lumenStaghornCount = 0;
 
   if (body.isMoon) {
     if (isLumen) {
-      cactusCount = Math.round(440 * densityMult);
+      cactusCount = Math.round(380 * densityMult);
+      lumenStaghornCount = Math.round(200 * densityMult);
     } else if (isPyra) {
-      tendrilCount = Math.round(380 * densityMult);
+      tendrilCount = Math.round(340 * densityMult);
+      pyraVentSpireCount = Math.round(200 * densityMult);
       sporeCount = Math.round(80 * densityMult);
     } else {
-      // Goliath (default largest moon)
+      // Goliath (default largest moon): strictly giant Lucent-Mycena titan neon fungi
       mycenaCount = Math.round(480 * densityMult);
       sporeCount = Math.round(60 * densityMult);
     }
   } else {
-    // Aurelia Prime (Planet): All 5 species distributed across elevation biomes
+    // Aurelia Prime (Planet): All 5 terrestrial species + 4 marine species
     arborCount = Math.round(520 * densityMult);
     fernCount = Math.round(680 * densityMult);
     mycenaCount = Math.round(580 * densityMult);
     tendrilCount = Math.round(440 * densityMult);
     cactusCount = Math.round(340 * densityMult);
-    kelpCount = body.hasOcean ? Math.round(480 * densityMult) : 0;
     sporeCount = Math.round(220 * densityMult);
+
+    if (body.hasOcean) {
+      ribbonKelpCount = Math.round(380 * densityMult);
+      staghornCount = Math.round(280 * densityMult);
+      strataPlateCount = Math.round(340 * densityMult);
+      ventSpireCount = Math.round(260 * densityMult);
+    }
   }
 
   // 3. Generate Geometry Variants
@@ -682,7 +1154,11 @@ export function populatePlanetDecor(body, noise, qualityOverride = null) {
   const cactusVariants = cactusCount > 0 ? createPrismaticLithocactusVariants(4) : [];
   const fernVariants = fernCount > 0 ? createCyanSerrataFernVariants(4) : [];
   const tendrilVariants = tendrilCount > 0 ? createAbyssalTendrilPodVariants(4) : [];
-  const kelpVariants = kelpCount > 0 ? createKelpVariants(4) : [];
+
+  const ribbonKelpVariants = ribbonKelpCount > 0 ? createRibbonKelpVariants(4) : [];
+  const staghornVariants = (staghornCount > 0 || lumenStaghornCount > 0) ? createStaghornCoralVariants(4) : [];
+  const strataPlateVariants = strataPlateCount > 0 ? createStrataPlateCoralVariants(4) : [];
+  const ventSpireVariants = (ventSpireCount > 0 || pyraVentSpireCount > 0) ? createVentSpireVariants(4) : [];
   const sporeGeo = new THREE.IcosahedronGeometry(0.85, 0);
 
   const mVCount = mycenaVariants.length || 1;
@@ -690,7 +1166,11 @@ export function populatePlanetDecor(body, noise, qualityOverride = null) {
   const cVCount = cactusVariants.length || 1;
   const fVCount = fernVariants.length || 1;
   const tVCount = tendrilVariants.length || 1;
-  const kVCount = kelpVariants.length || 1;
+
+  const rkVCount = ribbonKelpVariants.length || 1;
+  const stgVCount = staghornVariants.length || 1;
+  const spVCount = strataPlateVariants.length || 1;
+  const vsVCount = ventSpireVariants.length || 1;
 
   // 4. Instantiate Meshes for Each Component
   const mycenaTrunkMeshes = mycenaVariants.map(v => new THREE.InstancedMesh(v.trunkGeo, mycenaTrunkMat, Math.ceil(mycenaCount / mVCount)));
@@ -708,7 +1188,26 @@ export function populatePlanetDecor(body, noise, qualityOverride = null) {
   const tendrilFoliageMeshes = tendrilVariants.map(v => new THREE.InstancedMesh(v.foliageGeo, tendrilFoliageMat, Math.ceil(tendrilCount / tVCount)));
   const tendrilPodMeshes = tendrilVariants.map(v => new THREE.InstancedMesh(v.podGeo, tendrilPodMat, Math.ceil(tendrilCount / tVCount)));
 
-  const kelpMeshes = kelpVariants.map(geo => new THREE.InstancedMesh(geo, kelpMat, Math.ceil(kelpCount / kVCount)));
+  // Marine Meshes
+  const ribbonKelpBladeMeshes = ribbonKelpVariants.map(v => new THREE.InstancedMesh(v.bladeGeo, ribbonKelpBladeMat, Math.ceil(ribbonKelpCount / rkVCount)));
+  const ribbonKelpSporeMeshes = ribbonKelpVariants.map(v => new THREE.InstancedMesh(v.sporeGeo, ribbonKelpSporeMat, Math.ceil(ribbonKelpCount / rkVCount)));
+
+  const staghornBranchMeshes = staghornCount > 0 ? staghornVariants.map(v => new THREE.InstancedMesh(v.branchGeo, staghornBranchMat, Math.ceil(staghornCount / stgVCount))) : [];
+  const staghornTipMeshes = staghornCount > 0 ? staghornVariants.map(v => new THREE.InstancedMesh(v.tipGeo, staghornTipMat, Math.ceil(staghornCount / stgVCount))) : [];
+
+  const strataPlateBodyMeshes = strataPlateVariants.map(v => new THREE.InstancedMesh(v.plateGeo, strataPlateBodyMat, Math.ceil(strataPlateCount / spVCount)));
+  const strataPlateEdgeMeshes = strataPlateVariants.map(v => new THREE.InstancedMesh(v.edgeGeo, strataPlateEdgeMat, Math.ceil(strataPlateCount / spVCount)));
+
+  const ventChimneyMeshes = ventSpireCount > 0 ? ventSpireVariants.map(v => new THREE.InstancedMesh(v.chimneyGeo, ventChimneyMat, Math.ceil(ventSpireCount / vsVCount))) : [];
+  const ventRimMeshes = ventSpireCount > 0 ? ventSpireVariants.map(v => new THREE.InstancedMesh(v.rimGeo, ventRimMat, Math.ceil(ventSpireCount / vsVCount))) : [];
+
+  // Dry Lunar Counterpart Meshes
+  const lumenStaghornBranchMeshes = lumenStaghornCount > 0 ? staghornVariants.map(v => new THREE.InstancedMesh(v.branchGeo, lumenStaghornBranchMat, Math.ceil(lumenStaghornCount / stgVCount))) : [];
+  const lumenStaghornTipMeshes = lumenStaghornCount > 0 ? staghornVariants.map(v => new THREE.InstancedMesh(v.tipGeo, lumenStaghornTipMat, Math.ceil(lumenStaghornCount / stgVCount))) : [];
+
+  const pyraVentChimneyMeshes = pyraVentSpireCount > 0 ? ventSpireVariants.map(v => new THREE.InstancedMesh(v.chimneyGeo, pyraVentChimneyMat, Math.ceil(pyraVentSpireCount / vsVCount))) : [];
+  const pyraVentRimMeshes = pyraVentSpireCount > 0 ? ventSpireVariants.map(v => new THREE.InstancedMesh(v.rimGeo, pyraVentRimMat, Math.ceil(pyraVentSpireCount / vsVCount))) : [];
+
   const sporeMesh = new THREE.InstancedMesh(sporeGeo, sporeMat, sporeCount);
 
   const mIndices = new Array(mVCount).fill(0);
@@ -716,10 +1215,19 @@ export function populatePlanetDecor(body, noise, qualityOverride = null) {
   const cIndices = new Array(cVCount).fill(0);
   const fIndices = new Array(fVCount).fill(0);
   const tIndices = new Array(tVCount).fill(0);
-  const kIndices = new Array(kVCount).fill(0);
+
+  const rkIndices = new Array(rkVCount).fill(0);
+  const stgIndices = new Array(stgVCount).fill(0);
+  const spIndices = new Array(spVCount).fill(0);
+  const vsIndices = new Array(vsVCount).fill(0);
+
+  const lstgIndices = new Array(stgVCount).fill(0);
+  const pvsIndices = new Array(vsVCount).fill(0);
   let sIdx = 0;
 
-  const totalFloraCount = mycenaCount + arborCount + cactusCount + fernCount + tendrilCount + kelpCount + sporeCount;
+  const totalFloraCount = mycenaCount + arborCount + cactusCount + fernCount + tendrilCount +
+    ribbonKelpCount + staghornCount + strataPlateCount + ventSpireCount +
+    lumenStaghornCount + pyraVentSpireCount + sporeCount;
   const totalSamples = totalFloraCount * 5;
 
   for (let i = 0; i < totalSamples; i++) {
@@ -764,12 +1272,63 @@ export function populatePlanetDecor(body, noise, qualityOverride = null) {
     dummy.updateMatrix();
 
     if (isUndersea) {
-      if (depthBelowSea >= 2.5 && depthBelowSea <= 110 && kelpCount > 0) {
-        const kVar = (i + Math.floor(noise.hash(i * 79) * 10)) % kVCount;
-        const curIdx = kIndices[kVar];
-        if (curIdx < kelpMeshes[kVar].count) {
-          kelpMeshes[kVar].setMatrixAt(curIdx, dummy.matrix);
-          kIndices[kVar]++;
+      if (depthBelowSea >= 2.0 && depthBelowSea <= 160) {
+        const uRand = noise.hash(i * 109);
+        let underseaSpecies = null;
+
+        if (depthBelowSea < 45.0) {
+          // Shallows & Submerged Shelves (2m - 45m): Ribbon-Kelp (40%), Staghorn Coral (35%), Strata-Plate (25%)
+          if (uRand < 0.40) underseaSpecies = 'ribbonKelp';
+          else if (uRand < 0.75) underseaSpecies = 'staghorn';
+          else underseaSpecies = 'strataPlate';
+        } else {
+          // Midnight Hadal Abyss (45m - 160m): Hadal Vent-Spires (50%), Strata-Plates (35%), Deep Ribbon-Kelp (15%)
+          if (uRand < 0.50) underseaSpecies = 'ventSpire';
+          else if (uRand < 0.85) underseaSpecies = 'strataPlate';
+          else underseaSpecies = 'ribbonKelp';
+        }
+
+        // Guarantee balanced representation across all underwater depth zones
+        const uMod = i % 12;
+        if (uMod === 1 && staghornCount > 0) underseaSpecies = 'staghorn';
+        else if (uMod === 3 && ribbonKelpCount > 0) underseaSpecies = 'ribbonKelp';
+        else if (uMod === 5 && strataPlateCount > 0) underseaSpecies = 'strataPlate';
+        else if (uMod === 7 && ventSpireCount > 0) underseaSpecies = 'ventSpire';
+
+        if (underseaSpecies === 'ribbonKelp' && ribbonKelpCount > 0) {
+          const rkVar = (i + Math.floor(noise.hash(i * 79) * 10)) % rkVCount;
+          const curIdx = rkIndices[rkVar];
+          if (curIdx < ribbonKelpBladeMeshes[rkVar].count) {
+            ribbonKelpBladeMeshes[rkVar].setMatrixAt(curIdx, dummy.matrix);
+            ribbonKelpSporeMeshes[rkVar].setMatrixAt(curIdx, dummy.matrix);
+            rkIndices[rkVar]++;
+          }
+        } else if (underseaSpecies === 'staghorn' && staghornCount > 0) {
+          const stgVar = (i + Math.floor(noise.hash(i * 83) * 10)) % stgVCount;
+          const curIdx = stgIndices[stgVar];
+          if (curIdx < staghornBranchMeshes[stgVar].count) {
+            staghornBranchMeshes[stgVar].setMatrixAt(curIdx, dummy.matrix);
+            staghornTipMeshes[stgVar].setMatrixAt(curIdx, dummy.matrix);
+            stgIndices[stgVar]++;
+          }
+        } else if (underseaSpecies === 'strataPlate' && strataPlateCount > 0) {
+          const spVar = (i + Math.floor(noise.hash(i * 89) * 10)) % spVCount;
+          const curIdx = spIndices[spVar];
+          if (curIdx < strataPlateBodyMeshes[spVar].count) {
+            strataPlateBodyMeshes[spVar].setMatrixAt(curIdx, dummy.matrix);
+            strataPlateEdgeMeshes[spVar].setMatrixAt(curIdx, dummy.matrix);
+            spIndices[spVar]++;
+            collisionGrid.addCollider(dummy.position, normal, 1.85 * scale, 3.5 * scale, 'plate');
+          }
+        } else if (underseaSpecies === 'ventSpire' && ventSpireCount > 0) {
+          const vsVar = (i + Math.floor(noise.hash(i * 97) * 10)) % vsVCount;
+          const curIdx = vsIndices[vsVar];
+          if (curIdx < ventChimneyMeshes[vsVar].count) {
+            ventChimneyMeshes[vsVar].setMatrixAt(curIdx, dummy.matrix);
+            ventRimMeshes[vsVar].setMatrixAt(curIdx, dummy.matrix);
+            vsIndices[vsVar]++;
+            collisionGrid.addCollider(dummy.position, normal, 1.25 * scale, 9.0 * scale, 'vent');
+          }
         }
       }
       continue;
@@ -779,10 +1338,18 @@ export function populatePlanetDecor(body, noise, qualityOverride = null) {
     let targetSpecies = null;
 
     if (body.isMoon) {
-      // Moon: strictly 1 species per moon
-      if (isLumen) targetSpecies = 'cactus';
-      else if (isPyra) targetSpecies = 'tendril';
-      else targetSpecies = 'mycena';
+      if (isLumen) {
+        // Moon I (Lumen): Prismatic Lithocactus (65%) + Dry Crystalline Staghorn Branch-Coral (35%)
+        const mRand = noise.hash(i * 113);
+        targetSpecies = (mRand < 0.35 && lumenStaghornCount > 0) ? 'lumenStaghorn' : 'cactus';
+      } else if (isPyra) {
+        // Moon II (Pyra): Abyssal Tendril-Pod (65%) + Dry Volcanic Fumarole Vent-Spires (35%)
+        const mRand = noise.hash(i * 113);
+        targetSpecies = (mRand < 0.35 && pyraVentSpireCount > 0) ? 'pyraVent' : 'tendril';
+      } else {
+        // Moon III (Goliath): Exclusively Aurelian Lucent-Mycena titan neon fungi
+        targetSpecies = 'mycena';
+      }
     } else {
       // Aurelia Prime Elevation Partitioning with natural biome zoning
       const bioRand = noise.hash(i * 93);
@@ -855,6 +1422,24 @@ export function populatePlanetDecor(body, noise, qualityOverride = null) {
         tIndices[tVar]++;
         collisionGrid.addCollider(dummy.position, normal, 0.80 * scale, 4.2 * scale, 'tendril');
       }
+    } else if (targetSpecies === 'lumenStaghorn' && lumenStaghornCount > 0) {
+      const stgVar = (i + Math.floor(noise.hash(i * 83) * 10)) % stgVCount;
+      const curIdx = lstgIndices[stgVar];
+      if (curIdx < lumenStaghornBranchMeshes[stgVar].count) {
+        lumenStaghornBranchMeshes[stgVar].setMatrixAt(curIdx, dummy.matrix);
+        lumenStaghornTipMeshes[stgVar].setMatrixAt(curIdx, dummy.matrix);
+        lstgIndices[stgVar]++;
+        collisionGrid.addCollider(dummy.position, normal, 0.85 * scale, 5.5 * scale, 'crystal');
+      }
+    } else if (targetSpecies === 'pyraVent' && pyraVentSpireCount > 0) {
+      const vsVar = (i + Math.floor(noise.hash(i * 97) * 10)) % vsVCount;
+      const curIdx = pvsIndices[vsVar];
+      if (curIdx < pyraVentChimneyMeshes[vsVar].count) {
+        pyraVentChimneyMeshes[vsVar].setMatrixAt(curIdx, dummy.matrix);
+        pyraVentRimMeshes[vsVar].setMatrixAt(curIdx, dummy.matrix);
+        pvsIndices[vsVar]++;
+        collisionGrid.addCollider(dummy.position, normal, 1.25 * scale, 9.0 * scale, 'vent');
+      }
     }
 
     // Ambient floating spores above bioluminescent flora
@@ -919,11 +1504,65 @@ export function populatePlanetDecor(body, noise, qualityOverride = null) {
     }
   }
 
-  for (let v = 0; v < kVCount; v++) {
-    if (kelpMeshes[v] && kIndices[v] > 0) {
-      kelpMeshes[v].count = kIndices[v];
-      kelpMeshes[v].instanceMatrix.needsUpdate = true;
-      group.add(kelpMeshes[v]);
+  // Marine Meshes
+  for (let v = 0; v < rkVCount; v++) {
+    if (ribbonKelpBladeMeshes[v] && rkIndices[v] > 0) {
+      ribbonKelpBladeMeshes[v].count = rkIndices[v];
+      ribbonKelpSporeMeshes[v].count = rkIndices[v];
+      ribbonKelpBladeMeshes[v].instanceMatrix.needsUpdate = true;
+      ribbonKelpSporeMeshes[v].instanceMatrix.needsUpdate = true;
+      group.add(ribbonKelpBladeMeshes[v], ribbonKelpSporeMeshes[v]);
+    }
+  }
+
+  for (let v = 0; v < stgVCount; v++) {
+    if (staghornBranchMeshes[v] && stgIndices[v] > 0) {
+      staghornBranchMeshes[v].count = stgIndices[v];
+      staghornTipMeshes[v].count = stgIndices[v];
+      staghornBranchMeshes[v].instanceMatrix.needsUpdate = true;
+      staghornTipMeshes[v].instanceMatrix.needsUpdate = true;
+      group.add(staghornBranchMeshes[v], staghornTipMeshes[v]);
+    }
+  }
+
+  for (let v = 0; v < spVCount; v++) {
+    if (strataPlateBodyMeshes[v] && spIndices[v] > 0) {
+      strataPlateBodyMeshes[v].count = spIndices[v];
+      strataPlateEdgeMeshes[v].count = spIndices[v];
+      strataPlateBodyMeshes[v].instanceMatrix.needsUpdate = true;
+      strataPlateEdgeMeshes[v].instanceMatrix.needsUpdate = true;
+      group.add(strataPlateBodyMeshes[v], strataPlateEdgeMeshes[v]);
+    }
+  }
+
+  for (let v = 0; v < vsVCount; v++) {
+    if (ventChimneyMeshes[v] && vsIndices[v] > 0) {
+      ventChimneyMeshes[v].count = vsIndices[v];
+      ventRimMeshes[v].count = vsIndices[v];
+      ventChimneyMeshes[v].instanceMatrix.needsUpdate = true;
+      ventRimMeshes[v].instanceMatrix.needsUpdate = true;
+      group.add(ventChimneyMeshes[v], ventRimMeshes[v]);
+    }
+  }
+
+  // Dry Lunar Counterpart Meshes
+  for (let v = 0; v < stgVCount; v++) {
+    if (lumenStaghornBranchMeshes[v] && lstgIndices[v] > 0) {
+      lumenStaghornBranchMeshes[v].count = lstgIndices[v];
+      lumenStaghornTipMeshes[v].count = lstgIndices[v];
+      lumenStaghornBranchMeshes[v].instanceMatrix.needsUpdate = true;
+      lumenStaghornTipMeshes[v].instanceMatrix.needsUpdate = true;
+      group.add(lumenStaghornBranchMeshes[v], lumenStaghornTipMeshes[v]);
+    }
+  }
+
+  for (let v = 0; v < vsVCount; v++) {
+    if (pyraVentChimneyMeshes[v] && pvsIndices[v] > 0) {
+      pyraVentChimneyMeshes[v].count = pvsIndices[v];
+      pyraVentRimMeshes[v].count = pvsIndices[v];
+      pyraVentChimneyMeshes[v].instanceMatrix.needsUpdate = true;
+      pyraVentRimMeshes[v].instanceMatrix.needsUpdate = true;
+      group.add(pyraVentChimneyMeshes[v], pyraVentRimMeshes[v]);
     }
   }
 
@@ -941,8 +1580,15 @@ export function populatePlanetDecor(body, noise, qualityOverride = null) {
     fernMat,
     arborMat: { trunk: arborTrunkMat, fronds: arborFrondMat },
     tendrilMat: { foliage: tendrilFoliageMat, pods: tendrilPodMat },
+    ribbonKelpMat: { blade: ribbonKelpBladeMat, spore: ribbonKelpSporeMat },
+    staghornMat: { branch: staghornBranchMat, tip: staghornTipMat },
+    strataPlateMat: { body: strataPlateBodyMat, edge: strataPlateEdgeMat },
+    ventSpireMat: { chimney: ventChimneyMat, rim: ventRimMat },
+    lumenStaghornMat: { branch: lumenStaghornBranchMat, tip: lumenStaghornTipMat },
+    pyraVentMat: { chimney: pyraVentChimneyMat, rim: pyraVentRimMat },
     // Backwards-compatible references for existing tests
     crystalMat: cactusBodyMat,
-    capMat: mycenaCapMat
+    capMat: mycenaCapMat,
+    kelpMat: ribbonKelpBladeMat
   };
 }

@@ -52,7 +52,11 @@
       createPrismaticLithocactusVariants,
       createCyanSerrataFernVariants,
       createCobaltStrataArborVariants,
-      createAbyssalTendrilPodVariants
+      createAbyssalTendrilPodVariants,
+      createRibbonKelpVariants,
+      createStaghornCoralVariants,
+      createStrataPlateCoralVariants,
+      createVentSpireVariants
     } from '../src/world/decor.js';
     import { FAUNA_SPECIES, FaunaEntity, FaunaSystem } from '../src/world/fauna.js';
     import { CameraRig } from '../src/player/cameraRig.js';
@@ -1333,10 +1337,10 @@
 
     // 24. v1.18.0 Hard-Surface Space Sim Realism & GitHub Version Manager
     // 24A: Version Resolution & Semantic Versioning Utilities
-    assert(APP_VERSION === '1.21.1', 'APP_VERSION constant is updated to 1.21.1');
-    assert(compareSemver('1.21.1', '1.13.0') === 1, 'compareSemver detects 1.21.1 is newer than 1.13.0');
-    assert(compareSemver('1.13.0', '1.21.1') === -1, 'compareSemver detects 1.13.0 is older than 1.21.1');
-    assert(compareSemver('1.21.1', '1.21.1') === 0, 'compareSemver detects identical versions');
+    assert(APP_VERSION === '1.22.0', 'APP_VERSION constant is updated to 1.22.0');
+    assert(compareSemver('1.22.0', '1.13.0') === 1, 'compareSemver detects 1.22.0 is newer than 1.13.0');
+    assert(compareSemver('1.13.0', '1.22.0') === -1, 'compareSemver detects 1.13.0 is older than 1.22.0');
+    assert(compareSemver('1.22.0', '1.22.0') === 0, 'compareSemver detects identical versions');
     assert(extractVersionFromCommitMessage('feat: v1.18.0 Hard-Surface Realism') === '1.18.0', 'extractVersionFromCommitMessage extracts semver from commit title');
     assert(extractVersionFromCommitMessage('Release 1.17.2 bugfixes') === '1.17.2', 'extractVersionFromCommitMessage extracts version without leading v');
     assert(extractVersionFromCommitMessage('routine maintenance patch') === null, 'extractVersionFromCommitMessage returns null for version-less commits');
@@ -1726,6 +1730,93 @@
     const yColRes = yCollinearGrid.resolveCollision(yTestPos, 0.5);
     assert(yColRes === true, 'FloraCollisionGrid detects collision for Y-axis trunk');
     assert(!Number.isNaN(yTestPos.x) && !Number.isNaN(yTestPos.y) && !Number.isNaN(yTestPos.z), 'FloraCollisionGrid does not produce NaN vector for Y-axis normal');
+
+    // 29. High-Fidelity Xenobotanical Marine Flora & Oceanic Bathymetry (v1.22.0)
+    // 29A: Geometry Generation for All 4 Marine & Counterpart Species
+    const rkVariants = createRibbonKelpVariants(3);
+    assert(rkVariants.length === 3, 'createRibbonKelpVariants produces requested variant count');
+    assert(Boolean(rkVariants[0].bladeGeo && rkVariants[0].sporeGeo), 'Ribbon-Kelp produces both blade and spore geometries');
+    assert(rkVariants[0].bladeGeo.attributes.position.count > 50, 'Ribbon-Kelp blade geometry has valid high-density vertex buffer');
+    assert(rkVariants[0].sporeGeo.attributes.position.count > 10, 'Ribbon-Kelp spore lanterns have valid vertex buffer');
+
+    const stgVariants = createStaghornCoralVariants(3);
+    assert(stgVariants.length === 3, 'createStaghornCoralVariants produces requested variant count');
+    assert(Boolean(stgVariants[0].branchGeo && stgVariants[0].tipGeo), 'Staghorn Coral produces both branch and crystal tip geometries');
+    assert(stgVariants[0].branchGeo.attributes.position.count > 60, 'Staghorn Coral branch geometry has valid vertex buffer');
+    assert(stgVariants[0].tipGeo.attributes.position.count > 20, 'Staghorn Coral crystal tips have valid vertex buffer');
+
+    const spVariants = createStrataPlateCoralVariants(3);
+    assert(spVariants.length === 3, 'createStrataPlateCoralVariants produces requested variant count');
+    assert(Boolean(spVariants[0].plateGeo && spVariants[0].edgeGeo), 'Strata-Plate Coral produces both stepped plate and glowing edge rim geometries');
+    assert(spVariants[0].plateGeo.attributes.position.count > 80, 'Strata-Plate Coral plate geometry has valid vertex buffer');
+    assert(spVariants[0].edgeGeo.attributes.position.count > 40, 'Strata-Plate Coral edge rim geometry has valid vertex buffer');
+
+    const vsVariants = createVentSpireVariants(3);
+    assert(vsVariants.length === 3, 'createVentSpireVariants produces requested variant count');
+    assert(Boolean(vsVariants[0].chimneyGeo && vsVariants[0].rimGeo), 'Vent-Spire produces both hollow chimney and glowing rim geometries');
+    assert(vsVariants[0].chimneyGeo.attributes.position.count > 100, 'Vent-Spire hollow chimney geometry has valid vertex buffer');
+    assert(vsVariants[0].rimGeo.attributes.position.count > 20, 'Vent-Spire glowing lip rim geometry has valid vertex buffer');
+
+    // 29B: Aurelia Prime Oceanic Bathymetric Zoning
+    let planetHasRibbonKelp = false;
+    let planetHasStaghorn = false;
+    let planetHasStrataPlate = false;
+    let planetHasVentSpire = false;
+
+    system.planet.decor.group.children.forEach(c => {
+      if (c.material === system.planet.decor.ribbonKelpMat?.blade && c.count > 0) planetHasRibbonKelp = true;
+      if (c.material === system.planet.decor.staghornMat?.branch && c.count > 0) planetHasStaghorn = true;
+      if (c.material === system.planet.decor.strataPlateMat?.body && c.count > 0) planetHasStrataPlate = true;
+      if (c.material === system.planet.decor.ventSpireMat?.chimney && c.count > 0) planetHasVentSpire = true;
+    });
+
+    assert(planetHasRibbonKelp === true, 'Aurelia Prime ocean populates Aurelian Prismatic Ribbon-Kelp');
+    assert(planetHasStaghorn === true, 'Aurelia Prime ocean populates Crystalline Staghorn Branch-Coral in sunlit shallows');
+    assert(planetHasStrataPlate === true, 'Aurelia Prime ocean populates Bioluminescent Strata-Plate Coral on bathyal shelves');
+    assert(planetHasVentSpire === true, 'Aurelia Prime ocean populates Volcanic Hadal Vent-Spires in midnight trenches');
+
+    // 29C: Dry Lunar Counterparts (Lumen & Pyra)
+    let lumenHasStaghorn = false;
+    let lumenHasOtherMarine = false;
+    lumenMoon.decor.group.children.forEach(c => {
+      if (c.material === lumenMoon.decor.lumenStaghornMat?.branch && c.count > 0) lumenHasStaghorn = true;
+      if (c.material === system.planet.decor.ribbonKelpMat?.blade || c.material === system.planet.decor.ventSpireMat?.chimney) {
+        if (c.count > 0) lumenHasOtherMarine = true;
+      }
+    });
+    assert(lumenHasStaghorn === true, 'Moon I (Lumen) populates dry Crystalline Staghorn Branch-Corals in crystal quartz canyons');
+    assert(lumenHasOtherMarine === false, 'Moon I (Lumen) strictly excludes non-native oceanic marine flora');
+
+    let pyraHasVentSpire = false;
+    let pyraHasOtherMarine = false;
+    pyraMoon.decor.group.children.forEach(c => {
+      if (c.material === pyraMoon.decor.pyraVentMat?.chimney && c.count > 0) pyraHasVentSpire = true;
+      if (c.material === system.planet.decor.ribbonKelpMat?.blade || c.material === system.planet.decor.strataPlateMat?.body) {
+        if (c.count > 0) pyraHasOtherMarine = true;
+      }
+    });
+    assert(pyraHasVentSpire === true, 'Moon II (Pyra) populates dry Volcanic Fumarole Vent-Spires around magma calderas');
+    assert(pyraHasOtherMarine === false, 'Moon II (Pyra) strictly excludes non-native oceanic marine flora');
+
+    let goliathHasMarine = false;
+    goliathMoon.decor.group.children.forEach(c => {
+      if (c.material === system.planet.decor.ribbonKelpMat?.blade ||
+          c.material === system.planet.decor.staghornMat?.branch ||
+          c.material === system.planet.decor.strataPlateMat?.body ||
+          c.material === system.planet.decor.ventSpireMat?.chimney) {
+        if (c.count > 0) goliathHasMarine = true;
+      }
+    });
+    assert(goliathHasMarine === false, 'Moon III (Goliath) strictly excludes marine and hydrothermal flora');
+
+    // 29D: Marine & Fumarole Collision Grid Registration
+    const ventCollider = system.planet.floraCollisionGrid.colliders.find(c => c.type === 'vent');
+    const plateCollider = system.planet.floraCollisionGrid.colliders.find(c => c.type === 'plate');
+    assert(Boolean(ventCollider), 'FloraCollisionGrid registers solid colliders for Volcanic Hadal Vent-Spires');
+    assert(Boolean(plateCollider), 'FloraCollisionGrid registers solid colliders for Strata-Plate Coral shelves');
+
+    const pyraVentCollider = pyraMoon.floraCollisionGrid.colliders.find(c => c.type === 'vent');
+    assert(Boolean(pyraVentCollider), 'Pyra FloraCollisionGrid registers solid colliders for volcanic fumaroles');
 
     const summary = `SUMMARY: ${passed} passed, ${failed} failed`;
     logs.push('', summary);

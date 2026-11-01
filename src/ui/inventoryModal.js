@@ -58,12 +58,15 @@ export const RESOURCE_ITEMS = [
 ];
 
 export const FLORA_CODEX = [
-  { name: 'Bioluminescent Giant Mushroom', biome: 'Tropical Valleys & Plateaus', solid: 'Solid Trunk Collider', desc: 'Curved fungal towers with glowing turquoise under-gills that illuminate nocturnal jungles.' },
-  { name: 'Curved Alien Palm', biome: 'Coastal Beaches & Islands', solid: 'Solid Trunk Collider', desc: 'Wind-swept tropical palms with multi-segmented trunks and drooping cyan fronds.' },
-  { name: 'Branching Silica Crystal Spire', biome: 'Highland Ridges & Craters', solid: 'Solid Spire Collider', desc: 'Pink crystalline spires with procedural offshoots that hum with geomagnetic resonance.' },
-  { name: 'Bioluminescent Spore-Fern', biome: 'Mid-Elevation Jungle Floor', solid: 'Solid Basal Rosette', desc: 'Ancient cycad rosettes with 7 curved fronds and hovering golden spore orbs.' },
-  { name: 'Spiral Tendril Shrub', biome: 'Humid Jungle Clearings', solid: 'Solid Coiled Base', desc: 'Helical violet vines tipped with pulsing magenta bioluminescent lantern bulbs.' },
-  { name: 'Abyssal Giant Kelp & Trench Vents', biome: 'Submerged Ocean Floor (-5m to -160m)', solid: 'Aquatic Flora', desc: 'Towering underwater kelp forests and thermal coral pillars thriving in deep oceanic trenches.' }
+  { name: 'Aurelian Lucent-Mycena', biome: 'Conifer Valleys & Goliath Titan Moon', solid: 'Solid Trunk Collider', desc: 'Compound triad fungal towers with glowing turquoise lamellar gills illuminating nocturnal biomes.' },
+  { name: 'Cobalt Strata-Arbor', biome: 'Coastal Beaches & Lowland Steppe', solid: 'Solid Trunk Collider', desc: 'Curved twin-ring bark palms with segmented bamboo nodes and crowning cobalt-crystal fronds.' },
+  { name: 'Prismatic Lithocactus', biome: 'Granite Highland Peaks & Lumen Crystal Moon', solid: 'Solid Spire Collider', desc: 'Faceted crystal prism columns with radiating neon-pink needle spines that hum with resonance.' },
+  { name: 'Cyan Serrata-Fern', biome: 'Temperate Steppe Grasslands', solid: 'Basal Rosette', desc: 'Concentric tiered rosettes of saw-toothed fronds with bioluminescent leaf margins.' },
+  { name: 'Abyssal Tendril-Pod', biome: 'Forest Undergrowth & Pyra Volcanic Moon', solid: 'Herbaceous Shrub', desc: 'Undulating sinusoidal ribbon vines bearing luminescent purple seed lanterns and spore motes.' },
+  { name: 'Aurelian Prismatic Ribbon-Kelp', biome: 'Sunlit Oceanic Reefs & Lagoons (2m–18m)', solid: 'Aquatic Frond', desc: 'Undulating emerald-teal twisted ribbon blades with hovering cyan bioluminescent spore lanterns.' },
+  { name: 'Crystalline Staghorn Branch-Coral', biome: 'Ocean Coral Lagoons (2m–25m) & Lumen Crystal Canyons', solid: 'Crystalline Branch', desc: 'Arborescent violet-purple branching limbs crowned with radiant neon-pink crystal pyramid termination caps.' },
+  { name: 'Bioluminescent Strata-Plate Coral', biome: 'Bathyal Submerged Shelves (18m–55m)', solid: 'Solid Shelf Collider', desc: 'Horizontally tiered stepped dark-indigo table coral shelves with glowing electric-cyan border margins.' },
+  { name: 'Volcanic Hadal Vent-Spire', biome: 'Midnight Hadal Abyss (55m–160m) & Pyra Magma Fumaroles', solid: 'Solid Chimney Collider', desc: 'Hollow hexagonal volcanic basalt chimneys with glowing hydrothermal lip rims venting geothermal bubbles.' }
 ];
 
 export class InventoryModal {
