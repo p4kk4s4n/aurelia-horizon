@@ -134,7 +134,12 @@ export class Explorer {
       apex_fang: 0,
       biolum_gland: 0,
       abyssal_pearl: 0,
-      aero_membrane: 0
+      aero_membrane: 0,
+      colossal_carapace: 0,
+      prismatic_antler: 0,
+      swarmer_gland: 0,
+      crustacean_claw: 0,
+      darting_wing: 0
     };
 
     // Mining Laser Tool

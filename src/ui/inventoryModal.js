@@ -50,23 +50,44 @@ export const RESOURCE_ITEMS = [
   { key: 'titanium', name: 'Titanium Alloy', category: 'Mineral Ore', color: '#4cc9f0', desc: 'High-tensile structural alloy mined from surface & lunar nodes.' },
   { key: 'crystal', name: 'Silica Crystal', category: 'Energetic Shard', color: '#f72585', desc: 'Piezoelectric lattice used in plasma weapon ammunition recharging, optical emitters, and life-support filters.' },
   { key: 'void_crystal', name: 'Void Aetherium', category: 'Goliath Mineral', color: '#d900ff', desc: 'Hyper-resonant crystal from Moon III: Goliath. Infuses suit systems with kinetic velocity, enhanced jump propulsion, expanded shield capacity, and pressurized oxygen reserves.' },
-  { key: 'chitin_shell', name: 'Chitin Shell', category: 'Organic Carapace', color: '#2ec4b6', desc: 'Harvested from Hexapod Striders. Lightweight impact-absorbing armor.' },
-  { key: 'apex_fang', name: 'Apex Fang', category: 'Predator Trophy', color: '#ff595e', desc: 'Dense hyper-conductive fang dropped by aggressive Spined Stalkers.' },
-  { key: 'biolum_gland', name: 'Bioluminescent Gland', category: 'Aquatic Organ', color: '#00f5d4', desc: 'Oxygen-synthesizing organ harvested from Ribbon Leviathans.' },
-  { key: 'abyssal_pearl', name: 'Abyssal Pearl', category: 'Hadal Relic', color: '#c77dff', desc: 'Ultra-dense crystalline pearl formed inside Abyssal Maw trench predators.' },
-  { key: 'aero_membrane', name: 'Aero Membrane', category: 'Thermal Wing', color: '#9ef01a', desc: 'Ultra-lightweight glider membrane from Aurelian Sky-Mantas.' }
+  { key: 'colossal_carapace', name: 'Colossal Carapace', category: 'Titan Mineral Plate', color: '#7b2cbf', desc: 'Diamond-hard basalt carapace harvested from Colossal Behemoths. Withstands crushing seismic pressures.' },
+  { key: 'apex_fang', name: 'Tracker Sickle-Fang', category: 'Predator Trophy', color: '#ff595e', desc: 'Hyper-conductive sickle fang dropped by aggressive Bipedal Trackers.' },
+  { key: 'chitin_shell', name: 'Burrower Chitin Shell', category: 'Organic Carapace', color: '#2ec4b6', desc: 'Dense layered chitin plate harvested from Armored Burrowers.' },
+  { key: 'prismatic_antler', name: 'Prismatic Antler Shard', category: 'Energetic Shard', color: '#c084fc', desc: 'Resonant quartz antler crystal shed by docile Herding Quadrupeds.' },
+  { key: 'swarmer_gland', name: 'Resonant Swarmer Gland', category: 'Bio-Node', color: '#00f5d4', desc: 'High-frequency neural ganglion harvested from aggressive pack Scurrying Swarmers.' },
+  { key: 'abyssal_pearl', name: 'Leviathan Hadal Pearl', category: 'Hadal Relic', color: '#c77dff', desc: 'Ultra-dense crystalline pearl formed in midnight trenches inside Leviathan Eels.' },
+  { key: 'biolum_gland', name: 'Bioluminescent Ray Organ', category: 'Aquatic Organ', color: '#48cae4', desc: 'Oxygen-synthesizing organ harvested from docile Faceted Rays.' },
+  { key: 'crustacean_claw', name: 'Plated Pincer Chitin', category: 'Carapace Claw', color: '#6b21a8', desc: 'Dense volcanic carapace claw from benthic Plated Crustaceans.' },
+  { key: 'aero_membrane', name: 'Skimmer Aero Membrane', category: 'Thermal Wing', color: '#9ef01a', desc: 'Ultra-lightweight crystalline glider membrane from Aerial Skimmers.' },
+  { key: 'darting_wing', name: 'Ion Dart Flier Shard', category: 'Atmospheric Membrane', color: '#e879f9', desc: 'Ultra-thin shimmering crystal wing membrane harvested from Tiny Darting Fliers.' }
 ];
 
 export const FLORA_CODEX = [
-  { name: 'Aurelian Lucent-Mycena', biome: 'Conifer Valleys & Goliath Titan Moon', solid: 'Solid Trunk Collider', desc: 'Compound triad fungal towers with glowing turquoise lamellar gills illuminating nocturnal biomes.' },
-  { name: 'Cobalt Strata-Arbor', biome: 'Coastal Beaches & Lowland Steppe', solid: 'Solid Trunk Collider', desc: 'Curved twin-ring bark palms with segmented bamboo nodes and crowning cobalt-crystal fronds.' },
-  { name: 'Prismatic Lithocactus', biome: 'Granite Highland Peaks & Lumen Crystal Moon', solid: 'Solid Spire Collider', desc: 'Faceted crystal prism columns with radiating neon-pink needle spines that hum with resonance.' },
-  { name: 'Cyan Serrata-Fern', biome: 'Temperate Steppe Grasslands', solid: 'Basal Rosette', desc: 'Concentric tiered rosettes of saw-toothed fronds with bioluminescent leaf margins.' },
-  { name: 'Abyssal Tendril-Pod', biome: 'Forest Undergrowth & Pyra Volcanic Moon', solid: 'Herbaceous Shrub', desc: 'Undulating sinusoidal ribbon vines bearing luminescent purple seed lanterns and spore motes.' },
-  { name: 'Aurelian Prismatic Ribbon-Kelp', biome: 'Sunlit Oceanic Reefs & Lagoons (2m–18m)', solid: 'Aquatic Frond', desc: 'Undulating emerald-teal twisted ribbon blades with hovering cyan bioluminescent spore lanterns.' },
-  { name: 'Crystalline Staghorn Branch-Coral', biome: 'Ocean Coral Lagoons (2m–25m) & Lumen Crystal Canyons', solid: 'Crystalline Branch', desc: 'Arborescent violet-purple branching limbs crowned with radiant neon-pink crystal pyramid termination caps.' },
-  { name: 'Bioluminescent Strata-Plate Coral', biome: 'Bathyal Submerged Shelves (18m–55m)', solid: 'Solid Shelf Collider', desc: 'Horizontally tiered stepped dark-indigo table coral shelves with glowing electric-cyan border margins.' },
-  { name: 'Volcanic Hadal Vent-Spire', biome: 'Midnight Hadal Abyss (55m–160m) & Pyra Magma Fumaroles', solid: 'Solid Chimney Collider', desc: 'Hollow hexagonal volcanic basalt chimneys with glowing hydrothermal lip rims venting geothermal bubbles.' }
+  // Terrestrial Flora (Land Plants 1-5)
+  { name: 'Aurelian Lucent-Mycena', category: 'terrestrial', biome: 'Conifer Valleys & Goliath Titan Moon', solid: 'Solid Trunk Collider', desc: 'Compound triad fungal towers with glowing turquoise lamellar gills illuminating nocturnal biomes.' },
+  { name: 'Cobalt Strata-Arbor', category: 'terrestrial', biome: 'Coastal Beaches & Lowland Steppe', solid: 'Solid Trunk Collider', desc: 'Curved twin-ring bark palms with segmented bamboo nodes and crowning cobalt-crystal fronds.' },
+  { name: 'Prismatic Lithocactus', category: 'terrestrial', biome: 'Granite Highland Peaks & Lumen Crystal Moon', solid: 'Solid Spire Collider', desc: 'Faceted crystal prism columns with radiating neon-pink needle spines that hum with resonance.' },
+  { name: 'Cyan Serrata-Fern', category: 'terrestrial', biome: 'Temperate Steppe Grasslands', solid: 'Basal Rosette', desc: 'Concentric tiered rosettes of saw-toothed fronds with bioluminescent leaf margins.' },
+  { name: 'Abyssal Tendril-Pod', category: 'terrestrial', biome: 'Forest Undergrowth & Pyra Volcanic Moon', solid: 'Herbaceous Shrub', desc: 'Undulating sinusoidal ribbon vines bearing luminescent purple seed lanterns and spore motes.' },
+
+  // Marine Flora (Aquatic Flora 6-9)
+  { name: 'Aurelian Prismatic Ribbon-Kelp', category: 'marine', depth: '2m–18m Depth', biome: 'Sunlit Oceanic Reefs & Lagoons', solid: 'Aquatic Frond', desc: 'Undulating emerald-teal twisted ribbon blades with hovering cyan bioluminescent spore lanterns.' },
+  { name: 'Crystalline Staghorn Branch-Coral', category: 'marine', depth: '2m–25m Depth', biome: 'Ocean Coral Lagoons & Lumen Crystal Canyons', solid: 'Crystalline Branch', desc: 'Arborescent violet-purple branching limbs crowned with radiant neon-pink crystal pyramid termination caps.' },
+  { name: 'Bioluminescent Strata-Plate Coral', category: 'marine', depth: '18m–55m Depth', biome: 'Bathyal Submerged Shelves', solid: 'Solid Shelf Collider', desc: 'Horizontally tiered stepped dark-indigo table coral shelves with glowing electric-cyan border margins.' },
+  { name: 'Volcanic Hadal Vent-Spire', category: 'marine', depth: '55m–160m Depth', biome: 'Midnight Hadal Abyss & Pyra Magma Fumaroles', solid: 'Solid Chimney Collider', desc: 'Hollow hexagonal volcanic basalt chimneys with glowing hydrothermal lip rims venting geothermal bubbles.' }
+];
+
+export const CANONICAL_FAUNA_SPECIES = [
+  'colossal_behemoth',
+  'bipedal_tracker',
+  'armored_burrower',
+  'herding_quadruped',
+  'scurrying_swarmer',
+  'leviathan_eel',
+  'faceted_ray',
+  'plated_crustacean',
+  'aerial_skimmer',
+  'tiny_darting_flier'
 ];
 
 export class InventoryModal {
@@ -255,37 +276,90 @@ export class InventoryModal {
       }
     }
 
-    // 3. Render Xenology Codex (Fauna & Flora)
+    // 3. Render Xenology Codex (Fauna & Flora Reorganized by Habitat)
     if (this.elCodexGrid) {
       this.elCodexGrid.innerHTML = '';
-      Object.values(FAUNA_SPECIES).forEach((sp) => {
-        const isHostile = sp.temperament === 'aggressive';
+
+      const makeCategoryHeader = (icon, title, count) => {
+        const header = document.createElement('div');
+        header.className = 'codex-category-header';
+        header.innerHTML = `
+          <span class="codex-cat-title">${icon} ${title}</span>
+          <span class="codex-cat-count">${count} ${count === 1 ? 'Entry' : 'Entries'}</span>
+        `;
+        return header;
+      };
+
+      const makeFaunaCard = (sp) => {
         const card = document.createElement('div');
-        card.className = 'inv-codex-card';
+        card.className = `inv-codex-card fauna-card fauna-${sp.locomotion}`;
+        const sizeClass = `badge-size-${sp.sizeCategory || 'medium'}`;
+        const tempClass = `badge-temp-${sp.temperament || 'docile'}`;
+        const habClass = `badge-habitat-${sp.locomotion === 'walking' ? 'land' : (sp.locomotion === 'swimming' ? 'aquatic' : 'flying')}`;
+
+        const attackBadge = sp.attackDamage > 0 ? `<span>DMG: ${sp.attackDamage}</span>` : '';
+        const combatStats = `<div class="codex-stats-row"><span>HP: ${sp.maxHealth}</span>${attackBadge}<span>SPD: ${sp.speed} m/s</span></div>`;
+
         card.innerHTML = `
           <div class="inv-codex-header">
             <strong>${sp.name}</strong>
-            <span class="codex-tag ${isHostile ? 'hostile' : 'docile'}">${sp.locomotion.toUpperCase()} • ${sp.temperament.toUpperCase()}</span>
+            <div class="codex-chip-group">
+              <span class="codex-badge ${sizeClass}">${(sp.sizeCategory || '').toUpperCase()}</span>
+              <span class="codex-badge ${tempClass}">${(sp.temperament || '').toUpperCase()}</span>
+              <span class="codex-badge ${habClass}">${(sp.locomotion || '').toUpperCase()}</span>
+            </div>
           </div>
-          <div class="codex-meta">Habitat: ${sp.biome} | Drops: <em>${sp.dropLabel}</em> (${sp.maxHealth} HP)</div>
+          <div class="codex-meta">Habitat: ${sp.biome} | Drops: <em>${sp.dropLabel}</em></div>
+          ${combatStats}
           <p class="inv-item-desc">${sp.description}</p>
         `;
-        this.elCodexGrid.appendChild(card);
-      });
+        return card;
+      };
 
-      FLORA_CODEX.forEach((fl) => {
+      const makeFloraCard = (fl) => {
         const card = document.createElement('div');
         card.className = 'inv-codex-card flora-card';
+        const rangeInfo = fl.depth ? ` | Depth: <em>${fl.depth}</em>` : '';
         card.innerHTML = `
           <div class="inv-codex-header">
             <strong>${fl.name}</strong>
-            <span class="codex-tag flora">${fl.solid}</span>
+            <div class="codex-chip-group">
+              <span class="codex-badge badge-habitat-flora">${fl.solid}</span>
+            </div>
           </div>
-          <div class="codex-meta">Biome: ${fl.biome}</div>
+          <div class="codex-meta">Biome: ${fl.biome}${rangeInfo}</div>
           <p class="inv-item-desc">${fl.desc}</p>
         `;
-        this.elCodexGrid.appendChild(card);
-      });
+        return card;
+      };
+
+      // Section 1: Terrestrial Fauna (Land Dwelling 1-5)
+      const landFaunaKeys = ['colossal_behemoth', 'bipedal_tracker', 'armored_burrower', 'herding_quadruped', 'scurrying_swarmer'];
+      const landFauna = landFaunaKeys.map((k) => FAUNA_SPECIES[k]).filter(Boolean);
+      this.elCodexGrid.appendChild(makeCategoryHeader('🌿', 'Terrestrial Fauna (Land Dwelling)', landFauna.length));
+      landFauna.forEach((sp) => this.elCodexGrid.appendChild(makeFaunaCard(sp)));
+
+      // Section 2: Marine Fauna (Aquatic 6-8)
+      const marineFaunaKeys = ['leviathan_eel', 'faceted_ray', 'plated_crustacean'];
+      const marineFauna = marineFaunaKeys.map((k) => FAUNA_SPECIES[k]).filter(Boolean);
+      this.elCodexGrid.appendChild(makeCategoryHeader('🌊', 'Marine Fauna (Aquatic)', marineFauna.length));
+      marineFauna.forEach((sp) => this.elCodexGrid.appendChild(makeFaunaCard(sp)));
+
+      // Section 3: Aerial Fauna (Flying 9-10)
+      const aerialFaunaKeys = ['aerial_skimmer', 'tiny_darting_flier'];
+      const aerialFauna = aerialFaunaKeys.map((k) => FAUNA_SPECIES[k]).filter(Boolean);
+      this.elCodexGrid.appendChild(makeCategoryHeader('🪽', 'Aerial Fauna (Flying)', aerialFauna.length));
+      aerialFauna.forEach((sp) => this.elCodexGrid.appendChild(makeFaunaCard(sp)));
+
+      // Section 4: Terrestrial Flora (Land Plants)
+      const terrestrialFlora = FLORA_CODEX.filter((fl) => fl.category === 'terrestrial');
+      this.elCodexGrid.appendChild(makeCategoryHeader('🌲', 'Terrestrial Flora (Land Plants)', terrestrialFlora.length));
+      terrestrialFlora.forEach((fl) => this.elCodexGrid.appendChild(makeFloraCard(fl)));
+
+      // Section 5: Marine Flora (Aquatic Flora)
+      const marineFlora = FLORA_CODEX.filter((fl) => fl.category === 'marine');
+      this.elCodexGrid.appendChild(makeCategoryHeader('🪸', 'Marine Flora (Aquatic Flora)', marineFlora.length));
+      marineFlora.forEach((fl) => this.elCodexGrid.appendChild(makeFloraCard(fl)));
     }
 
     // 4. Render Mission Log Chapters

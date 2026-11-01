@@ -24,6 +24,7 @@
 
   <div id="test-mock-hud" style="display: none;">
     <button id="btn-open-map" type="button">MAP [M]</button>
+    <button id="btn-open-inventory" type="button">INV [I]</button>
     <aside id="hud-minimap">
       <div id="minimap-title">AURELIA SCANNER</div>
       <button id="btn-minimap-range" type="button">300m</button>
@@ -37,6 +38,24 @@
         <button class="map-tab-btn" data-body-id="aurelia" type="button">Aurelia</button>
       </div>
       <canvas id="planetary-map-canvas" width="860" height="430"></canvas>
+    </div>
+    <div id="inventory-modal">
+      <button id="btn-close-inventory" type="button">&times;</button>
+      <div class="inv-tabs-row">
+        <button type="button" class="inv-tab-btn active" data-tab="crafting">Crafting</button>
+        <button type="button" class="inv-tab-btn" data-tab="codex">Codex</button>
+        <button type="button" class="inv-tab-btn" data-tab="missions">Missions</button>
+      </div>
+      <div id="inv-pane-crafting" class="inv-tab-pane">
+        <div id="inv-resource-grid"></div>
+        <div id="inv-crafting-grid"></div>
+      </div>
+      <div id="inv-pane-codex" class="inv-tab-pane">
+        <div id="inv-codex-grid" class="inv-codex-grid"></div>
+      </div>
+      <div id="inv-pane-missions" class="inv-tab-pane">
+        <div id="inv-missions-list"></div>
+      </div>
     </div>
   </div>
 
@@ -89,7 +108,7 @@
     import { FAUNA_SPECIES, FaunaEntity, FaunaSystem } from '../src/world/fauna.js';
     import { CameraRig } from '../src/player/cameraRig.js';
     import { ObjectiveSystem, ACHIEVEMENTS, STORAGE_CAMPAIGN_KEY } from '../src/world/objectives.js';
-    import { InventoryModal, CRAFTING_RECIPES } from '../src/ui/inventoryModal.js';
+    import { InventoryModal, CRAFTING_RECIPES, FLORA_CODEX, RESOURCE_ITEMS, CANONICAL_FAUNA_SPECIES } from '../src/ui/inventoryModal.js';
     import { EnemyFactionSystem, EnemyPodShip, BugAlienTrooper, EnemyOutpostBase } from '../src/world/enemyFaction.js';
     import { StoryDialogSystem } from '../src/ui/storyDialog.js';
     import { CompletionModal } from '../src/ui/completionModal.js';
@@ -747,12 +766,12 @@
     assert(hasFlying && hasWalking && hasSwimming, 'FaunaSystem spawns flying, walking, and swimming fauna');
     assert(hasAggressive, 'FaunaSystem spawns aggressive predators (Spined Stalker & Abyssal Maw)');
 
-    const stalkerEntity = testFaunaSys.entities.find(e => e.speciesKey === 'spined_stalker');
+    const stalkerEntity = testFaunaSys.entities.find(e => e.speciesKey === 'bipedal_tracker' || e.speciesKey === 'spined_stalker');
     let playerAttacked = false;
     stalkerEntity.update(0.1, stalkerEntity.group.position.clone().add(new THREE.Vector3(1.5, 0, 0)), () => {
       playerAttacked = true;
     });
-    assert(stalkerEntity.state === 'ATTACK' && playerAttacked, 'Aggressive Spined Stalker enters ATTACK state and damages nearby player');
+    assert(stalkerEntity.state === 'ATTACK' && playerAttacked, 'Aggressive predator enters ATTACK state and damages nearby player');
 
     // Test 20D: On-Foot Reticle & Plasma Blaster Weapon
     const combatExplorer = new Explorer(mockScene);
@@ -1365,10 +1384,10 @@
 
     // 24. v1.18.0 Hard-Surface Space Sim Realism & GitHub Version Manager
     // 24A: Version Resolution & Semantic Versioning Utilities
-    assert(APP_VERSION === '1.22.2', 'APP_VERSION constant is updated to 1.22.2');
-    assert(compareSemver('1.22.2', '1.13.0') === 1, 'compareSemver detects 1.22.2 is newer than 1.13.0');
-    assert(compareSemver('1.13.0', '1.22.2') === -1, 'compareSemver detects 1.13.0 is older than 1.22.2');
-    assert(compareSemver('1.22.2', '1.22.2') === 0, 'compareSemver detects identical versions');
+    assert(APP_VERSION === '1.23.0', 'APP_VERSION constant is updated to 1.23.0');
+    assert(compareSemver('1.23.0', '1.13.0') === 1, 'compareSemver detects 1.23.0 is newer than 1.13.0');
+    assert(compareSemver('1.13.0', '1.23.0') === -1, 'compareSemver detects 1.13.0 is older than 1.23.0');
+    assert(compareSemver('1.23.0', '1.23.0') === 0, 'compareSemver detects identical versions');
     assert(extractVersionFromCommitMessage('feat: v1.18.0 Hard-Surface Realism') === '1.18.0', 'extractVersionFromCommitMessage extracts semver from commit title');
     assert(extractVersionFromCommitMessage('Release 1.17.2 bugfixes') === '1.17.2', 'extractVersionFromCommitMessage extracts version without leading v');
     assert(extractVersionFromCommitMessage('routine maintenance patch') === null, 'extractVersionFromCommitMessage returns null for version-less commits');
@@ -1983,6 +2002,142 @@
     assert(testMapModal.customWaypoint === null, 'PlanetaryMapModal clears custom waypoint');
     testMapModal.toggle(false);
     assert(testMapModal.isOpen === false, 'PlanetaryMapModal toggles closed');
+
+    // 32. 10-Species Procedural Fauna Overhaul & Reorganized Xenology Codex (v1.23.0)
+    // 32A: Species Registration & Metadata Integrity
+    assert(CANONICAL_FAUNA_SPECIES.length === 10, 'CANONICAL_FAUNA_SPECIES registers exactly 10 distinct species');
+    CANONICAL_FAUNA_SPECIES.forEach(id => {
+      assert(Boolean(FAUNA_SPECIES[id]), `FAUNA_SPECIES contains definition for ${id}`);
+    });
+
+    // Verify 1-5 Land Dwelling
+    const landIds = ['colossal_behemoth', 'bipedal_tracker', 'armored_burrower', 'herding_quadruped', 'scurrying_swarmer'];
+    landIds.forEach(id => {
+      assert(FAUNA_SPECIES[id].locomotion === 'walking', `${id} is classified as land-dwelling locomotion (walking)`);
+    });
+    assert(FAUNA_SPECIES.colossal_behemoth.sizeCategory === 'huge', 'Colossal Behemoth is designated HUGE');
+    assert(FAUNA_SPECIES.bipedal_tracker.sizeCategory === 'medium', 'Bipedal Tracker is designated MEDIUM');
+    assert(FAUNA_SPECIES.armored_burrower.sizeCategory === 'small', 'Armored Burrower is designated SMALL');
+    assert(FAUNA_SPECIES.herding_quadruped.sizeCategory === 'medium', 'Herding Quadruped is designated MEDIUM');
+    assert(FAUNA_SPECIES.scurrying_swarmer.sizeCategory === 'tiny', 'Scurrying Swarmer is designated TINY');
+
+    // Verify 6-8 Aquatic
+    const aquaticIds = ['leviathan_eel', 'faceted_ray', 'plated_crustacean'];
+    aquaticIds.forEach(id => {
+      assert(FAUNA_SPECIES[id].locomotion === 'swimming', `${id} is classified as aquatic locomotion (swimming)`);
+    });
+    assert(FAUNA_SPECIES.leviathan_eel.sizeCategory === 'large', 'Leviathan Eel is designated LARGE');
+    assert(FAUNA_SPECIES.faceted_ray.sizeCategory === 'medium', 'Faceted Ray is designated MEDIUM');
+    assert(FAUNA_SPECIES.plated_crustacean.sizeCategory === 'small', 'Plated Crustacean is designated SMALL');
+
+    // Verify 9-10 Flying
+    const flyingIds = ['aerial_skimmer', 'tiny_darting_flier'];
+    flyingIds.forEach(id => {
+      assert(FAUNA_SPECIES[id].locomotion === 'flying', `${id} is classified as aerial locomotion (flying)`);
+    });
+    assert(FAUNA_SPECIES.aerial_skimmer.sizeCategory === 'medium', 'Aerial Skimmer is designated MEDIUM');
+    assert(FAUNA_SPECIES.tiny_darting_flier.sizeCategory === 'tiny', 'Tiny Darting Flier is designated TINY');
+
+    // Verify Hostility Distribution
+    assert(FAUNA_SPECIES.bipedal_tracker.temperament === 'aggressive' && FAUNA_SPECIES.bipedal_tracker.attackDamage > 0, 'Bipedal Tracker is aggressive hunter');
+    assert(FAUNA_SPECIES.scurrying_swarmer.temperament === 'aggressive' && FAUNA_SPECIES.scurrying_swarmer.attackDamage > 0, 'Scurrying Swarmer is aggressive swarmer');
+    assert(FAUNA_SPECIES.leviathan_eel.temperament === 'aggressive' && FAUNA_SPECIES.leviathan_eel.attackDamage > 0, 'Leviathan Eel is aggressive deep predator');
+    assert(FAUNA_SPECIES.colossal_behemoth.temperament === 'territorial' && FAUNA_SPECIES.colossal_behemoth.attackDamage > 0, 'Colossal Behemoth is territorial apex titan');
+    assert(FAUNA_SPECIES.armored_burrower.temperament === 'defensive' && FAUNA_SPECIES.armored_burrower.attackDamage > 0, 'Armored Burrower is defensive');
+    assert(FAUNA_SPECIES.herding_quadruped.temperament === 'docile' && FAUNA_SPECIES.herding_quadruped.attackDamage === 0, 'Herding Quadruped is docile');
+    assert(FAUNA_SPECIES.faceted_ray.temperament === 'docile' && FAUNA_SPECIES.faceted_ray.attackDamage === 0, 'Faceted Ray is docile');
+    assert(FAUNA_SPECIES.plated_crustacean.temperament === 'docile' && FAUNA_SPECIES.plated_crustacean.attackDamage === 0, 'Plated Crustacean is docile');
+    assert(FAUNA_SPECIES.aerial_skimmer.temperament === 'docile' && FAUNA_SPECIES.aerial_skimmer.attackDamage === 0, 'Aerial Skimmer is docile');
+    assert(FAUNA_SPECIES.tiny_darting_flier.temperament === 'docile' && FAUNA_SPECIES.tiny_darting_flier.attackDamage === 0, 'Tiny Darting Flier is docile');
+
+    // 32B: Procedural 3D Mesh Instantiation for all 10 Species
+    CANONICAL_FAUNA_SPECIES.forEach(id => {
+      const entity = new FaunaEntity({
+        id: `test_${id}`,
+        speciesKey: id,
+        body: system.planet,
+        dirVector: new THREE.Vector3(0, 1, 0),
+        altitudeOffset: 0
+      });
+      assert(entity.group instanceof THREE.Group, `${id} creates valid THREE.Group hierarchy`);
+      assert(entity.group.children.length > 0, `${id} contains articulated visual child meshes`);
+
+      let totalVerts = 0;
+      entity.group.traverse(child => {
+        if (child.isMesh && child.geometry?.attributes?.position) {
+          totalVerts += child.geometry.attributes.position.count;
+        }
+      });
+      assert(totalVerts > 50, `${id} model has rich geometric vertex buffer (${totalVerts} verts)`);
+
+      // Kinematic update test
+      let threwUpdate = false;
+      try {
+        entity.update(0.016, new THREE.Vector3(0, 725, 0));
+        entity.takeDamage(10, new THREE.Vector3(0, 725, 0));
+      } catch (err) {
+        threwUpdate = true;
+      }
+      assert(threwUpdate === false, `${id} updates locomotion kinematics and damage state without throwing`);
+    });
+
+    // 32C: Explorer Inventory & Harvesting Registration
+    const faunaExplorer = new Explorer(mockScene);
+    assert(faunaExplorer.inventory.colossal_carapace !== undefined, 'Explorer inventory tracks colossal_carapace');
+    assert(faunaExplorer.inventory.prismatic_antler !== undefined, 'Explorer inventory tracks prismatic_antler');
+    assert(faunaExplorer.inventory.swarmer_gland !== undefined, 'Explorer inventory tracks swarmer_gland');
+    assert(faunaExplorer.inventory.crustacean_claw !== undefined, 'Explorer inventory tracks crustacean_claw');
+    assert(faunaExplorer.inventory.darting_wing !== undefined, 'Explorer inventory tracks darting_wing');
+
+    // 32D: FaunaSystem Multi-World Spawning Populates 10 Species
+    const suite32FaunaSys = new FaunaSystem(mockScene, system.planet, [lumenMoon, pyraMoon, goliathMoon]);
+    assert(suite32FaunaSys.entities.length >= 25, `FaunaSystem populates rich ecosystem (${suite32FaunaSys.entities.length} creatures spawned)`);
+
+    const spawnedSpecies = new Set(suite32FaunaSys.entities.map(e => e.speciesKey));
+    assert(spawnedSpecies.has('colossal_behemoth'), 'FaunaSystem spawns Colossal Behemoth');
+    assert(spawnedSpecies.has('bipedal_tracker'), 'FaunaSystem spawns Bipedal Tracker');
+    assert(spawnedSpecies.has('armored_burrower'), 'FaunaSystem spawns Armored Burrower');
+    assert(spawnedSpecies.has('herding_quadruped'), 'FaunaSystem spawns Herding Quadruped');
+    assert(spawnedSpecies.has('scurrying_swarmer'), 'FaunaSystem spawns Scurrying Swarmer');
+    assert(spawnedSpecies.has('leviathan_eel'), 'FaunaSystem spawns Leviathan Eel');
+    assert(spawnedSpecies.has('faceted_ray'), 'FaunaSystem spawns Faceted Ray');
+    assert(spawnedSpecies.has('plated_crustacean'), 'FaunaSystem spawns Plated Crustacean');
+    assert(spawnedSpecies.has('aerial_skimmer'), 'FaunaSystem spawns Aerial Skimmer');
+    assert(spawnedSpecies.has('tiny_darting_flier'), 'FaunaSystem spawns Tiny Darting Flier');
+
+    // Aquatic exclusivity check for spawned fauna
+    const aquaticFauna = suite32FaunaSys.entities.filter(e => e.locomotion === 'swimming');
+    assert(aquaticFauna.length > 0, 'FaunaSystem spawns active aquatic creatures');
+    let anyAquaticAboveSea = false;
+    aquaticFauna.forEach(e => {
+      const distFromCenter = e.group.position.clone().sub(e.body.getWorldPosition()).length();
+      if (distFromCenter > e.body.seaLevelRadius + 0.1) {
+        anyAquaticAboveSea = true;
+      }
+    });
+    assert(anyAquaticAboveSea === false, 'All aquatic fauna remain submerged beneath planetary seaLevelRadius');
+
+    // 32E: Reorganized Inventory Xenology Codex UI
+    const codexInvModal = new InventoryModal({ explorer: faunaExplorer, ship: null, objectiveSystem: null, onNotice: () => {} });
+    codexInvModal.render();
+
+    const headers = codexInvModal.elCodexGrid?.querySelectorAll('.codex-category-header');
+    assert(headers?.length === 5, 'Inventory Codex renders exactly 5 categorized habitat sections');
+
+    const cards = codexInvModal.elCodexGrid?.querySelectorAll('.inv-codex-card');
+    assert(cards?.length === 19, `Inventory Codex renders all 19 xenology specimens (${cards?.length} cards = 10 fauna + 9 flora)`);
+
+    const landFaunaCards = codexInvModal.elCodexGrid?.querySelectorAll('.fauna-walking');
+    assert(landFaunaCards?.length === 5, 'Codex renders 5 Terrestrial Land Fauna cards');
+
+    const aquaticFaunaCards = codexInvModal.elCodexGrid?.querySelectorAll('.fauna-swimming');
+    assert(aquaticFaunaCards?.length === 3, 'Codex renders 3 Marine Aquatic Fauna cards');
+
+    const flyingFaunaCards = codexInvModal.elCodexGrid?.querySelectorAll('.fauna-flying');
+    assert(flyingFaunaCards?.length === 2, 'Codex renders 2 Aerial Flying Fauna cards');
+
+    const floraCards = codexInvModal.elCodexGrid?.querySelectorAll('.flora-card');
+    assert(floraCards?.length === 9, 'Codex renders 9 Flora cards (5 terrestrial + 4 marine)');
 
     const summary = `SUMMARY: ${passed} passed, ${failed} failed`;
     logs.push('', summary);
