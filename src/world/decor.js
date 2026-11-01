@@ -16,13 +16,27 @@ export class FloraCollisionGrid {
     return `${ix},${iy},${iz}`;
   }
 
-  addCollider(position, normal, radius, height, type = 'tree') {
+  addCollider(positionOrConfig, normal, radius, height, type = 'tree') {
+    let position, n, r, h, t;
+    if (positionOrConfig && positionOrConfig.position && positionOrConfig.position.clone) {
+      position = positionOrConfig.position;
+      n = positionOrConfig.normal || new THREE.Vector3(0, 1, 0);
+      r = positionOrConfig.radius !== undefined ? positionOrConfig.radius : 1.0;
+      h = positionOrConfig.height !== undefined ? positionOrConfig.height : 5.0;
+      t = positionOrConfig.type || 'tree';
+    } else {
+      position = positionOrConfig;
+      n = normal;
+      r = radius;
+      h = height;
+      t = type;
+    }
     const col = {
       position: position.clone(),
-      normal: normal.clone().normalize(),
-      radius,
-      height,
-      type
+      normal: n.clone().normalize(),
+      radius: r,
+      height: h,
+      type: t
     };
     this.colliders.push(col);
     const ix = Math.floor(position.x / this.cellSize);
@@ -62,9 +76,13 @@ export class FloraCollisionGrid {
 
             if (distSq < minSep * minSep) {
               const dist = Math.sqrt(distSq);
-              const pushDir = dist > 0.0001
-                ? planar.divideScalar(dist)
-                : new THREE.Vector3(1, 0, 0).cross(col.normal).normalize();
+              let pushDir;
+              if (dist > 0.0001) {
+                pushDir = planar.divideScalar(dist);
+              } else {
+                const tangentRef = Math.abs(col.normal.x) > 0.9 ? new THREE.Vector3(0, 1, 0) : new THREE.Vector3(1, 0, 0);
+                pushDir = tangentRef.cross(col.normal).normalize();
+              }
               const pushAmt = minSep - dist;
               localPos.addScaledVector(pushDir, pushAmt);
               collided = true;

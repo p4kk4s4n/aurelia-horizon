@@ -1333,10 +1333,10 @@
 
     // 24. v1.18.0 Hard-Surface Space Sim Realism & GitHub Version Manager
     // 24A: Version Resolution & Semantic Versioning Utilities
-    assert(APP_VERSION === '1.21.0', 'APP_VERSION constant is updated to 1.21.0');
-    assert(compareSemver('1.21.0', '1.13.0') === 1, 'compareSemver detects 1.21.0 is newer than 1.13.0');
-    assert(compareSemver('1.13.0', '1.21.0') === -1, 'compareSemver detects 1.13.0 is older than 1.21.0');
-    assert(compareSemver('1.21.0', '1.21.0') === 0, 'compareSemver detects identical versions');
+    assert(APP_VERSION === '1.21.1', 'APP_VERSION constant is updated to 1.21.1');
+    assert(compareSemver('1.21.1', '1.13.0') === 1, 'compareSemver detects 1.21.1 is newer than 1.13.0');
+    assert(compareSemver('1.13.0', '1.21.1') === -1, 'compareSemver detects 1.13.0 is older than 1.21.1');
+    assert(compareSemver('1.21.1', '1.21.1') === 0, 'compareSemver detects identical versions');
     assert(extractVersionFromCommitMessage('feat: v1.18.0 Hard-Surface Realism') === '1.18.0', 'extractVersionFromCommitMessage extracts semver from commit title');
     assert(extractVersionFromCommitMessage('Release 1.17.2 bugfixes') === '1.17.2', 'extractVersionFromCommitMessage extracts version without leading v');
     assert(extractVersionFromCommitMessage('routine maintenance patch') === null, 'extractVersionFromCommitMessage returns null for version-less commits');
@@ -1629,6 +1629,103 @@
     const palmCollider = system.planet.floraCollisionGrid.colliders.find(c => c.type === 'palm');
     const cactusCollider = system.planet.floraCollisionGrid.colliders.find(c => c.type === 'crystal');
     assert(Boolean(mycenaCollider && palmCollider && cactusCollider), 'FloraCollisionGrid registers distinct collider types for mushroom, palm, and cactus');
+
+    // 28. Kinematics Fault-Tolerance, Controls Resilience & Flora Collision Robustness (v1.21.1)
+    // 28A: BugAlienTrooper Kinematics & GLB Defensive Resilience
+    const testBug = new BugAlienTrooper('kinematics_resilience_trooper', system.planet, new THREE.Vector3(0, 1, 0), 0, 12.0);
+
+    // 1. Procedural walking stride update
+    let proceduralStrideThrew = false;
+    try {
+      testBug.isHovering = false;
+      testBug.update(0.016, new THREE.Vector3(0, 15, 0), null);
+    } catch (e) {
+      proceduralStrideThrew = true;
+    }
+    assert(proceduralStrideThrew === false, 'BugAlienTrooper updates cleanly with procedural limb hierarchy');
+
+    // 2. Procedural hover poise update
+    let proceduralHoverThrew = false;
+    try {
+      testBug.isHovering = true;
+      testBug.update(0.016, new THREE.Vector3(0, 15, 0), null);
+    } catch (e) {
+      proceduralHoverThrew = true;
+    }
+    assert(proceduralHoverThrew === false, 'BugAlienTrooper updates cleanly in hovering raptor poise');
+
+    // 3. GLB model substitution with bare Groups lacking userData.hockGroup (prevents game loop freeze)
+    const bareGlbLegL = new THREE.Group();
+    bareGlbLegL.name = 'legL';
+    const bareGlbLegR = new THREE.Group();
+    bareGlbLegR.name = 'legR';
+    testBug.leftLegGroup = bareGlbLegL;
+    testBug.rightLegGroup = bareGlbLegR;
+    testBug.leftLegGroup.userData = {}; // Bare userData without hockGroup
+    testBug.rightLegGroup.userData = {};
+
+    let glbBareLegsThrew = false;
+    try {
+      testBug.isHovering = false;
+      testBug.update(0.016, new THREE.Vector3(0, 15, 0), null);
+      testBug.isHovering = true;
+      testBug.update(0.016, new THREE.Vector3(0, 15, 0), null);
+    } catch (e) {
+      glbBareLegsThrew = true;
+    }
+    assert(glbBareLegsThrew === false, 'BugAlienTrooper safely updates when GLB replaces legs with bare Groups lacking hockGroup');
+
+    // 4. Missing optional anatomical nodes (null / undefined torso, cannonHousing, etc.)
+    testBug.torso = null;
+    testBug.abdomenGroup = null;
+    testBug.cannonHousing = null;
+    testBug.weaponArm = null;
+    testBug.rightArmGroup = null;
+    testBug.leftMandible = null;
+    testBug.rightMandible = null;
+    testBug.lowerLeftArm = null;
+    testBug.lowerRightArm = null;
+    testBug.leftAntenna = null;
+    testBug.rightAntenna = null;
+
+    let missingNodesThrew = false;
+    try {
+      testBug.update(0.016, new THREE.Vector3(0, 15, 0), null); // player in combat range
+      testBug.update(0.016, new THREE.Vector3(0, 500, 0), null); // patrol range
+    } catch (e) {
+      missingNodesThrew = true;
+    }
+    assert(missingNodesThrew === false, 'BugAlienTrooper safely handles missing optional GLB anatomical nodes without throwing');
+
+    // 28B: FloraCollisionGrid Orthogonal Collinear Normal & NaN Prevention
+    const collinearGrid = new FloraCollisionGrid(8);
+    collinearGrid.addCollider({
+      position: new THREE.Vector3(25, 0, 0),
+      normal: new THREE.Vector3(1, 0, 0), // Collinear with X-axis reference
+      radius: 1.2,
+      height: 4.0,
+      type: 'palm'
+    });
+    const testPos = new THREE.Vector3(25, 0, 0); // Exact overlap (dist == 0)
+    const colRes = collinearGrid.resolveCollision(testPos, 0.6);
+    assert(colRes === true, 'FloraCollisionGrid detects collision at distance 0');
+    assert(!Number.isNaN(testPos.x) && !Number.isNaN(testPos.y) && !Number.isNaN(testPos.z), 'FloraCollisionGrid does not produce NaN vector when normal is collinear with X-axis');
+    assert(Number.isFinite(testPos.x) && Number.isFinite(testPos.y) && Number.isFinite(testPos.z), 'FloraCollisionGrid resolves to finite world position');
+    assert(testPos.distanceTo(new THREE.Vector3(25, 0, 0)) >= 1.79, 'FloraCollisionGrid pushes entity outward to full minimum separation distance');
+
+    // 28C: FloraCollisionGrid Orthogonal Normal with Y-axis
+    const yCollinearGrid = new FloraCollisionGrid(8);
+    yCollinearGrid.addCollider({
+      position: new THREE.Vector3(0, 40, 0),
+      normal: new THREE.Vector3(0, 1, 0),
+      radius: 0.8,
+      height: 3.0,
+      type: 'mushroom'
+    });
+    const yTestPos = new THREE.Vector3(0, 40, 0);
+    const yColRes = yCollinearGrid.resolveCollision(yTestPos, 0.5);
+    assert(yColRes === true, 'FloraCollisionGrid detects collision for Y-axis trunk');
+    assert(!Number.isNaN(yTestPos.x) && !Number.isNaN(yTestPos.y) && !Number.isNaN(yTestPos.z), 'FloraCollisionGrid does not produce NaN vector for Y-axis normal');
 
     const summary = `SUMMARY: ${passed} passed, ${failed} failed`;
     logs.push('', summary);

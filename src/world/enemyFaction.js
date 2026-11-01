@@ -807,8 +807,22 @@ export class BugAlienTrooper {
       if (glbAntR) this.rightAntenna = glbAntR;
       if (glbWings.length === 4) this.wings = glbWings;
       if (glbAbdomen) this.abdomenGroup = glbAbdomen;
-      if (glbLegL) this.leftLegGroup = glbLegL;
-      if (glbLegR) this.rightLegGroup = glbLegR;
+      const glbTorso = glb.getObjectByName('torso');
+      if (glbTorso) this.torso = glbTorso;
+      const glbArmR = glb.getObjectByName('rightArmGroup');
+      if (glbArmR) this.rightArmGroup = glbArmR;
+      const glbCannonHousing = glb.getObjectByName('cannonHousing');
+      if (glbCannonHousing) this.cannonHousing = glbCannonHousing;
+      if (glbLegL) {
+        this.leftLegGroup = glbLegL;
+        glbLegL.userData = glbLegL.userData || {};
+        glbLegL.userData.hockGroup = glbLegL.getObjectByName('hockGroup') || null;
+      }
+      if (glbLegR) {
+        this.rightLegGroup = glbLegR;
+        glbLegR.userData = glbLegR.userData || {};
+        glbLegR.userData.hockGroup = glbLegR.getObjectByName('hockGroup') || null;
+      }
       if (glbLegL && glbLegR) this.legs = [glbLegL, glbLegR];
       if (glbWeapon) this.weaponArm = glbWeapon;
       if (glbCore) this.crystalCannonCore = glbCore;
@@ -949,32 +963,32 @@ export class BugAlienTrooper {
     if (this.leftLegGroup && this.rightLegGroup) {
       if (this.isHovering) {
         // Tucked raptor hover poise
-        this.leftLegGroup.rotation.x = 0.42;
-        this.rightLegGroup.rotation.x = 0.42;
-        this.leftLegGroup.userData.hockGroup.rotation.x = -0.55;
-        this.rightLegGroup.userData.hockGroup.rotation.x = -0.55;
+        if (this.leftLegGroup.rotation) this.leftLegGroup.rotation.x = 0.42;
+        if (this.rightLegGroup.rotation) this.rightLegGroup.rotation.x = 0.42;
+        if (this.leftLegGroup.userData?.hockGroup?.rotation) this.leftLegGroup.userData.hockGroup.rotation.x = -0.55;
+        if (this.rightLegGroup.userData?.hockGroup?.rotation) this.rightLegGroup.userData.hockGroup.rotation.x = -0.55;
       } else {
         // Alternating digitigrade stride
-        this.leftLegGroup.rotation.x = swing * 0.52;
-        this.rightLegGroup.rotation.x = -swing * 0.52;
-        this.leftLegGroup.userData.hockGroup.rotation.x = Math.max(0, -swing) * 0.48;
-        this.rightLegGroup.userData.hockGroup.rotation.x = Math.max(0, swing) * 0.48;
+        if (this.leftLegGroup.rotation) this.leftLegGroup.rotation.x = swing * 0.52;
+        if (this.rightLegGroup.rotation) this.rightLegGroup.rotation.x = -swing * 0.52;
+        if (this.leftLegGroup.userData?.hockGroup?.rotation) this.leftLegGroup.userData.hockGroup.rotation.x = Math.max(0, -swing) * 0.48;
+        if (this.rightLegGroup.userData?.hockGroup?.rotation) this.rightLegGroup.userData.hockGroup.rotation.x = Math.max(0, swing) * 0.48;
       }
     }
 
     // Counter-bobbing Segmented Abdomen & Torso Lean
-    this.abdomenGroup.rotation.x = 0.26 + Math.sin(this.walkCycle * 2) * 0.12;
-    this.torso.rotation.x = 0.10 + Math.sin(this.walkCycle * 2) * 0.04;
+    if (this.abdomenGroup?.rotation) this.abdomenGroup.rotation.x = 0.26 + Math.sin(this.walkCycle * 2) * 0.12;
+    if (this.torso?.rotation) this.torso.rotation.x = 0.10 + Math.sin(this.walkCycle * 2) * 0.04;
 
     // Secondary Arms Mantis Curl & Antennae Twitch
-    this.lowerLeftArm.rotation.x = Math.sin(this.walkCycle * 1.5) * 0.15;
-    this.lowerRightArm.rotation.x = -Math.sin(this.walkCycle * 1.5) * 0.15;
-    this.leftAntenna.rotation.y = Math.sin(this.walkCycle * 2.5) * 0.12;
-    this.rightAntenna.rotation.y = -Math.sin(this.walkCycle * 2.5) * 0.12;
+    if (this.lowerLeftArm?.rotation) this.lowerLeftArm.rotation.x = Math.sin(this.walkCycle * 1.5) * 0.15;
+    if (this.lowerRightArm?.rotation) this.lowerRightArm.rotation.x = -Math.sin(this.walkCycle * 1.5) * 0.15;
+    if (this.leftAntenna?.rotation) this.leftAntenna.rotation.y = Math.sin(this.walkCycle * 2.5) * 0.12;
+    if (this.rightAntenna?.rotation) this.rightAntenna.rotation.y = -Math.sin(this.walkCycle * 2.5) * 0.12;
 
     // Smooth decay of cannon axial recoil
     this.recoilOffset = Math.max(0, this.recoilOffset - dt * 2.2);
-    this.cannonHousing.position.z = this.recoilOffset;
+    if (this.cannonHousing?.position) this.cannonHousing.position.z = this.recoilOffset;
 
     if (playerPos) {
       const distToPlayer = worldPos.distanceTo(playerPos);
@@ -989,14 +1003,16 @@ export class BugAlienTrooper {
         this.group.lookAt(lookTarget);
 
         // Raise left Crystal Shard Cannon towards player
-        this.weaponArm.rotation.x = -0.88;
+        if (this.weaponArm?.rotation) this.weaponArm.rotation.x = -0.88;
         // Upper right clawed arm braces across chest
-        this.rightArmGroup.rotation.x = 0.42;
-        this.rightArmGroup.rotation.z = 0.32;
+        if (this.rightArmGroup?.rotation) {
+          this.rightArmGroup.rotation.x = 0.42;
+          this.rightArmGroup.rotation.z = 0.32;
+        }
 
         // Flare pincer mandibles open aggressively
-        this.leftMandible.rotation.y = -0.32;
-        this.rightMandible.rotation.y = 0.32;
+        if (this.leftMandible?.rotation) this.leftMandible.rotation.y = -0.32;
+        if (this.rightMandible?.rotation) this.rightMandible.rotation.y = 0.32;
 
         // Crystal Charge-up Pulse (intensifies when close to firing)
         if (this.fireCooldown < 0.45) {
@@ -1012,8 +1028,8 @@ export class BugAlienTrooper {
           this.recoilOffset = 0.28; // Axial recoil impulse
 
           // Snap mandibles shut on fire
-          this.leftMandible.rotation.y = 0.15;
-          this.rightMandible.rotation.y = -0.15;
+          if (this.leftMandible?.rotation) this.leftMandible.rotation.y = 0.15;
+          if (this.rightMandible?.rotation) this.rightMandible.rotation.y = -0.15;
 
           const muzzlePos = worldPos.clone().addScaledVector(aimDir, 1.4).add(new THREE.Vector3(0, 1.3, 0));
           if (onFireBolt) {
@@ -1022,11 +1038,13 @@ export class BugAlienTrooper {
         }
       } else {
         // Relaxed patrol posture
-        this.weaponArm.rotation.x = 0.15;
-        this.rightArmGroup.rotation.x = -swing * 0.35;
-        this.rightArmGroup.rotation.z = 0;
-        this.leftMandible.rotation.y = 0;
-        this.rightMandible.rotation.y = 0;
+        if (this.weaponArm?.rotation) this.weaponArm.rotation.x = 0.15;
+        if (this.rightArmGroup?.rotation) {
+          this.rightArmGroup.rotation.x = -swing * 0.35;
+          this.rightArmGroup.rotation.z = 0;
+        }
+        if (this.leftMandible?.rotation) this.leftMandible.rotation.y = 0;
+        if (this.rightMandible?.rotation) this.rightMandible.rotation.y = 0;
         cyanCrystalMat.emissiveIntensity = 1.15;
         magentaCrystalMat.emissiveIntensity = 1.35;
       }

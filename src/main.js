@@ -358,6 +358,9 @@ export const gameAPI = {
   }
 };
 window.gameDebug = gameAPI;
+window.explorer = explorer;
+window.input = input;
+window.ship = ship;
 
 // Bind fast-travel & top HUD quick buttons
 document.getElementById('btn-quick-repair')?.addEventListener('click', () => gameAPI.teleportToBase());

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'p4kk4s4n-aurelia-horizon-v22';
+const CACHE_NAME = 'p4kk4s4n-aurelia-horizon-v23';
 const ASSETS = [
   './',
   './index.html',
