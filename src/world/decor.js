@@ -1141,10 +1141,10 @@ export function populatePlanetDecor(body, noise, qualityOverride = null) {
     sporeCount = Math.round(220 * densityMult);
 
     if (body.hasOcean) {
-      ribbonKelpCount = Math.round(380 * densityMult);
-      staghornCount = Math.round(280 * densityMult);
-      strataPlateCount = Math.round(340 * densityMult);
-      ventSpireCount = Math.round(260 * densityMult);
+      ribbonKelpCount = Math.round(850 * densityMult);
+      staghornCount = Math.round(850 * densityMult);
+      strataPlateCount = Math.round(650 * densityMult);
+      ventSpireCount = Math.round(450 * densityMult);
     }
   }
 
@@ -1272,62 +1272,117 @@ export function populatePlanetDecor(body, noise, qualityOverride = null) {
     dummy.updateMatrix();
 
     if (isUndersea) {
-      if (depthBelowSea >= 2.0 && depthBelowSea <= 160) {
+      if (body.hasOcean && depthBelowSea >= 3.2 && depthBelowSea <= 165) {
         const uRand = noise.hash(i * 109);
         let underseaSpecies = null;
 
-        if (depthBelowSea < 45.0) {
-          // Shallows & Submerged Shelves (2m - 45m): Ribbon-Kelp (40%), Staghorn Coral (35%), Strata-Plate (25%)
-          if (uRand < 0.40) underseaSpecies = 'ribbonKelp';
-          else if (uRand < 0.75) underseaSpecies = 'staghorn';
-          else underseaSpecies = 'strataPlate';
+        // Bathymetric depth zoning
+        if (depthBelowSea < 16.0) {
+          // Sunlit Lagoons & Coastal Shallows (3.2m - 16m): High concentration of Staghorn Coral & Ribbon-Kelp
+          if (uRand < 0.65) underseaSpecies = 'staghorn';
+          else if (uRand < 0.90 && depthBelowSea >= 4.5) underseaSpecies = 'ribbonKelp';
+          else if (depthBelowSea >= 5.0) underseaSpecies = 'strataPlate';
+          else underseaSpecies = 'staghorn';
+        } else if (depthBelowSea < 48.0) {
+          // Bathyal Submerged Shelves & Reef Slopes (16m - 48m): Ribbon-Kelp, Strata-Plate Coral, Staghorn
+          if (uRand < 0.45) underseaSpecies = 'ribbonKelp';
+          else if (uRand < 0.80) underseaSpecies = 'strataPlate';
+          else underseaSpecies = 'staghorn';
         } else {
-          // Midnight Hadal Abyss (45m - 160m): Hadal Vent-Spires (50%), Strata-Plates (35%), Deep Ribbon-Kelp (15%)
-          if (uRand < 0.50) underseaSpecies = 'ventSpire';
+          // Midnight Hadal Abyss (48m - 165m): Volcanic Hadal Vent-Spires and deep Strata-Plate Corals
+          if (uRand < 0.55 && depthBelowSea >= 24.0) underseaSpecies = 'ventSpire';
           else if (uRand < 0.85) underseaSpecies = 'strataPlate';
           else underseaSpecies = 'ribbonKelp';
         }
 
-        // Guarantee balanced representation across all underwater depth zones
-        const uMod = i % 12;
-        if (uMod === 1 && staghornCount > 0) underseaSpecies = 'staghorn';
-        else if (uMod === 3 && ribbonKelpCount > 0) underseaSpecies = 'ribbonKelp';
-        else if (uMod === 5 && strataPlateCount > 0) underseaSpecies = 'strataPlate';
-        else if (uMod === 7 && ventSpireCount > 0) underseaSpecies = 'ventSpire';
+        // Modulo distribution fallback to ensure all 4 species thrive across depths
+        const uMod = i % 10;
+        if (uMod === 1 && staghornCount > 0 && depthBelowSea <= 35.0) underseaSpecies = 'staghorn';
+        else if (uMod === 3 && ribbonKelpCount > 0 && depthBelowSea >= 5.0) underseaSpecies = 'ribbonKelp';
+        else if (uMod === 5 && strataPlateCount > 0 && depthBelowSea >= 6.0) underseaSpecies = 'strataPlate';
+        else if (uMod === 7 && ventSpireCount > 0 && depthBelowSea >= 24.0) underseaSpecies = 'ventSpire';
 
-        if (underseaSpecies === 'ribbonKelp' && ribbonKelpCount > 0) {
-          const rkVar = (i + Math.floor(noise.hash(i * 79) * 10)) % rkVCount;
-          const curIdx = rkIndices[rkVar];
-          if (curIdx < ribbonKelpBladeMeshes[rkVar].count) {
+        // Anti-Protrusion & Strict Water Submersion Guarantee:
+        // Top of specimen MUST be strictly below sea level (seaLevelRadius - 0.85m).
+        const maxHeadroom = Math.max(0.5, depthBelowSea - 0.85);
+
+        if (underseaSpecies === 'ribbonKelp' && ribbonKelpCount > 0 && depthBelowSea >= 7.0) {
+          let rkVar = (i + Math.floor(noise.hash(i * 79) * 10)) % rkVCount;
+          if (rkIndices[rkVar] >= ribbonKelpBladeMeshes[rkVar].count) {
+            rkVar = rkIndices.findIndex((idx, v) => idx < ribbonKelpBladeMeshes[v].count);
+          }
+          if (rkVar !== -1) {
+            const curIdx = rkIndices[rkVar];
+            const maxRkScale = maxHeadroom / 20.0;
+            const fitScale = Math.min(scale * 0.92, maxRkScale);
+            const finalScaleY = Math.max(0.20, fitScale);
+            const finalScaleXZ = Math.max(0.40, Math.min(scale, 1.25));
+
+            dummy.scale.set(finalScaleXZ, finalScaleY, finalScaleXZ);
+            dummy.updateMatrix();
+
             ribbonKelpBladeMeshes[rkVar].setMatrixAt(curIdx, dummy.matrix);
             ribbonKelpSporeMeshes[rkVar].setMatrixAt(curIdx, dummy.matrix);
             rkIndices[rkVar]++;
           }
         } else if (underseaSpecies === 'staghorn' && staghornCount > 0) {
-          const stgVar = (i + Math.floor(noise.hash(i * 83) * 10)) % stgVCount;
-          const curIdx = stgIndices[stgVar];
-          if (curIdx < staghornBranchMeshes[stgVar].count) {
+          let stgVar = (i + Math.floor(noise.hash(i * 83) * 10)) % stgVCount;
+          if (stgIndices[stgVar] >= staghornBranchMeshes[stgVar].count) {
+            stgVar = stgIndices.findIndex((idx, v) => idx < staghornBranchMeshes[v].count);
+          }
+          if (stgVar !== -1) {
+            const curIdx = stgIndices[stgVar];
+            const maxStgScale = maxHeadroom / 6.2;
+            const fitScale = Math.min(scale * 0.90, maxStgScale);
+            const finalScaleY = Math.max(0.25, fitScale);
+            const finalScaleXZ = Math.max(0.45, Math.min(scale, 1.25));
+
+            dummy.scale.set(finalScaleXZ, finalScaleY, finalScaleXZ);
+            dummy.updateMatrix();
+
             staghornBranchMeshes[stgVar].setMatrixAt(curIdx, dummy.matrix);
             staghornTipMeshes[stgVar].setMatrixAt(curIdx, dummy.matrix);
             stgIndices[stgVar]++;
           }
-        } else if (underseaSpecies === 'strataPlate' && strataPlateCount > 0) {
-          const spVar = (i + Math.floor(noise.hash(i * 89) * 10)) % spVCount;
-          const curIdx = spIndices[spVar];
-          if (curIdx < strataPlateBodyMeshes[spVar].count) {
+        } else if (underseaSpecies === 'strataPlate' && strataPlateCount > 0 && depthBelowSea >= 5.0) {
+          let spVar = (i + Math.floor(noise.hash(i * 89) * 10)) % spVCount;
+          if (spIndices[spVar] >= strataPlateBodyMeshes[spVar].count) {
+            spVar = spIndices.findIndex((idx, v) => idx < strataPlateBodyMeshes[v].count);
+          }
+          if (spVar !== -1) {
+            const curIdx = spIndices[spVar];
+            const maxSpScale = maxHeadroom / 5.2;
+            const fitScale = Math.min(scale * 0.90, maxSpScale);
+            const finalScaleY = Math.max(0.25, fitScale);
+            const finalScaleXZ = Math.max(0.45, Math.min(scale, 1.30));
+
+            dummy.scale.set(finalScaleXZ, finalScaleY, finalScaleXZ);
+            dummy.updateMatrix();
+
             strataPlateBodyMeshes[spVar].setMatrixAt(curIdx, dummy.matrix);
             strataPlateEdgeMeshes[spVar].setMatrixAt(curIdx, dummy.matrix);
             spIndices[spVar]++;
-            collisionGrid.addCollider(dummy.position, normal, 1.85 * scale, 3.5 * scale, 'plate');
+            collisionGrid.addCollider(dummy.position, normal, 1.85 * finalScaleXZ, 3.5 * finalScaleY, 'plate');
           }
-        } else if (underseaSpecies === 'ventSpire' && ventSpireCount > 0) {
-          const vsVar = (i + Math.floor(noise.hash(i * 97) * 10)) % vsVCount;
-          const curIdx = vsIndices[vsVar];
-          if (curIdx < ventChimneyMeshes[vsVar].count) {
+        } else if (underseaSpecies === 'ventSpire' && ventSpireCount > 0 && depthBelowSea >= 24.0) {
+          let vsVar = (i + Math.floor(noise.hash(i * 97) * 10)) % vsVCount;
+          if (vsIndices[vsVar] >= ventChimneyMeshes[vsVar].count) {
+            vsVar = vsIndices.findIndex((idx, v) => idx < ventChimneyMeshes[v].count);
+          }
+          if (vsVar !== -1) {
+            const curIdx = vsIndices[vsVar];
+            const maxVsScale = maxHeadroom / 12.5;
+            const fitScale = Math.min(scale * 0.90, maxVsScale);
+            const finalScaleY = Math.max(0.35, fitScale);
+            const finalScaleXZ = Math.max(0.50, Math.min(scale, 1.30));
+
+            dummy.scale.set(finalScaleXZ, finalScaleY, finalScaleXZ);
+            dummy.updateMatrix();
+
             ventChimneyMeshes[vsVar].setMatrixAt(curIdx, dummy.matrix);
             ventRimMeshes[vsVar].setMatrixAt(curIdx, dummy.matrix);
             vsIndices[vsVar]++;
-            collisionGrid.addCollider(dummy.position, normal, 1.25 * scale, 9.0 * scale, 'vent');
+            collisionGrid.addCollider(dummy.position, normal, 1.25 * finalScaleXZ, 9.0 * finalScaleY, 'vent');
           }
         }
       }
@@ -1450,6 +1505,176 @@ export function populatePlanetDecor(body, noise, qualityOverride = null) {
       dummy.updateMatrix();
       sporeMesh.setMatrixAt(sIdx, dummy.matrix);
       sIdx++;
+    }
+  }
+
+  // 5B. High-Density Dedicated Ocean Sampling Pass for Aurelia Prime
+  if (body.hasOcean && !body.isMoon) {
+    const marineRemaining = () => {
+      let rkRem = 0, stgRem = 0, spRem = 0, vsRem = 0;
+      for (let v = 0; v < rkVCount; v++) if (ribbonKelpBladeMeshes[v]) rkRem += (ribbonKelpBladeMeshes[v].count - rkIndices[v]);
+      for (let v = 0; v < stgVCount; v++) if (staghornBranchMeshes[v]) stgRem += (staghornBranchMeshes[v].count - stgIndices[v]);
+      for (let v = 0; v < spVCount; v++) if (strataPlateBodyMeshes[v]) spRem += (strataPlateBodyMeshes[v].count - spIndices[v]);
+      for (let v = 0; v < vsVCount; v++) if (ventChimneyMeshes[v]) vsRem += (ventChimneyMeshes[v].count - vsIndices[v]);
+      return rkRem + stgRem + spRem + vsRem;
+    };
+
+    const maxOceanPass = 26000;
+    for (let o = 0; o < maxOceanPass && marineRemaining() > 0; o++) {
+      let nx, ny, nz;
+      if (o < 1200) {
+        // Coastal focus around northern island archipelago (ny > 0.72)
+        const angle = noise.hash(o * 23 + 13) * Math.PI * 2;
+        const radius = 0.08 + noise.hash(o * 29 + 17) * 0.48;
+        const px = Math.cos(angle) * radius;
+        const pz = Math.sin(angle) * radius;
+        const py = Math.sqrt(Math.max(0.01, 1 - px * px - pz * pz));
+        const len = Math.sqrt(px * px + py * py + pz * pz);
+        nx = px / len; ny = py / len; nz = pz / len;
+      } else {
+        const face = (o * 7 + 3) % 6;
+        const u = noise.hash(o * 37 + 1013) * 2 - 1;
+        const v = noise.hash(o * 53 + 2017) * 2 - 1;
+        let cx = 0, cy = 0, cz = 0;
+        if (face === 0) { cx = 1; cy = u; cz = v; }
+        else if (face === 1) { cx = -1; cy = u; cz = v; }
+        else if (face === 2) { cx = u; cy = 1; cz = v; }
+        else if (face === 3) { cx = u; cy = -1; cz = v; }
+        else if (face === 4) { cx = u; cy = v; cz = 1; }
+        else { cx = u; cy = v; cz = -1; }
+        const res = cubeToSphere(cx, cy, cz);
+        nx = res[0]; ny = res[1]; nz = res[2];
+      }
+
+      const surfaceR = body.getSurfaceRadiusAtDir(nx, ny, nz);
+      const seaLevel = body.seaLevelRadius || 0;
+      if (surfaceR >= seaLevel) continue;
+
+      const depthBelowSea = seaLevel - surfaceR;
+      if (depthBelowSea < 3.2 || depthBelowSea > 165) continue;
+
+      normal.set(nx, ny, nz);
+      quat.setFromUnitVectors(upDefault, normal);
+      const spin = new THREE.Quaternion().setFromAxisAngle(normal, noise.hash(o * 61) * Math.PI * 2);
+      quat.premultiply(spin);
+
+      const tiltAxis = new THREE.Vector3(noise.hash(o * 103) - 0.5, 0, noise.hash(o * 107) - 0.5).normalize();
+      if (tiltAxis.lengthSq() > 0.1) {
+        const tiltAngle = noise.hash(o * 109) * 0.12;
+        const surfaceTilt = new THREE.Quaternion().setFromAxisAngle(tiltAxis, tiltAngle);
+        quat.multiply(surfaceTilt);
+      }
+
+      dummy.position.set(nx * surfaceR, ny * surfaceR, nz * surfaceR);
+      dummy.quaternion.copy(quat);
+
+      const baseScale = 0.8 + noise.hash(o * 71) * 0.95;
+      const maxHeadroom = Math.max(0.5, depthBelowSea - 0.85);
+
+      let underseaSpecies = null;
+      const uRand = noise.hash(o * 113 + 5);
+
+      const rkHasSpace = rkIndices.some((idx, v) => ribbonKelpBladeMeshes[v] && idx < ribbonKelpBladeMeshes[v].count);
+      const stgHasSpace = stgIndices.some((idx, v) => staghornBranchMeshes[v] && idx < staghornBranchMeshes[v].count);
+      const spHasSpace = spIndices.some((idx, v) => strataPlateBodyMeshes[v] && idx < strataPlateBodyMeshes[v].count);
+      const vsHasSpace = ventChimneyMeshes.length > 0 && vsIndices.some((idx, v) => ventChimneyMeshes[v] && idx < ventChimneyMeshes[v].count);
+
+      if (depthBelowSea < 16.0) {
+        if (uRand < 0.65 && stgHasSpace) underseaSpecies = 'staghorn';
+        else if (uRand < 0.90 && rkHasSpace && depthBelowSea >= 7.0) underseaSpecies = 'ribbonKelp';
+        else if (spHasSpace && depthBelowSea >= 5.0) underseaSpecies = 'strataPlate';
+        else if (stgHasSpace) underseaSpecies = 'staghorn';
+      } else if (depthBelowSea < 48.0) {
+        if (uRand < 0.45 && rkHasSpace && depthBelowSea >= 7.0) underseaSpecies = 'ribbonKelp';
+        else if (uRand < 0.80 && spHasSpace && depthBelowSea >= 5.0) underseaSpecies = 'strataPlate';
+        else if (stgHasSpace) underseaSpecies = 'staghorn';
+        else if (rkHasSpace && depthBelowSea >= 7.0) underseaSpecies = 'ribbonKelp';
+      } else {
+        if (uRand < 0.55 && vsHasSpace && depthBelowSea >= 24.0) underseaSpecies = 'ventSpire';
+        else if (uRand < 0.85 && spHasSpace && depthBelowSea >= 5.0) underseaSpecies = 'strataPlate';
+        else if (rkHasSpace && depthBelowSea >= 7.0) underseaSpecies = 'ribbonKelp';
+        else if (vsHasSpace && depthBelowSea >= 24.0) underseaSpecies = 'ventSpire';
+      }
+
+      if (underseaSpecies === 'staghorn' && stgHasSpace) {
+        let stgVar = (o + Math.floor(noise.hash(o * 83) * 10)) % stgVCount;
+        if (stgIndices[stgVar] >= staghornBranchMeshes[stgVar].count) {
+          stgVar = stgIndices.findIndex((idx, v) => idx < staghornBranchMeshes[v].count);
+        }
+        if (stgVar !== -1) {
+          const curIdx = stgIndices[stgVar];
+          const maxStgScale = maxHeadroom / 6.2;
+          const fitScale = Math.min(baseScale * 0.90, maxStgScale);
+          const finalScaleY = Math.max(0.25, fitScale);
+          const finalScaleXZ = Math.max(0.45, Math.min(baseScale, 1.25));
+
+          dummy.scale.set(finalScaleXZ, finalScaleY, finalScaleXZ);
+          dummy.updateMatrix();
+
+          staghornBranchMeshes[stgVar].setMatrixAt(curIdx, dummy.matrix);
+          staghornTipMeshes[stgVar].setMatrixAt(curIdx, dummy.matrix);
+          stgIndices[stgVar]++;
+        }
+      } else if (underseaSpecies === 'ribbonKelp' && rkHasSpace && depthBelowSea >= 7.0) {
+        let rkVar = (o + Math.floor(noise.hash(o * 79) * 10)) % rkVCount;
+        if (rkIndices[rkVar] >= ribbonKelpBladeMeshes[rkVar].count) {
+          rkVar = rkIndices.findIndex((idx, v) => idx < ribbonKelpBladeMeshes[v].count);
+        }
+        if (rkVar !== -1) {
+          const curIdx = rkIndices[rkVar];
+          const maxRkScale = maxHeadroom / 20.0;
+          const fitScale = Math.min(baseScale * 0.92, maxRkScale);
+          const finalScaleY = Math.max(0.20, fitScale);
+          const finalScaleXZ = Math.max(0.40, Math.min(baseScale, 1.25));
+
+          dummy.scale.set(finalScaleXZ, finalScaleY, finalScaleXZ);
+          dummy.updateMatrix();
+
+          ribbonKelpBladeMeshes[rkVar].setMatrixAt(curIdx, dummy.matrix);
+          ribbonKelpSporeMeshes[rkVar].setMatrixAt(curIdx, dummy.matrix);
+          rkIndices[rkVar]++;
+        }
+      } else if (underseaSpecies === 'strataPlate' && spHasSpace && depthBelowSea >= 5.0) {
+        let spVar = (o + Math.floor(noise.hash(o * 89) * 10)) % spVCount;
+        if (spIndices[spVar] >= strataPlateBodyMeshes[spVar].count) {
+          spVar = spIndices.findIndex((idx, v) => idx < strataPlateBodyMeshes[v].count);
+        }
+        if (spVar !== -1) {
+          const curIdx = spIndices[spVar];
+          const maxSpScale = maxHeadroom / 5.2;
+          const fitScale = Math.min(baseScale * 0.90, maxSpScale);
+          const finalScaleY = Math.max(0.25, fitScale);
+          const finalScaleXZ = Math.max(0.45, Math.min(baseScale, 1.30));
+
+          dummy.scale.set(finalScaleXZ, finalScaleY, finalScaleXZ);
+          dummy.updateMatrix();
+
+          strataPlateBodyMeshes[spVar].setMatrixAt(curIdx, dummy.matrix);
+          strataPlateEdgeMeshes[spVar].setMatrixAt(curIdx, dummy.matrix);
+          spIndices[spVar]++;
+          collisionGrid.addCollider(dummy.position, normal, 1.85 * finalScaleXZ, 3.5 * finalScaleY, 'plate');
+        }
+      } else if (underseaSpecies === 'ventSpire' && vsHasSpace && depthBelowSea >= 24.0) {
+        let vsVar = (o + Math.floor(noise.hash(o * 97) * 10)) % vsVCount;
+        if (vsIndices[vsVar] >= ventChimneyMeshes[vsVar].count) {
+          vsVar = vsIndices.findIndex((idx, v) => idx < ventChimneyMeshes[v].count);
+        }
+        if (vsVar !== -1) {
+          const curIdx = vsIndices[vsVar];
+          const maxVsScale = maxHeadroom / 12.5;
+          const fitScale = Math.min(baseScale * 0.90, maxVsScale);
+          const finalScaleY = Math.max(0.35, fitScale);
+          const finalScaleXZ = Math.max(0.50, Math.min(baseScale, 1.30));
+
+          dummy.scale.set(finalScaleXZ, finalScaleY, finalScaleXZ);
+          dummy.updateMatrix();
+
+          ventChimneyMeshes[vsVar].setMatrixAt(curIdx, dummy.matrix);
+          ventRimMeshes[vsVar].setMatrixAt(curIdx, dummy.matrix);
+          vsIndices[vsVar]++;
+          collisionGrid.addCollider(dummy.position, normal, 1.25 * finalScaleXZ, 9.0 * finalScaleY, 'vent');
+        }
+      }
     }
   }
 

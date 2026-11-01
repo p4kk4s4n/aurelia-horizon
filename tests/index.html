@@ -1337,10 +1337,10 @@
 
     // 24. v1.18.0 Hard-Surface Space Sim Realism & GitHub Version Manager
     // 24A: Version Resolution & Semantic Versioning Utilities
-    assert(APP_VERSION === '1.22.0', 'APP_VERSION constant is updated to 1.22.0');
-    assert(compareSemver('1.22.0', '1.13.0') === 1, 'compareSemver detects 1.22.0 is newer than 1.13.0');
-    assert(compareSemver('1.13.0', '1.22.0') === -1, 'compareSemver detects 1.13.0 is older than 1.22.0');
-    assert(compareSemver('1.22.0', '1.22.0') === 0, 'compareSemver detects identical versions');
+    assert(APP_VERSION === '1.22.1', 'APP_VERSION constant is updated to 1.22.1');
+    assert(compareSemver('1.22.1', '1.13.0') === 1, 'compareSemver detects 1.22.1 is newer than 1.13.0');
+    assert(compareSemver('1.13.0', '1.22.1') === -1, 'compareSemver detects 1.13.0 is older than 1.22.1');
+    assert(compareSemver('1.22.1', '1.22.1') === 0, 'compareSemver detects identical versions');
     assert(extractVersionFromCommitMessage('feat: v1.18.0 Hard-Surface Realism') === '1.18.0', 'extractVersionFromCommitMessage extracts semver from commit title');
     assert(extractVersionFromCommitMessage('Release 1.17.2 bugfixes') === '1.17.2', 'extractVersionFromCommitMessage extracts version without leading v');
     assert(extractVersionFromCommitMessage('routine maintenance patch') === null, 'extractVersionFromCommitMessage returns null for version-less commits');
@@ -1817,6 +1817,61 @@
 
     const pyraVentCollider = pyraMoon.floraCollisionGrid.colliders.find(c => c.type === 'vent');
     assert(Boolean(pyraVentCollider), 'Pyra FloraCollisionGrid registers solid colliders for volcanic fumaroles');
+
+    // 30. Aquatic Flora Concentration, Oceanic Immersion & Anti-Protrusion (v1.22.1)
+    const seaR = system.planet.seaLevelRadius;
+    const playerSpawnPos = new THREE.Vector3(0.048, 0.998, 0.055).normalize().multiplyScalar(system.planet.getSurfaceRadiusAtDir(0.048, 0.998, 0.055));
+
+    const marineMaterials = [
+      system.planet.decor.ribbonKelpMat.blade,
+      system.planet.decor.staghornMat.branch,
+      system.planet.decor.strataPlateMat.body,
+      system.planet.decor.ventSpireMat.chimney
+    ];
+
+    let totalMarineInstances = 0;
+    let marineNearSpawn150 = 0;
+    let anyMarineOnDryLand = false;
+    let anyMarinePokingAboveSea = false;
+
+    const marineTestMat4 = new THREE.Matrix4();
+    const marineTestPos = new THREE.Vector3();
+    const marineTestScale = new THREE.Vector3();
+    const marineTestQuat = new THREE.Quaternion();
+
+    system.planet.decor.group.children.forEach(mesh => {
+      if (!mesh.isInstancedMesh || !marineMaterials.includes(mesh.material)) return;
+      const count = mesh.count;
+      totalMarineInstances += count;
+
+      let approxH = 5.2;
+      if (mesh.material === system.planet.decor.ribbonKelpMat.blade) approxH = 18.0;
+      else if (mesh.material === system.planet.decor.strataPlateMat.body) approxH = 4.6;
+      else if (mesh.material === system.planet.decor.ventSpireMat.chimney) approxH = 11.5;
+
+      for (let i = 0; i < count; i++) {
+        mesh.getMatrixAt(i, marineTestMat4);
+        marineTestMat4.decompose(marineTestPos, marineTestQuat, marineTestScale);
+        const baseR = marineTestPos.length();
+        const topR = baseR + approxH * marineTestScale.y;
+
+        if (baseR >= seaR) {
+          anyMarineOnDryLand = true;
+        }
+        if (topR > seaR) {
+          anyMarinePokingAboveSea = true;
+        }
+
+        if (marineTestPos.distanceTo(playerSpawnPos) < 150) {
+          marineNearSpawn150++;
+        }
+      }
+    });
+
+    assert(totalMarineInstances >= 2000, `Aurelia Prime populates high-density marine flora (${totalMarineInstances} instances >= 2000)`);
+    assert(marineNearSpawn150 >= 10, `Aurelia Prime populates rich coastal reef clusters near player spawn (${marineNearSpawn150} instances within 150m)`);
+    assert(anyMarineOnDryLand === false, 'Zero marine flora are placed on dry land or beach dunes (all base positions below seaLevelRadius)');
+    assert(anyMarinePokingAboveSea === false, 'Zero marine flora poke or protrude above ocean surface into the atmosphere');
 
     const summary = `SUMMARY: ${passed} passed, ${failed} failed`;
     logs.push('', summary);
