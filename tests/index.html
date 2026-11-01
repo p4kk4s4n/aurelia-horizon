@@ -46,7 +46,14 @@
     import { createDeepOceanMesh } from '../src/world/ocean.js';
     import { NavMarkerSystem } from '../src/ui/navMarkers.js';
     import { MineralDeposit, MineralSystem } from '../src/world/minerals.js';
-    import { FloraCollisionGrid } from '../src/world/decor.js';
+    import {
+      FloraCollisionGrid,
+      createLucentMycenaVariants,
+      createPrismaticLithocactusVariants,
+      createCyanSerrataFernVariants,
+      createCobaltStrataArborVariants,
+      createAbyssalTendrilPodVariants
+    } from '../src/world/decor.js';
     import { FAUNA_SPECIES, FaunaEntity, FaunaSystem } from '../src/world/fauna.js';
     import { CameraRig } from '../src/player/cameraRig.js';
     import { ObjectiveSystem, ACHIEVEMENTS, STORAGE_CAMPAIGN_KEY } from '../src/world/objectives.js';
@@ -1326,10 +1333,10 @@
 
     // 24. v1.18.0 Hard-Surface Space Sim Realism & GitHub Version Manager
     // 24A: Version Resolution & Semantic Versioning Utilities
-    assert(APP_VERSION === '1.20.0', 'APP_VERSION constant is updated to 1.20.0');
-    assert(compareSemver('1.20.0', '1.13.0') === 1, 'compareSemver detects 1.20.0 is newer than 1.13.0');
-    assert(compareSemver('1.13.0', '1.20.0') === -1, 'compareSemver detects 1.13.0 is older than 1.20.0');
-    assert(compareSemver('1.20.0', '1.20.0') === 0, 'compareSemver detects identical versions');
+    assert(APP_VERSION === '1.21.0', 'APP_VERSION constant is updated to 1.21.0');
+    assert(compareSemver('1.21.0', '1.13.0') === 1, 'compareSemver detects 1.21.0 is newer than 1.13.0');
+    assert(compareSemver('1.13.0', '1.21.0') === -1, 'compareSemver detects 1.13.0 is older than 1.21.0');
+    assert(compareSemver('1.21.0', '1.21.0') === 0, 'compareSemver detects identical versions');
     assert(extractVersionFromCommitMessage('feat: v1.18.0 Hard-Surface Realism') === '1.18.0', 'extractVersionFromCommitMessage extracts semver from commit title');
     assert(extractVersionFromCommitMessage('Release 1.17.2 bugfixes') === '1.17.2', 'extractVersionFromCommitMessage extracts version without leading v');
     assert(extractVersionFromCommitMessage('routine maintenance patch') === null, 'extractVersionFromCommitMessage returns null for version-less commits');
@@ -1518,6 +1525,110 @@
     assert(planetUniforms.uGrassScale && planetUniforms.uGrassScale.value > 0, 'terrainUniforms provides positive uGrassScale');
     assert(planetUniforms.uRockScale && planetUniforms.uRockScale.value > 0, 'terrainUniforms provides positive uRockScale');
     assert(planetUniforms.uBlendSharpness && planetUniforms.uBlendSharpness.value >= 1.0, 'terrainUniforms provides blend sharpness >= 1.0');
+
+    // 27. High-Fidelity Xenobotanical Flora Overhaul & Biome Zoning (v1.21.0)
+    // 27A: 5 High-Fidelity Flora Species Generators
+    const mycenaVars = createLucentMycenaVariants(2);
+    assert(mycenaVars.length === 2, 'createLucentMycenaVariants produces requested variant count');
+    assert(mycenaVars[0].trunkGeo && mycenaVars[0].capGeo && mycenaVars[0].gillGeo, 'Lucent-Mycena produces compound triad stipe, cap dome, and lamellar gill geometries');
+    assert(mycenaVars[0].trunkGeo.attributes.position.count > 0, 'Lucent-Mycena trunk geometry has valid vertex buffer');
+    assert(mycenaVars[0].gillGeo.attributes.position.count > 0, 'Lucent-Mycena lamellar gills geometry has valid vertex buffer');
+
+    const cactusVars = createPrismaticLithocactusVariants(2);
+    assert(cactusVars.length === 2, 'createPrismaticLithocactusVariants produces requested variant count');
+    assert(cactusVars[0].bodyGeo && cactusVars[0].spineGeo, 'Prismatic Lithocactus produces faceted crystal columns and needle spine geometries');
+    assert(cactusVars[0].bodyGeo.attributes.position.count > 0, 'Lithocactus body geometry has valid vertex buffer');
+    assert(cactusVars[0].spineGeo.attributes.position.count > 0, 'Lithocactus needle spines geometry has valid vertex buffer');
+
+    const fernVars = createCyanSerrataFernVariants(2);
+    assert(fernVars.length === 2, 'createCyanSerrataFernVariants produces requested variant count');
+    assert(fernVars[0].attributes.position.count > 0, 'Cyan Serrata-Fern produces saw-toothed rosette frond geometry');
+
+    const arborVars = createCobaltStrataArborVariants(2);
+    assert(arborVars.length === 2, 'createCobaltStrataArborVariants produces requested variant count');
+    assert(arborVars[0].trunkGeo && arborVars[0].frondGeo, 'Cobalt Strata-Arbor produces segmented ringed trunks and crystalline fronds');
+    assert(arborVars[0].trunkGeo.attributes.position.count > 0, 'Strata-Arbor trunk geometry has valid vertex buffer');
+    assert(arborVars[0].frondGeo.attributes.position.count > 0, 'Strata-Arbor frond geometry has valid vertex buffer');
+
+    const tendrilVars = createAbyssalTendrilPodVariants(2);
+    assert(tendrilVars.length === 2, 'createAbyssalTendrilPodVariants produces requested variant count');
+    assert(tendrilVars[0].foliageGeo && tendrilVars[0].podGeo, 'Abyssal Tendril-Pod produces undulating wavy foliage and seed lantern pod geometries');
+    assert(tendrilVars[0].foliageGeo.attributes.position.count > 0, 'Tendril-Pod foliage geometry has valid vertex buffer');
+    assert(tendrilVars[0].podGeo.attributes.position.count > 0, 'Tendril-Pod lantern pods geometry has valid vertex buffer');
+
+    // 27B: Strict Moon Species Exclusivity (Single Native Species per Moon)
+    const lumenMoon = system.moons.find(m => m.name.includes('Lumen'));
+    const pyraMoon = system.moons.find(m => m.name.includes('Pyra'));
+    const goliathMoon = system.moons.find(m => m.name.includes('Goliath'));
+
+    assert(Boolean(lumenMoon && pyraMoon && goliathMoon), 'Solar system contains Lumen, Pyra, and Goliath');
+
+    // Lumen: strictly Prismatic Lithocactus
+    let lumenHasCactus = false;
+    let lumenHasOther = false;
+    lumenMoon.decor.group.children.forEach(c => {
+      if (c.material === lumenMoon.decor.cactusMat.body || c.material === lumenMoon.decor.cactusMat.spines) {
+        if (c.count > 0) lumenHasCactus = true;
+      } else if (c.material === lumenMoon.decor.mycenaMat?.trunk || c.material === lumenMoon.decor.arborMat?.trunk || c.material === lumenMoon.decor.fernMat) {
+        if (c.count > 0) lumenHasOther = true;
+      }
+    });
+    assert(lumenHasCactus === true, 'Moon I (Lumen) populates Prismatic Lithocactus crystal groves');
+    assert(lumenHasOther === false, 'Moon I (Lumen) strictly excludes non-native flora species');
+
+    // Pyra: strictly Abyssal Tendril-Pod
+    let pyraHasTendril = false;
+    let pyraHasOther = false;
+    pyraMoon.decor.group.children.forEach(c => {
+      if (c.material === pyraMoon.decor.tendrilMat.foliage || c.material === pyraMoon.decor.tendrilMat.pods) {
+        if (c.count > 0) pyraHasTendril = true;
+      } else if (c.material === pyraMoon.decor.mycenaMat?.trunk || c.material === pyraMoon.decor.arborMat?.trunk || c.material === pyraMoon.decor.cactusMat?.body) {
+        if (c.count > 0) pyraHasOther = true;
+      }
+    });
+    assert(pyraHasTendril === true, 'Moon II (Pyra) populates Abyssal Tendril-Pod amber shrubs');
+    assert(pyraHasOther === false, 'Moon II (Pyra) strictly excludes non-native flora species');
+
+    // Goliath: strictly Aurelian Lucent-Mycena
+    let goliathHasMycena = false;
+    let goliathHasOther = false;
+    goliathMoon.decor.group.children.forEach(c => {
+      if (c.material === goliathMoon.decor.mycenaMat.trunk || c.material === goliathMoon.decor.mycenaMat.cap || c.material === goliathMoon.decor.mycenaMat.gills) {
+        if (c.count > 0) goliathHasMycena = true;
+      } else if (c.material === goliathMoon.decor.arborMat?.trunk || c.material === goliathMoon.decor.fernMat || c.material === goliathMoon.decor.cactusMat?.body) {
+        if (c.count > 0) goliathHasOther = true;
+      }
+    });
+    assert(goliathHasMycena === true, 'Moon III (Goliath) populates Aurelian Lucent-Mycena titan neon fungi');
+    assert(goliathHasOther === false, 'Moon III (Goliath) strictly excludes non-native flora species');
+
+    // 27C: Aurelia Prime Planetary Biome Zoning & Flora Collision
+    let planetHasPalms = false;
+    let planetHasFerns = false;
+    let planetHasMycena = false;
+    let planetHasTendril = false;
+    let planetHasCactus = false;
+
+    system.planet.decor.group.children.forEach(c => {
+      if (c.material === system.planet.decor.arborMat.trunk && c.count > 0) planetHasPalms = true;
+      if (c.material === system.planet.decor.fernMat && c.count > 0) planetHasFerns = true;
+      if (c.material === system.planet.decor.mycenaMat.trunk && c.count > 0) planetHasMycena = true;
+      if (c.material === system.planet.decor.tendrilMat.foliage && c.count > 0) planetHasTendril = true;
+      if (c.material === system.planet.decor.cactusMat.body && c.count > 0) planetHasCactus = true;
+    });
+
+    assert(planetHasPalms === true, 'Aurelia Prime populates Cobalt Strata-Arbor palms in coastal/steppe biomes');
+    assert(planetHasFerns === true, 'Aurelia Prime populates Cyan Serrata-Ferns in temperate steppe grasslands');
+    assert(planetHasMycena === true, 'Aurelia Prime populates Aurelian Lucent-Mycena in conifer forest valleys');
+    assert(planetHasTendril === true, 'Aurelia Prime populates Abyssal Tendril-Pods in forest undergrowth');
+    assert(planetHasCactus === true, 'Aurelia Prime populates Prismatic Lithocactus on granite highland peaks');
+
+    // Flora Collision Grid Registration
+    assert(system.planet.floraCollisionGrid.colliders.length > 50, 'Aurelia Prime registers colliders for solid flora trunks');
+    const mycenaCollider = system.planet.floraCollisionGrid.colliders.find(c => c.type === 'mushroom');
+    const palmCollider = system.planet.floraCollisionGrid.colliders.find(c => c.type === 'palm');
+    const cactusCollider = system.planet.floraCollisionGrid.colliders.find(c => c.type === 'crystal');
+    assert(Boolean(mycenaCollider && palmCollider && cactusCollider), 'FloraCollisionGrid registers distinct collider types for mushroom, palm, and cactus');
 
     const summary = `SUMMARY: ${passed} passed, ${failed} failed`;
     logs.push('', summary);

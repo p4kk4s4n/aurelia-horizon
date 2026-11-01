@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { cubeToSphere } from './cubeSphere.js';
-import { mulberry32, bezierSpine, tubeAlongSpine, shardGeometry, mergeGeometries } from './procGeo.js';
+import { mulberry32, bezierSpine, tubeAlongSpine, mergeGeometries } from './procGeo.js';
 
 /**
  * Spatial Hash Grid for O(1) solid flora collision resolution on spherical worlds.
@@ -77,206 +77,407 @@ export class FloraCollisionGrid {
   }
 }
 
-function createMushroomVariants(count = 6) {
+/**
+ * Species 1: Aurelian Lucent-Mycena (Giant Neon Mushrooms)
+ * Compound 3-stem cluster (dominant, secondary, tertiary) with bulbous ringed stipes,
+ * dark violet pileus dome, and brilliant glowing neon-cyan lamellar gills.
+ */
+export function createLucentMycenaVariants(count = 4) {
   const variants = [];
   for (let v = 0; v < count; v++) {
-    const rng = mulberry32(1001 + v * 97);
-    const height = 6.2 + rng() * 3.8;
-    const bend = 0.22 + rng() * 0.26;
-    const spine = bezierSpine(rng, height, bend, 8);
+    const rng = mulberry32(1101 + v * 73);
+    const triadTrunks = [];
+    const triadCaps = [];
+    const triadGills = [];
 
-    const trunkGeo = tubeAlongSpine(spine, (t) => (0.75 * (1 - t * 0.42) + Math.sin(t * Math.PI) * 0.12), 6);
+    const configs = [
+      { h: 7.2 + rng() * 1.8, bend: 0.14, baseR: 0.72, capR: 3.4 + rng() * 0.8, capH: 1.6, offset: new THREE.Vector3(0, 0, 0), rotY: 0, tiltX: 0.05, tiltZ: 0 },
+      { h: 4.8 + rng() * 1.2, bend: 0.28, baseR: 0.52, capR: 2.2 + rng() * 0.5, capH: 1.2, offset: new THREE.Vector3(-1.1 - rng() * 0.3, 0, 0.4 + rng() * 0.3), rotY: -0.6, tiltX: 0.15, tiltZ: -0.25 },
+      { h: 3.2 + rng() * 0.9, bend: 0.22, baseR: 0.42, capR: 1.6 + rng() * 0.4, capH: 0.9, offset: new THREE.Vector3(0.9 + rng() * 0.3, 0, -0.4 - rng() * 0.2), rotY: 0.8, tiltX: -0.12, tiltZ: 0.2 }
+    ];
 
-    const capR = 3.6 + rng() * 1.6;
-    const capH = 2.2 + rng() * 1.4;
-    const capGeo = new THREE.ConeGeometry(capR, capH, 8);
-    capGeo.scale(0.9 + rng() * 0.3, 0.8 + rng() * 0.3, 0.9 + rng() * 0.3);
+    for (const cfg of configs) {
+      const spine = bezierSpine(rng, cfg.h, cfg.bend, 8);
+      // Stalk with swollen base and mid-height collar bulge node
+      const trunkGeo = tubeAlongSpine(spine, (t) => {
+        const baseBulge = 0.35 * Math.exp(-Math.pow((t - 0.1) / 0.1, 2));
+        const midBulge = 0.22 * Math.exp(-Math.pow((t - 0.45) / 0.12, 2));
+        return cfg.baseR * (0.85 - t * 0.35 + baseBulge + midBulge);
+      }, 7);
 
-    const alignQ = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), spine.tipTangent);
-    capGeo.applyQuaternion(alignQ);
-    capGeo.translate(spine.tip.x, spine.tip.y + capH * 0.3, spine.tip.z);
+      // Umbrella Cap Top (Faceted dark violet pileus dome)
+      const capTopGeo = new THREE.ConeGeometry(cfg.capR, cfg.capH, 9);
+      capTopGeo.scale(1.0, 0.75, 1.0);
+      const capAlign = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), spine.tipTangent);
+      capTopGeo.applyQuaternion(capAlign);
+      capTopGeo.translate(spine.tip.x, spine.tip.y + cfg.capH * 0.2, spine.tip.z);
 
-    const trunkGeos = [trunkGeo];
-    const capGeos = [capGeo];
+      // Glowing Underside Lamellar Gills (Emissive neon-cyan gills)
+      const gillGeo = new THREE.ConeGeometry(cfg.capR * 0.92, cfg.capH * 0.35, 9, 1, true);
+      gillGeo.rotateX(Math.PI);
+      gillGeo.applyQuaternion(capAlign);
+      gillGeo.translate(spine.tip.x, spine.tip.y + cfg.capH * 0.05, spine.tip.z);
 
-    if (rng() > 0.55) {
-      const branchT = 0.45 + rng() * 0.25;
-      const bIdx = Math.floor(branchT * (spine.points.length - 1));
-      const branchOrigin = spine.points[bIdx];
-      const bHeight = height * (0.35 + rng() * 0.2);
-      const bSpine = bezierSpine(rng, bHeight, 0.45, 6);
+      const gillFinGeos = [gillGeo];
+      const numFins = 12;
+      for (let f = 0; f < numFins; f++) {
+        const theta = (f / numFins) * Math.PI * 2;
+        const finGeo = new THREE.PlaneGeometry(cfg.capR * 0.82, cfg.capH * 0.28);
+        finGeo.rotateX(Math.PI / 2);
+        finGeo.rotateY(theta);
+        finGeo.translate(0, -cfg.capH * 0.08, 0);
+        finGeo.applyQuaternion(capAlign);
+        finGeo.translate(spine.tip.x, spine.tip.y, spine.tip.z);
+        gillFinGeos.push(finGeo);
+      }
+      const fullGills = mergeGeometries(gillFinGeos);
 
-      const bAngle = rng() * Math.PI * 2;
-      const bQuat = new THREE.Quaternion().setFromAxisAngle(spine.tangents[bIdx], bAngle);
-      const tilt = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), 0.6 + rng() * 0.4);
-      bQuat.multiply(tilt);
+      const qTilt = new THREE.Quaternion().setFromEuler(new THREE.Euler(cfg.tiltX, cfg.rotY, cfg.tiltZ));
+      trunkGeo.applyQuaternion(qTilt); trunkGeo.translate(cfg.offset.x, cfg.offset.y, cfg.offset.z);
+      capTopGeo.applyQuaternion(qTilt); capTopGeo.translate(cfg.offset.x, cfg.offset.y, cfg.offset.z);
+      fullGills.applyQuaternion(qTilt); fullGills.translate(cfg.offset.x, cfg.offset.y, cfg.offset.z);
 
-      const bTrunk = tubeAlongSpine(bSpine, (t) => 0.35 * (1 - t * 0.4), 5);
-      bTrunk.applyQuaternion(bQuat);
-      bTrunk.translate(branchOrigin.x, branchOrigin.y, branchOrigin.z);
-      trunkGeos.push(bTrunk);
-
-      const bCap = new THREE.ConeGeometry(capR * 0.5, capH * 0.5, 7);
-      const bTip = bSpine.tip.clone().applyQuaternion(bQuat).add(branchOrigin);
-      const bTipTang = bSpine.tipTangent.clone().applyQuaternion(bQuat);
-      const bCapQ = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), bTipTang);
-      bCap.applyQuaternion(bCapQ);
-      bCap.translate(bTip.x, bTip.y, bTip.z);
-      capGeos.push(bCap);
+      triadTrunks.push(trunkGeo);
+      triadCaps.push(capTopGeo);
+      triadGills.push(fullGills);
     }
 
     variants.push({
-      trunkGeo: mergeGeometries(trunkGeos),
-      capGeo: mergeGeometries(capGeos)
+      trunkGeo: mergeGeometries(triadTrunks),
+      capGeo: mergeGeometries(triadCaps),
+      gillGeo: mergeGeometries(triadGills)
     });
   }
   return variants;
 }
 
-function createPalmVariants(count = 6) {
+/**
+ * Species 2: Prismatic Lithocactus (Spiky Crystal Cacti)
+ * Clustered hexagonal columnar crystal prisms with pointed tips and radiating neon pink needle-spines.
+ */
+export function createPrismaticLithocactusVariants(count = 4) {
   const variants = [];
   for (let v = 0; v < count; v++) {
-    const rng = mulberry32(3001 + v * 83);
-    const height = 8.0 + rng() * 4.2;
-    const bend = 0.30 + rng() * 0.28;
-    const spine = bezierSpine(rng, height, bend, 8);
+    const rng = mulberry32(3101 + v * 89);
+    const bodyGeos = [];
+    const spineGeos = [];
 
-    const trunk = tubeAlongSpine(spine, (t) => 0.55 * (1 - t * 0.55), 5);
-    const palmParts = [trunk];
+    const numColumns = 6 + Math.floor(rng() * 2);
+    for (let c = 0; c < numColumns; c++) {
+      const isCenter = c === 0;
+      const height = isCenter ? (5.8 + rng() * 1.8) : (2.6 + rng() * 2.8);
+      const radius = isCenter ? (0.62 + rng() * 0.15) : (0.35 + rng() * 0.18);
+      const apexH = radius * (1.6 + rng() * 0.5);
 
-    const numFronds = 6 + Math.floor(rng() * 4);
-    for (let f = 0; f < numFronds; f++) {
-      const fAngle = (f / numFronds) * Math.PI * 2 + (rng() - 0.5) * 0.3;
-      const fLen = 3.8 + rng() * 2.2;
-      const frondSpine = bezierSpine(rng, fLen, 0.6, 6);
+      const colBody = new THREE.CylinderGeometry(radius, radius * 1.05, height, 6);
+      colBody.translate(0, height * 0.5, 0);
 
-      const fQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), fAngle);
-      const droop = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), 1.2 + rng() * 0.4);
-      fQuat.multiply(droop);
+      const colApex = new THREE.ConeGeometry(radius, apexH, 6);
+      colApex.translate(0, height + apexH * 0.5, 0);
 
-      const frondGeo = tubeAlongSpine(frondSpine, (t) => (0.42 * (1 - t) + 0.08), 4);
-      frondGeo.scale(1.8, 1.0, 0.35);
-      frondGeo.applyQuaternion(fQuat);
-      frondGeo.translate(spine.tip.x, spine.tip.y, spine.tip.z);
-      palmParts.push(frondGeo);
+      const colMerged = mergeGeometries([colBody, colApex]);
+      const colSpines = [];
+
+      // Needle Spikes along facet ridges
+      const needleCount = Math.floor(3 + rng() * 4);
+      for (let n = 0; n < needleCount; n++) {
+        const needleH = height * (0.22 + (n / needleCount) * 0.68);
+        const facetAngle = Math.floor(rng() * 6) * (Math.PI / 3);
+        const needleGeo = new THREE.ConeGeometry(0.06, 0.45, 4);
+        needleGeo.rotateZ(-Math.PI / 2); // point outward +X
+        needleGeo.rotateX(0.35); // tilt upward ~20 deg
+        needleGeo.rotateY(facetAngle);
+        needleGeo.translate(Math.cos(facetAngle) * radius * 0.95, needleH, Math.sin(facetAngle) * radius * 0.95);
+        colSpines.push(needleGeo);
+      }
+
+      // Column placement & splay tilt
+      if (!isCenter) {
+        const angle = (c / (numColumns - 1)) * Math.PI * 2 + (rng() - 0.5) * 0.4;
+        const dist = 0.65 + rng() * 0.55;
+        const splayAngle = 0.12 + rng() * 0.18;
+        const qSplay = new THREE.Quaternion().setFromEuler(
+          new THREE.Euler(Math.sin(angle) * splayAngle, rng() * Math.PI, -Math.cos(angle) * splayAngle)
+        );
+        colMerged.applyQuaternion(qSplay);
+        colMerged.translate(Math.cos(angle) * dist, 0, Math.sin(angle) * dist);
+
+        for (const sp of colSpines) {
+          sp.applyQuaternion(qSplay);
+          sp.translate(Math.cos(angle) * dist, 0, Math.sin(angle) * dist);
+        }
+      }
+
+      bodyGeos.push(colMerged);
+      spineGeos.push(...colSpines);
     }
 
-    variants.push(mergeGeometries(palmParts));
+    variants.push({
+      bodyGeo: mergeGeometries(bodyGeos),
+      spineGeo: mergeGeometries(spineGeos)
+    });
   }
   return variants;
 }
 
-function createBranchingCrystalVariants(count = 6) {
+/**
+ * Species 3: Cyan Serrata-Fern (Bioluminescent Ferns)
+ * Concentric tiered rosettes of saw-toothed fronds with dark jade axial ribs and bright cyan luminescent margins.
+ */
+export function createCyanSerrataFernVariants(count = 4) {
   const variants = [];
   for (let v = 0; v < count; v++) {
-    const rng = mulberry32(5001 + v * 67);
-    const crystalParts = [];
+    const rng = mulberry32(4101 + v * 61);
+    const frondGeos = [];
 
-    const rootLen = 3.6 + rng() * 2.6;
-    const rootRadius = 0.65 + rng() * 0.3;
-    const mainShard = shardGeometry(rootLen, rootRadius, 0.35, 6);
-    const rootQuat = new THREE.Quaternion().setFromEuler(
-      new THREE.Euler((rng() - 0.5) * 0.22, rng() * Math.PI * 2, (rng() - 0.5) * 0.22)
-    );
-    mainShard.applyQuaternion(rootQuat);
-    crystalParts.push(mainShard);
+    const frondConfigs = [];
+    const outerCount = 9;
+    for (let i = 0; i < outerCount; i++) {
+      const angle = (i / outerCount) * Math.PI * 2 + (rng() - 0.5) * 0.25;
+      frondConfigs.push({
+        len: 4.4 + rng() * 1.6,
+        droop: 0.65 + rng() * 0.15,
+        angle,
+        teeth: 7 + Math.floor(rng() * 3),
+        maxW: 0.65 + rng() * 0.2
+      });
+    }
+    const innerCount = 5;
+    for (let i = 0; i < innerCount; i++) {
+      const angle = (i / innerCount) * Math.PI * 2 + (rng() - 0.5) * 0.3;
+      frondConfigs.push({
+        len: 2.8 + rng() * 1.0,
+        droop: 0.32 + rng() * 0.12,
+        angle,
+        teeth: 5 + Math.floor(rng() * 2),
+        maxW: 0.48 + rng() * 0.15
+      });
+    }
 
-    const numBranches = 3 + Math.floor(rng() * 3);
-    for (let b = 0; b < numBranches; b++) {
-      const attachT = 0.25 + rng() * 0.55;
-      const bLen = rootLen * (0.45 + rng() * 0.32);
-      const bRad = rootRadius * (0.45 + rng() * 0.25);
-      const branchShard = shardGeometry(bLen, bRad, 0.3, 5);
+    for (const fc of frondConfigs) {
+      const numSegments = fc.teeth * 2;
+      const positions = [];
+      const normals = [];
+      const indices = [];
 
-      const bAzimuth = (b / numBranches) * Math.PI * 2 + (rng() - 0.5) * 0.5;
-      const bElevation = 0.55 + rng() * 0.45;
+      for (let s = 0; s <= numSegments; s++) {
+        const t = s / numSegments;
+        const y = Math.sin(t * Math.PI * 0.5) * fc.len * Math.cos(fc.droop * t);
+        const z = Math.sin(fc.droop * t) * fc.len;
+        const isPeak = s % 2 === 1;
+        const profile = Math.sin(t * Math.PI) * (1.0 - t * 0.3);
+        const w = (isPeak ? fc.maxW : fc.maxW * 0.45) * profile;
 
-      const bQuat = new THREE.Quaternion().setFromEuler(
-        new THREE.Euler(bElevation, bAzimuth, 0, 'YXZ')
+        positions.push(0, y, z);
+        normals.push(0, Math.cos(fc.droop * t + Math.PI / 2), Math.sin(fc.droop * t + Math.PI / 2));
+
+        positions.push(-w, y, z);
+        normals.push(0, Math.cos(fc.droop * t + Math.PI / 2), Math.sin(fc.droop * t + Math.PI / 2));
+
+        positions.push(w, y, z);
+        normals.push(0, Math.cos(fc.droop * t + Math.PI / 2), Math.sin(fc.droop * t + Math.PI / 2));
+      }
+
+      for (let s = 0; s < numSegments; s++) {
+        const row0 = s * 3;
+        const row1 = (s + 1) * 3;
+        indices.push(row0 + 0, row0 + 1, row1 + 1);
+        indices.push(row0 + 0, row1 + 1, row1 + 0);
+        indices.push(row0 + 0, row1 + 0, row1 + 2);
+        indices.push(row0 + 0, row1 + 2, row0 + 2);
+      }
+
+      const frondGeo = new THREE.BufferGeometry();
+      frondGeo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      frondGeo.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+      frondGeo.setIndex(indices);
+
+      const qRot = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), fc.angle);
+      frondGeo.applyQuaternion(qRot);
+      frondGeos.push(frondGeo);
+    }
+
+    variants.push(mergeGeometries(frondGeos));
+  }
+  return variants;
+}
+
+/**
+ * Species 4: Cobalt Strata-Arbor (Alien Palm Trees)
+ * Curved twin-trunk structure with segmented horizontal node rings and a crown of faceted crystalline cobalt fronds.
+ */
+export function createCobaltStrataArborVariants(count = 4) {
+  const variants = [];
+  for (let v = 0; v < count; v++) {
+    const rng = mulberry32(5101 + v * 97);
+    const trunkGeos = [];
+    const frondGeos = [];
+
+    const trunkConfigs = [
+      { h: 11.2 + rng() * 2.8, bend: 0.18, r: 0.58, leanAngle: 0.05, leanDir: 0, numFronds: 9, frondLen: 4.8 + rng() * 1.2 },
+      { h: 6.8 + rng() * 1.6, bend: 0.28, r: 0.42, leanAngle: 0.35 + rng() * 0.1, leanDir: rng() * Math.PI * 2, numFronds: 7, frondLen: 3.6 + rng() * 0.8 }
+    ];
+
+    for (const tc of trunkConfigs) {
+      const numNodes = 10;
+      const trunkParts = [];
+      for (let n = 0; n < numNodes; n++) {
+        const t0 = n / numNodes;
+        const segH = tc.h / numNodes;
+        const segR = tc.r * (1.1 - t0 * 0.5);
+
+        const segGeo = new THREE.CylinderGeometry(segR * 0.92, segR, segH, 6);
+        segGeo.translate(0, segH * 0.5 + n * segH, 0);
+
+        const ringGeo = new THREE.CylinderGeometry(segR * 1.15, segR * 1.12, segH * 0.18, 6);
+        ringGeo.translate(0, n * segH, 0);
+
+        trunkParts.push(segGeo, ringGeo);
+      }
+      const singleTrunk = mergeGeometries(trunkParts);
+
+      const qLean = new THREE.Quaternion().setFromEuler(
+        new THREE.Euler(Math.sin(tc.leanDir) * tc.leanAngle, 0, Math.cos(tc.leanDir) * tc.leanAngle)
       );
-      branchShard.applyQuaternion(bQuat);
+      singleTrunk.applyQuaternion(qLean);
+      if (tc.leanAngle > 0.1) {
+        singleTrunk.translate(Math.sin(tc.leanDir) * 0.85, 0, Math.cos(tc.leanDir) * 0.85);
+      }
+      trunkGeos.push(singleTrunk);
 
-      const yAttach = rootLen * attachT;
-      const xAttach = Math.sin(bAzimuth) * rootRadius * 0.8;
-      const zAttach = Math.cos(bAzimuth) * rootRadius * 0.8;
-      branchShard.translate(xAttach, yAttach, zAttach);
-      crystalParts.push(branchShard);
+      const apexPos = new THREE.Vector3(0, tc.h, 0).applyQuaternion(qLean);
+      if (tc.leanAngle > 0.1) {
+        apexPos.add(new THREE.Vector3(Math.sin(tc.leanDir) * 0.85, 0, Math.cos(tc.leanDir) * 0.85));
+      }
 
-      if (rng() > 0.6) {
-        const twigLen = bLen * 0.55;
-        const twigRad = bRad * 0.5;
-        const twigShard = shardGeometry(twigLen, twigRad, 0.25, 5);
-        const twigQ = bQuat.clone().multiply(
-          new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), 0.6)
+      for (let f = 0; f < tc.numFronds; f++) {
+        const fAngle = (f / tc.numFronds) * Math.PI * 2 + (rng() - 0.5) * 0.2;
+        const fDroop = 0.85 + rng() * 0.35;
+        const fLen = tc.frondLen;
+        const fWidth = fLen * 0.26;
+
+        const leafGeo = new THREE.BufferGeometry();
+        const pts = [
+          0, 0, 0,
+          -fWidth * 0.5, fLen * 0.45, -0.15,
+          0, fLen * 0.5, 0.12,
+          fWidth * 0.5, fLen * 0.45, -0.15,
+          0, fLen, -0.35
+        ];
+        const leafIndices = [
+          0, 1, 2,
+          0, 2, 3,
+          2, 1, 4,
+          2, 4, 3
+        ];
+        leafGeo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+        leafGeo.setIndex(leafIndices);
+        leafGeo.computeVertexNormals();
+
+        const qFrond = new THREE.Quaternion().setFromEuler(
+          new THREE.Euler(fDroop, fAngle, 0, 'YXZ')
         );
-        twigShard.applyQuaternion(twigQ);
-        twigShard.translate(xAttach * 1.4, yAttach + bLen * 0.4, zAttach * 1.4);
-        crystalParts.push(twigShard);
+        leafGeo.applyQuaternion(qFrond);
+        leafGeo.translate(apexPos.x, apexPos.y, apexPos.z);
+        frondGeos.push(leafGeo);
       }
     }
 
-    variants.push(mergeGeometries(crystalParts));
+    variants.push({
+      trunkGeo: mergeGeometries(trunkGeos),
+      frondGeo: mergeGeometries(frondGeos)
+    });
   }
   return variants;
 }
 
 /**
- * New Species 4: Bioluminescent Spore-Ferns (Alien Cycads with rosette fronds & glowing core)
+ * Species 5: Abyssal Tendril-Pod (Wavy Alien Bush Plants)
+ * Undulating sinusoidal ribbon foliage, upright floral stalks, crowning seed pod capsules, and floating bioluminescent spore motes.
  */
-function createSporeFernVariants(count = 4) {
+export function createAbyssalTendrilPodVariants(count = 4) {
   const variants = [];
   for (let v = 0; v < count; v++) {
-    const rng = mulberry32(6101 + v * 53);
-    const height = 4.2 + rng() * 2.5;
-    const spine = bezierSpine(rng, height, 0.18, 6);
-    const stalk = tubeAlongSpine(spine, (t) => 0.65 * (1 - t * 0.35), 5);
-    const parts = [stalk];
+    const rng = mulberry32(6101 + v * 83);
+    const foliageGeos = [];
+    const podGeos = [];
 
-    // Tiered fern rosette blades
-    const frondCount = 7 + Math.floor(rng() * 3);
-    for (let f = 0; f < frondCount; f++) {
-      const angle = (f / frondCount) * Math.PI * 2;
-      const fSpine = bezierSpine(rng, 2.8 + rng() * 1.4, 0.45, 5);
-      const fGeo = tubeAlongSpine(fSpine, (t) => 0.38 * Math.sin(t * Math.PI) + 0.06, 4);
-      fGeo.scale(2.2, 0.8, 0.3);
-      const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0.95 + rng() * 0.25, angle, 0, 'YXZ'));
-      fGeo.applyQuaternion(q);
-      fGeo.translate(spine.tip.x, spine.tip.y, spine.tip.z);
-      parts.push(fGeo);
+    const numRibbons = 18 + Math.floor(rng() * 6);
+    for (let r = 0; r < numRibbons; r++) {
+      const rAngle = (r / numRibbons) * Math.PI * 2 + (rng() - 0.5) * 0.35;
+      const rRadius = 0.5 + rng() * 0.9;
+      const rHeight = 1.8 + rng() * 1.1;
+
+      const points = [];
+      const tangents = [];
+      const numPts = 8;
+      const waveFreq = 2.5 + rng() * 0.8;
+      const waveAmp = 0.28 + rng() * 0.15;
+
+      for (let p = 0; p <= numPts; p++) {
+        const t = p / numPts;
+        const y = t * rHeight;
+        const lateral = Math.sin(t * Math.PI * waveFreq) * waveAmp * (1.0 - t * 0.2);
+        points.push(new THREE.Vector3(lateral, y, 0));
+        tangents.push(new THREE.Vector3(0, 1, 0));
+      }
+
+      const spine = { points, tangents, tip: points[numPts], tipTangent: tangents[numPts] };
+      const ribbon = tubeAlongSpine(spine, (t) => 0.22 * (1.0 - t * 0.45), 4);
+      ribbon.scale(1.8, 1.0, 0.35);
+
+      const qRad = new THREE.Quaternion().setFromEuler(
+        new THREE.Euler(0.25 + rng() * 0.25, rAngle, 0, 'YXZ')
+      );
+      ribbon.applyQuaternion(qRad);
+      ribbon.translate(Math.cos(rAngle) * rRadius, 0, Math.sin(rAngle) * rRadius);
+      foliageGeos.push(ribbon);
     }
-    variants.push(mergeGeometries(parts));
+
+    const numPods = 4 + Math.floor(rng() * 3);
+    for (let p = 0; p < numPods; p++) {
+      const pAngle = (p / numPods) * Math.PI * 2 + (rng() - 0.5) * 0.4;
+      const pDist = 0.45 + rng() * 0.5;
+      const stalkH = 3.4 + rng() * 1.4;
+      const stalkSpine = bezierSpine(rng, stalkH, 0.2, 7);
+      const stalkGeo = tubeAlongSpine(stalkSpine, (t) => 0.12 * (1.0 - t * 0.3), 4);
+
+      const podBody = new THREE.CylinderGeometry(0.32, 0.46, 0.72, 6);
+      podBody.translate(0, 0.36, 0);
+
+      const crownGeo = new THREE.ConeGeometry(0.36, 0.28, 6);
+      crownGeo.rotateX(Math.PI);
+      crownGeo.translate(0, 0.85, 0);
+
+      const podLantern = mergeGeometries([podBody, crownGeo]);
+      const podAlign = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), stalkSpine.tipTangent);
+      podLantern.applyQuaternion(podAlign);
+      podLantern.translate(stalkSpine.tip.x, stalkSpine.tip.y, stalkSpine.tip.z);
+
+      const stalkCombined = mergeGeometries([stalkGeo]);
+
+      const qStalk = new THREE.Quaternion().setFromEuler(
+        new THREE.Euler(0.12 + rng() * 0.15, pAngle, 0, 'YXZ')
+      );
+      stalkCombined.applyQuaternion(qStalk);
+      podLantern.applyQuaternion(qStalk);
+
+      stalkCombined.translate(Math.cos(pAngle) * pDist, 0, Math.sin(pAngle) * pDist);
+      podLantern.translate(Math.cos(pAngle) * pDist, 0, Math.sin(pAngle) * pDist);
+
+      foliageGeos.push(stalkCombined);
+      podGeos.push(podLantern);
+    }
+
+    variants.push({
+      foliageGeo: mergeGeometries(foliageGeos),
+      podGeo: mergeGeometries(podGeos)
+    });
   }
   return variants;
 }
 
-/**
- * New Species 5: Spiral Tendril Shrubs (Bulb Vines)
- */
-function createTendrilShrubVariants(count = 4) {
-  const variants = [];
-  for (let v = 0; v < count; v++) {
-    const rng = mulberry32(8201 + v * 71);
-    const parts = [];
-    const stems = 3 + Math.floor(rng() * 3);
-    for (let s = 0; s < stems; s++) {
-      const h = 3.2 + rng() * 2.4;
-      const spine = bezierSpine(rng, h, 0.55, 7);
-      const vine = tubeAlongSpine(spine, (t) => 0.28 * (1 - t * 0.5), 5);
-      const bulb = new THREE.IcosahedronGeometry(0.42 + rng() * 0.22, 0);
-      bulb.translate(spine.tip.x, spine.tip.y, spine.tip.z);
-
-      const angle = (s / stems) * Math.PI * 2 + rng() * 0.4;
-      const rot = new THREE.Quaternion().setFromEuler(new THREE.Euler(0.25, angle, 0, 'YXZ'));
-      vine.applyQuaternion(rot);
-      bulb.applyQuaternion(rot);
-      parts.push(vine, bulb);
-    }
-    variants.push(mergeGeometries(parts));
-  }
-  return variants;
-}
-
-function createKelpVariants(count = 4) {
+export function createKelpVariants(count = 4) {
   const variants = [];
   for (let v = 0; v < count; v++) {
     const rng = mulberry32(7001 + v * 41);
@@ -289,8 +490,16 @@ function createKelpVariants(count = 4) {
   return variants;
 }
 
+// Backwards-compatible aliases for legacy imports
+export const createMushroomVariants = createLucentMycenaVariants;
+export const createPalmVariants = createCobaltStrataArborVariants;
+export const createBranchingCrystalVariants = createPrismaticLithocactusVariants;
+export const createSporeFernVariants = createCyanSerrataFernVariants;
+export const createTendrilShrubVariants = createAbyssalTendrilPodVariants;
+
 /**
- * Main decor population function for celestial bodies with FloraCollisionGrid.
+ * Main decor population function with 5 high-fidelity flora species,
+ * strict 1-species-per-moon allocation, and planetary biome elevation zoning.
  */
 export function populatePlanetDecor(body, noise, qualityOverride = null) {
   const group = new THREE.Group();
@@ -312,58 +521,80 @@ export function populatePlanetDecor(body, noise, qualityOverride = null) {
   else if (qualitySetting === 'medium') densityMult = 0.8;
   else if (qualitySetting === 'ultra') densityMult = 1.4;
 
-  // Materials (Grounded Xenobiology & Hard-Sci-Fi Realism)
-  const trunkMat = new THREE.MeshStandardMaterial({
-    color: 0x3a2e25,
-    roughness: 0.85,
+  // 1. Materials for the 5 High-Fidelity Xenobotanical Species
+  // Species 1: Aurelian Lucent-Mycena
+  const mycenaTrunkMat = new THREE.MeshStandardMaterial({
+    color: 0x242038,
+    roughness: 0.82,
     flatShading: false
   });
-
-  const capMat = new THREE.MeshStandardMaterial({
-    color: 0x2b4c3f,
-    emissive: 0x0f2b23,
-    emissiveIntensity: 0.35,
-    roughness: 0.45,
+  const mycenaCapMat = new THREE.MeshStandardMaterial({
+    color: 0x311b54,
+    roughness: 0.48,
     flatShading: false
   });
-
-  const palmMat = new THREE.MeshStandardMaterial({
-    color: 0x2f4838,
-    emissive: 0x14281c,
-    emissiveIntensity: 0.2,
-    roughness: 0.55,
-    flatShading: false
+  const mycenaGillMat = new THREE.MeshStandardMaterial({
+    color: 0x00f5d4,
+    emissive: 0x00f5d4,
+    emissiveIntensity: 2.6,
+    roughness: 0.25,
+    side: THREE.DoubleSide
   });
 
+  // Species 2: Prismatic Lithocactus
+  const cactusBodyMat = new THREE.MeshStandardMaterial({
+    color: 0xc026d3,
+    emissive: 0x701a75,
+    emissiveIntensity: 0.45,
+    roughness: 0.2,
+    metalness: 0.45,
+    flatShading: false
+  });
+  const cactusSpineMat = new THREE.MeshStandardMaterial({
+    color: 0xf472b6,
+    emissive: 0xf43f5e,
+    emissiveIntensity: 2.8,
+    roughness: 0.2
+  });
+
+  // Species 3: Cyan Serrata-Fern
   const fernMat = new THREE.MeshStandardMaterial({
-    color: 0x3d6647,
-    emissive: 0x1c3824,
-    emissiveIntensity: 0.25,
-    roughness: 0.52,
+    color: 0x06b6d4,
+    emissive: 0x0891b2,
+    emissiveIntensity: 1.4,
+    roughness: 0.35,
+    side: THREE.DoubleSide
+  });
+
+  // Species 4: Cobalt Strata-Arbor
+  const arborTrunkMat = new THREE.MeshStandardMaterial({
+    color: 0x18181b,
+    roughness: 0.88,
     flatShading: false
   });
+  const arborFrondMat = new THREE.MeshStandardMaterial({
+    color: 0x0284c7,
+    emissive: 0x0ea5e9,
+    emissiveIntensity: 0.55,
+    roughness: 0.24,
+    metalness: 0.35,
+    side: THREE.DoubleSide
+  });
 
-  const tendrilMat = new THREE.MeshStandardMaterial({
-    color: 0xb45309,
-    emissive: 0x78350f,
-    emissiveIntensity: 0.35,
-    roughness: 0.45,
+  // Species 5: Abyssal Tendril-Pod
+  const tendrilFoliageMat = new THREE.MeshStandardMaterial({
+    color: 0x3b0764,
+    roughness: 0.62,
     flatShading: false
   });
-
-  const crystalMat = new THREE.MeshStandardMaterial({
-    color: 0x94a3b8,
-    emissive: 0x475569,
-    emissiveIntensity: 0.4,
-    roughness: 0.18,
-    metalness: 0.65,
-    flatShading: false
+  const tendrilPodMat = new THREE.MeshStandardMaterial({
+    color: 0x6b21a8,
+    emissive: 0xa855f7,
+    emissiveIntensity: 2.2,
+    roughness: 0.35
   });
 
-  const sporeMat = new THREE.MeshBasicMaterial({
-    color: 0x9ef01a
-  });
-
+  // Oceanic Kelp & Floating Spore Particles
   const kelpMat = new THREE.MeshStandardMaterial({
     color: 0x058c7e,
     emissive: 0x005f73,
@@ -373,56 +604,105 @@ export function populatePlanetDecor(body, noise, qualityOverride = null) {
     opacity: 0.85,
     side: THREE.DoubleSide
   });
+  const sporeMat = new THREE.MeshBasicMaterial({
+    color: 0xa855f7
+  });
 
-  // Base counts scaled for expanded biodiversity
-  const mushroomCount = body.isMoon ? 0 : Math.round(780 * densityMult);
-  const palmCount = body.isMoon ? 0 : Math.round(880 * densityMult);
-  const fernCount = body.isMoon ? 0 : Math.round(520 * densityMult);
-  const tendrilCount = body.isMoon ? Math.round(160 * densityMult) : Math.round(440 * densityMult);
-  const crystalCount = body.isMoon ? Math.round(360 * densityMult) : Math.round(520 * densityMult);
-  const sporeCount = body.isMoon ? Math.round(60 * densityMult) : Math.round(280 * densityMult);
-  const kelpCount = body.hasOcean ? Math.round(560 * densityMult) : 0;
+  // 2. Moon vs Planet Species Allocation
+  const bodyName = (body.name || '').toLowerCase();
+  const isLumen = body.isMoon && (bodyName.includes('lumen') || (body.moonTheme && body.moonTheme.crystalColor === 0x78dcca) || body.radius < 50);
+  const isPyra = body.isMoon && (bodyName.includes('pyra') || (body.moonTheme && body.moonTheme.crystalColor === 0xf59e0b) || body.radius === 68);
+  const isGoliath = body.isMoon && (bodyName.includes('goliath') || (body.moonTheme && body.moonTheme.crystalColor === 0x818cf8) || body.radius > 100);
 
-  // Generate species geometry variants
-  const mushroomVariants = body.isMoon ? [] : createMushroomVariants(6);
-  const palmVariants = body.isMoon ? [] : createPalmVariants(6);
-  const fernVariants = body.isMoon ? [] : createSporeFernVariants(4);
-  const tendrilVariants = createTendrilShrubVariants(4);
-  const crystalVariants = createBranchingCrystalVariants(6);
-  const kelpVariants = body.hasOcean ? createKelpVariants(4) : [];
-  const sporeGeo = new THREE.IcosahedronGeometry(1.2, 0);
-
-  const mVariantCount = mushroomVariants.length || 1;
-  const pVariantCount = palmVariants.length || 1;
-  const fVariantCount = fernVariants.length || 1;
-  const tVariantCount = tendrilVariants.length || 1;
-  const cVariantCount = crystalVariants.length || 1;
-  const kVariantCount = kelpVariants.length || 1;
-
-  const mushroomTrunkMeshes = mushroomVariants.map(v => new THREE.InstancedMesh(v.trunkGeo, trunkMat, Math.ceil(mushroomCount / mVariantCount)));
-  const mushroomCapMeshes = mushroomVariants.map(v => new THREE.InstancedMesh(v.capGeo, capMat, Math.ceil(mushroomCount / mVariantCount)));
-  const palmMeshes = palmVariants.map(geo => new THREE.InstancedMesh(geo, palmMat, Math.ceil(palmCount / pVariantCount)));
-  const fernMeshes = fernVariants.map(geo => new THREE.InstancedMesh(geo, fernMat, Math.ceil(fernCount / fVariantCount)));
-  const tendrilMeshes = tendrilVariants.map(geo => new THREE.InstancedMesh(geo, tendrilMat, Math.ceil(tendrilCount / tVariantCount)));
-
-  const effectiveCrystalMat = body.isMoon ? crystalMat.clone() : crystalMat;
-  if (body.isMoon && body.moonTheme) {
-    effectiveCrystalMat.color.setHex(body.moonTheme.crystalColor);
-    effectiveCrystalMat.emissive.setHex(body.moonTheme.crystalEmissive);
+  // Apply moon palette overrides if present
+  if (isLumen && body.moonTheme) {
+    cactusBodyMat.color.setHex(body.moonTheme.crystalColor);
+    cactusBodyMat.emissive.setHex(body.moonTheme.crystalEmissive);
+  } else if (isPyra && body.moonTheme) {
+    tendrilPodMat.color.setHex(body.moonTheme.crystalColor);
+    tendrilPodMat.emissive.setHex(body.moonTheme.crystalEmissive);
+    sporeMat.color.setHex(body.moonTheme.crystalColor);
+  } else if (isGoliath && body.moonTheme) {
+    mycenaGillMat.color.setHex(body.moonTheme.crystalColor);
+    mycenaGillMat.emissive.setHex(body.moonTheme.crystalEmissive);
   }
-  const crystalMeshes = crystalVariants.map(geo => new THREE.InstancedMesh(geo, effectiveCrystalMat, Math.ceil(crystalCount / cVariantCount)));
-  const kelpMeshes = kelpVariants.map(geo => new THREE.InstancedMesh(geo, kelpMat, Math.ceil(kelpCount / kVariantCount)));
+
+  // Strict Moon Species Counts: exactly 1 species per moon
+  let mycenaCount = 0;
+  let arborCount = 0;
+  let cactusCount = 0;
+  let fernCount = 0;
+  let tendrilCount = 0;
+  let kelpCount = 0;
+  let sporeCount = 0;
+
+  if (body.isMoon) {
+    if (isLumen) {
+      cactusCount = Math.round(440 * densityMult);
+    } else if (isPyra) {
+      tendrilCount = Math.round(380 * densityMult);
+      sporeCount = Math.round(80 * densityMult);
+    } else {
+      // Goliath (default largest moon)
+      mycenaCount = Math.round(480 * densityMult);
+      sporeCount = Math.round(60 * densityMult);
+    }
+  } else {
+    // Aurelia Prime (Planet): All 5 species distributed across elevation biomes
+    arborCount = Math.round(520 * densityMult);
+    fernCount = Math.round(680 * densityMult);
+    mycenaCount = Math.round(580 * densityMult);
+    tendrilCount = Math.round(440 * densityMult);
+    cactusCount = Math.round(340 * densityMult);
+    kelpCount = body.hasOcean ? Math.round(480 * densityMult) : 0;
+    sporeCount = Math.round(220 * densityMult);
+  }
+
+  // 3. Generate Geometry Variants
+  const mycenaVariants = mycenaCount > 0 ? createLucentMycenaVariants(4) : [];
+  const arborVariants = arborCount > 0 ? createCobaltStrataArborVariants(4) : [];
+  const cactusVariants = cactusCount > 0 ? createPrismaticLithocactusVariants(4) : [];
+  const fernVariants = fernCount > 0 ? createCyanSerrataFernVariants(4) : [];
+  const tendrilVariants = tendrilCount > 0 ? createAbyssalTendrilPodVariants(4) : [];
+  const kelpVariants = kelpCount > 0 ? createKelpVariants(4) : [];
+  const sporeGeo = new THREE.IcosahedronGeometry(0.85, 0);
+
+  const mVCount = mycenaVariants.length || 1;
+  const aVCount = arborVariants.length || 1;
+  const cVCount = cactusVariants.length || 1;
+  const fVCount = fernVariants.length || 1;
+  const tVCount = tendrilVariants.length || 1;
+  const kVCount = kelpVariants.length || 1;
+
+  // 4. Instantiate Meshes for Each Component
+  const mycenaTrunkMeshes = mycenaVariants.map(v => new THREE.InstancedMesh(v.trunkGeo, mycenaTrunkMat, Math.ceil(mycenaCount / mVCount)));
+  const mycenaCapMeshes = mycenaVariants.map(v => new THREE.InstancedMesh(v.capGeo, mycenaCapMat, Math.ceil(mycenaCount / mVCount)));
+  const mycenaGillMeshes = mycenaVariants.map(v => new THREE.InstancedMesh(v.gillGeo, mycenaGillMat, Math.ceil(mycenaCount / mVCount)));
+
+  const arborTrunkMeshes = arborVariants.map(v => new THREE.InstancedMesh(v.trunkGeo, arborTrunkMat, Math.ceil(arborCount / aVCount)));
+  const arborFrondMeshes = arborVariants.map(v => new THREE.InstancedMesh(v.frondGeo, arborFrondMat, Math.ceil(arborCount / aVCount)));
+
+  const cactusBodyMeshes = cactusVariants.map(v => new THREE.InstancedMesh(v.bodyGeo, cactusBodyMat, Math.ceil(cactusCount / cVCount)));
+  const cactusSpineMeshes = cactusVariants.map(v => new THREE.InstancedMesh(v.spineGeo, cactusSpineMat, Math.ceil(cactusCount / cVCount)));
+
+  const fernMeshes = fernVariants.map(geo => new THREE.InstancedMesh(geo, fernMat, Math.ceil(fernCount / fVCount)));
+
+  const tendrilFoliageMeshes = tendrilVariants.map(v => new THREE.InstancedMesh(v.foliageGeo, tendrilFoliageMat, Math.ceil(tendrilCount / tVCount)));
+  const tendrilPodMeshes = tendrilVariants.map(v => new THREE.InstancedMesh(v.podGeo, tendrilPodMat, Math.ceil(tendrilCount / tVCount)));
+
+  const kelpMeshes = kelpVariants.map(geo => new THREE.InstancedMesh(geo, kelpMat, Math.ceil(kelpCount / kVCount)));
   const sporeMesh = new THREE.InstancedMesh(sporeGeo, sporeMat, sporeCount);
 
-  const mIndices = new Array(mVariantCount).fill(0);
-  const pIndices = new Array(pVariantCount).fill(0);
-  const fIndices = new Array(fVariantCount).fill(0);
-  const tIndices = new Array(tVariantCount).fill(0);
-  const cIndices = new Array(cVariantCount).fill(0);
-  const kIndices = new Array(kVariantCount).fill(0);
+  const mIndices = new Array(mVCount).fill(0);
+  const aIndices = new Array(aVCount).fill(0);
+  const cIndices = new Array(cVCount).fill(0);
+  const fIndices = new Array(fVCount).fill(0);
+  const tIndices = new Array(tVCount).fill(0);
+  const kIndices = new Array(kVCount).fill(0);
   let sIdx = 0;
 
-  const totalSamples = (mushroomCount + palmCount + fernCount + tendrilCount + crystalCount + sporeCount + kelpCount) * 4;
+  const totalFloraCount = mycenaCount + arborCount + cactusCount + fernCount + tendrilCount + kelpCount + sporeCount;
+  const totalSamples = totalFloraCount * 5;
 
   for (let i = 0; i < totalSamples; i++) {
     const face = i % 6;
@@ -441,6 +721,7 @@ export function populatePlanetDecor(body, noise, qualityOverride = null) {
     const seaLevel = body.seaLevelRadius || 0;
     const isUndersea = surfaceR < seaLevel;
     const depthBelowSea = seaLevel - surfaceR;
+    const elev = surfaceR - seaLevel;
 
     normal.set(nx, ny, nz);
     quat.setFromUnitVectors(upDefault, normal);
@@ -449,25 +730,24 @@ export function populatePlanetDecor(body, noise, qualityOverride = null) {
 
     const tiltAxis = new THREE.Vector3(noise.hash(i * 101) - 0.5, 0, noise.hash(i * 103) - 0.5).normalize();
     if (tiltAxis.lengthSq() > 0.1) {
-      const tiltAngle = noise.hash(i * 107) * 0.14;
+      const tiltAngle = noise.hash(i * 107) * 0.12;
       const surfaceTilt = new THREE.Quaternion().setFromAxisAngle(tiltAxis, tiltAngle);
       quat.multiply(surfaceTilt);
     }
 
-    const scale = 0.8 + noise.hash(i * 59) * 1.35;
+    const scale = 0.8 + noise.hash(i * 59) * 0.95;
     dummy.position.set(nx * surfaceR, ny * surfaceR, nz * surfaceR);
     dummy.quaternion.copy(quat);
     dummy.scale.set(
-      scale * (0.9 + noise.hash(i * 61) * 0.2),
-      scale * (0.85 + noise.hash(i * 67) * 0.3),
-      scale * (0.9 + noise.hash(i * 71) * 0.2)
+      scale * (0.92 + noise.hash(i * 61) * 0.16),
+      scale * (0.90 + noise.hash(i * 67) * 0.20),
+      scale * (0.92 + noise.hash(i * 71) * 0.16)
     );
     dummy.updateMatrix();
 
     if (isUndersea) {
-      // Undersea kelp and abyssal tendrils down to 110m deep
       if (depthBelowSea >= 2.5 && depthBelowSea <= 110 && kelpCount > 0) {
-        const kVar = (i + Math.floor(noise.hash(i * 79) * 10)) % kVariantCount;
+        const kVar = (i + Math.floor(noise.hash(i * 79) * 10)) % kVCount;
         const curIdx = kIndices[kVar];
         if (curIdx < kelpMeshes[kVar].count) {
           kelpMeshes[kVar].setMatrixAt(curIdx, dummy.matrix);
@@ -477,112 +757,159 @@ export function populatePlanetDecor(body, noise, qualityOverride = null) {
       continue;
     }
 
-    // Land species distribution across 6 categories
-    const selector = i % 6;
+    // 5. Biome Elevation Zoning
+    let targetSpecies = null;
 
-    if (selector === 0 && mushroomCount > 0) {
-      const mVar = (i + Math.floor(noise.hash(i * 79) * 10)) % mVariantCount;
+    if (body.isMoon) {
+      // Moon: strictly 1 species per moon
+      if (isLumen) targetSpecies = 'cactus';
+      else if (isPyra) targetSpecies = 'tendril';
+      else targetSpecies = 'mycena';
+    } else {
+      // Aurelia Prime Elevation Partitioning with natural biome zoning
+      const bioRand = noise.hash(i * 93);
+      if (elev < 2.8) {
+        // Coastal Beaches & Lowlands: predominantly Cobalt Strata-Arbors (Palms)
+        targetSpecies = (bioRand < 0.85) ? 'arbor' : 'fern';
+      } else if (elev < 8.0) {
+        // Lowland Steppe Plains: Cyan Serrata-Ferns (65%), Palms (20%), Lucent-Mycena (15%)
+        if (bioRand < 0.65) targetSpecies = 'fern';
+        else if (bioRand < 0.85) targetSpecies = 'arbor';
+        else targetSpecies = 'mycena';
+      } else if (elev < 16.0) {
+        // Conifer Forest & Highland Canopies: Lucent-Mycena (50%), Abyssal Tendril-Pods (35%), Ferns (15%)
+        if (bioRand < 0.50) targetSpecies = 'mycena';
+        else if (bioRand < 0.85) targetSpecies = 'tendril';
+        else targetSpecies = 'fern';
+      } else {
+        // Granite Highland Shield & Mountain Ridges: Prismatic Lithocactus (70%), Tendril-Pods (30%)
+        targetSpecies = (bioRand < 0.70) ? 'cactus' : 'tendril';
+      }
+
+      // Guarantee balanced xenobotanical presence across land mass
+      const fallbackMod = i % 10;
+      if (fallbackMod === 2 && elev > 6.0 && cactusCount > 0) targetSpecies = 'cactus';
+      if (fallbackMod === 4 && elev > 4.5 && tendrilCount > 0) targetSpecies = 'tendril';
+    }
+
+    if (targetSpecies === 'mycena' && mycenaCount > 0) {
+      const mVar = (i + Math.floor(noise.hash(i * 79) * 10)) % mVCount;
       const curIdx = mIndices[mVar];
-      if (curIdx < mushroomTrunkMeshes[mVar].count) {
-        mushroomTrunkMeshes[mVar].setMatrixAt(curIdx, dummy.matrix);
-        mushroomCapMeshes[mVar].setMatrixAt(curIdx, dummy.matrix);
+      if (curIdx < mycenaTrunkMeshes[mVar].count) {
+        mycenaTrunkMeshes[mVar].setMatrixAt(curIdx, dummy.matrix);
+        mycenaCapMeshes[mVar].setMatrixAt(curIdx, dummy.matrix);
+        mycenaGillMeshes[mVar].setMatrixAt(curIdx, dummy.matrix);
         mIndices[mVar]++;
-        collisionGrid.addCollider(dummy.position, normal, 0.85 * scale, 8.0 * scale, 'mushroom');
+        collisionGrid.addCollider(dummy.position, normal, 0.95 * scale, 8.5 * scale, 'mushroom');
       }
-    } else if (selector === 1 && palmCount > 0) {
-      const pVar = (i + Math.floor(noise.hash(i * 83) * 10)) % pVariantCount;
-      const curIdx = pIndices[pVar];
-      if (curIdx < palmMeshes[pVar].count) {
-        palmMeshes[pVar].setMatrixAt(curIdx, dummy.matrix);
-        pIndices[pVar]++;
-        collisionGrid.addCollider(dummy.position, normal, 0.72 * scale, 9.0 * scale, 'palm');
+    } else if (targetSpecies === 'arbor' && arborCount > 0) {
+      const aVar = (i + Math.floor(noise.hash(i * 83) * 10)) % aVCount;
+      const curIdx = aIndices[aVar];
+      if (curIdx < arborTrunkMeshes[aVar].count) {
+        arborTrunkMeshes[aVar].setMatrixAt(curIdx, dummy.matrix);
+        arborFrondMeshes[aVar].setMatrixAt(curIdx, dummy.matrix);
+        aIndices[aVar]++;
+        collisionGrid.addCollider(dummy.position, normal, 0.85 * scale, 11.0 * scale, 'palm');
       }
-    } else if (selector === 2 && crystalCount > 0) {
-      const cVar = (i + Math.floor(noise.hash(i * 89) * 10)) % cVariantCount;
+    } else if (targetSpecies === 'cactus' && cactusCount > 0) {
+      const cVar = (i + Math.floor(noise.hash(i * 89) * 10)) % cVCount;
       const curIdx = cIndices[cVar];
-      if (curIdx < crystalMeshes[cVar].count) {
-        crystalMeshes[cVar].setMatrixAt(curIdx, dummy.matrix);
+      if (curIdx < cactusBodyMeshes[cVar].count) {
+        cactusBodyMeshes[cVar].setMatrixAt(curIdx, dummy.matrix);
+        cactusSpineMeshes[cVar].setMatrixAt(curIdx, dummy.matrix);
         cIndices[cVar]++;
-        collisionGrid.addCollider(dummy.position, normal, 1.05 * scale, 6.0 * scale, 'crystal');
+        collisionGrid.addCollider(dummy.position, normal, 1.25 * scale, 6.5 * scale, 'crystal');
       }
-    } else if (selector === 3 && fernCount > 0) {
-      const fVar = (i + Math.floor(noise.hash(i * 97) * 10)) % fVariantCount;
+    } else if (targetSpecies === 'fern' && fernCount > 0) {
+      const fVar = (i + Math.floor(noise.hash(i * 97) * 10)) % fVCount;
       const curIdx = fIndices[fVar];
       if (curIdx < fernMeshes[fVar].count) {
         fernMeshes[fVar].setMatrixAt(curIdx, dummy.matrix);
         fIndices[fVar]++;
-        collisionGrid.addCollider(dummy.position, normal, 0.75 * scale, 5.0 * scale, 'fern');
+        collisionGrid.addCollider(dummy.position, normal, 0.65 * scale, 4.0 * scale, 'fern');
       }
-    } else if (selector === 4 && tendrilCount > 0) {
-      const tVar = (i + Math.floor(noise.hash(i * 101) * 10)) % tVariantCount;
+    } else if (targetSpecies === 'tendril' && tendrilCount > 0) {
+      const tVar = (i + Math.floor(noise.hash(i * 101) * 10)) % tVCount;
       const curIdx = tIndices[tVar];
-      if (curIdx < tendrilMeshes[tVar].count) {
-        tendrilMeshes[tVar].setMatrixAt(curIdx, dummy.matrix);
+      if (curIdx < tendrilFoliageMeshes[tVar].count) {
+        tendrilFoliageMeshes[tVar].setMatrixAt(curIdx, dummy.matrix);
+        tendrilPodMeshes[tVar].setMatrixAt(curIdx, dummy.matrix);
         tIndices[tVar]++;
-        collisionGrid.addCollider(dummy.position, normal, 0.68 * scale, 4.5 * scale, 'tendril');
+        collisionGrid.addCollider(dummy.position, normal, 0.80 * scale, 4.2 * scale, 'tendril');
       }
-    } else if (sporeCount > 0 && sIdx < sporeCount) {
-      const floatHeight = surfaceR + 6 + noise.hash(i * 71) * 16;
-      dummy.position.set(nx * floatHeight, ny * floatHeight, nz * floatHeight);
-      dummy.scale.setScalar(0.7 + noise.hash(i * 83) * 1.1);
+    }
+
+    // Ambient floating spores above bioluminescent flora
+    if (sporeCount > 0 && sIdx < sporeCount && (targetSpecies === 'mycena' || targetSpecies === 'tendril')) {
+      const floatH = surfaceR + 3.5 + noise.hash(i * 71) * 10.0;
+      dummy.position.set(nx * floatH, ny * floatH, nz * floatH);
+      dummy.scale.setScalar(0.5 + noise.hash(i * 83) * 0.8);
       dummy.updateMatrix();
       sporeMesh.setMatrixAt(sIdx, dummy.matrix);
       sIdx++;
     }
   }
 
-  // Set final instance counts & add to group
-  for (let v = 0; v < mVariantCount; v++) {
-    if (mushroomTrunkMeshes[v]) {
-      mushroomTrunkMeshes[v].count = mIndices[v];
-      mushroomCapMeshes[v].count = mIndices[v];
-      mushroomTrunkMeshes[v].instanceMatrix.needsUpdate = true;
-      mushroomCapMeshes[v].instanceMatrix.needsUpdate = true;
-      group.add(mushroomTrunkMeshes[v], mushroomCapMeshes[v]);
+  // 6. Set Final Counts & Add to Group
+  for (let v = 0; v < mVCount; v++) {
+    if (mycenaTrunkMeshes[v] && mIndices[v] > 0) {
+      mycenaTrunkMeshes[v].count = mIndices[v];
+      mycenaCapMeshes[v].count = mIndices[v];
+      mycenaGillMeshes[v].count = mIndices[v];
+      mycenaTrunkMeshes[v].instanceMatrix.needsUpdate = true;
+      mycenaCapMeshes[v].instanceMatrix.needsUpdate = true;
+      mycenaGillMeshes[v].instanceMatrix.needsUpdate = true;
+      group.add(mycenaTrunkMeshes[v], mycenaCapMeshes[v], mycenaGillMeshes[v]);
     }
   }
 
-  for (let v = 0; v < pVariantCount; v++) {
-    if (palmMeshes[v]) {
-      palmMeshes[v].count = pIndices[v];
-      palmMeshes[v].instanceMatrix.needsUpdate = true;
-      group.add(palmMeshes[v]);
+  for (let v = 0; v < aVCount; v++) {
+    if (arborTrunkMeshes[v] && aIndices[v] > 0) {
+      arborTrunkMeshes[v].count = aIndices[v];
+      arborFrondMeshes[v].count = aIndices[v];
+      arborTrunkMeshes[v].instanceMatrix.needsUpdate = true;
+      arborFrondMeshes[v].instanceMatrix.needsUpdate = true;
+      group.add(arborTrunkMeshes[v], arborFrondMeshes[v]);
     }
   }
 
-  for (let v = 0; v < fVariantCount; v++) {
-    if (fernMeshes[v]) {
+  for (let v = 0; v < cVCount; v++) {
+    if (cactusBodyMeshes[v] && cIndices[v] > 0) {
+      cactusBodyMeshes[v].count = cIndices[v];
+      cactusSpineMeshes[v].count = cIndices[v];
+      cactusBodyMeshes[v].instanceMatrix.needsUpdate = true;
+      cactusSpineMeshes[v].instanceMatrix.needsUpdate = true;
+      group.add(cactusBodyMeshes[v], cactusSpineMeshes[v]);
+    }
+  }
+
+  for (let v = 0; v < fVCount; v++) {
+    if (fernMeshes[v] && fIndices[v] > 0) {
       fernMeshes[v].count = fIndices[v];
       fernMeshes[v].instanceMatrix.needsUpdate = true;
       group.add(fernMeshes[v]);
     }
   }
 
-  for (let v = 0; v < tVariantCount; v++) {
-    if (tendrilMeshes[v]) {
-      tendrilMeshes[v].count = tIndices[v];
-      tendrilMeshes[v].instanceMatrix.needsUpdate = true;
-      group.add(tendrilMeshes[v]);
+  for (let v = 0; v < tVCount; v++) {
+    if (tendrilFoliageMeshes[v] && tIndices[v] > 0) {
+      tendrilFoliageMeshes[v].count = tIndices[v];
+      tendrilPodMeshes[v].count = tIndices[v];
+      tendrilFoliageMeshes[v].instanceMatrix.needsUpdate = true;
+      tendrilPodMeshes[v].instanceMatrix.needsUpdate = true;
+      group.add(tendrilFoliageMeshes[v], tendrilPodMeshes[v]);
     }
   }
 
-  for (let v = 0; v < cVariantCount; v++) {
-    if (crystalMeshes[v]) {
-      crystalMeshes[v].count = cIndices[v];
-      crystalMeshes[v].instanceMatrix.needsUpdate = true;
-      group.add(crystalMeshes[v]);
-    }
-  }
-
-  for (let v = 0; v < kVariantCount; v++) {
-    if (kelpMeshes[v]) {
+  for (let v = 0; v < kVCount; v++) {
+    if (kelpMeshes[v] && kIndices[v] > 0) {
       kelpMeshes[v].count = kIndices[v];
       kelpMeshes[v].instanceMatrix.needsUpdate = true;
       group.add(kelpMeshes[v]);
     }
   }
 
-  if (sporeCount > 0) {
+  if (sporeCount > 0 && sIdx > 0) {
     sporeMesh.count = sIdx;
     sporeMesh.instanceMatrix.needsUpdate = true;
     group.add(sporeMesh);
@@ -591,7 +918,13 @@ export function populatePlanetDecor(body, noise, qualityOverride = null) {
   return {
     group,
     collisionGrid,
-    crystalMat: effectiveCrystalMat,
-    capMat
+    mycenaMat: { trunk: mycenaTrunkMat, cap: mycenaCapMat, gills: mycenaGillMat },
+    cactusMat: { body: cactusBodyMat, spines: cactusSpineMat },
+    fernMat,
+    arborMat: { trunk: arborTrunkMat, fronds: arborFrondMat },
+    tendrilMat: { foliage: tendrilFoliageMat, pods: tendrilPodMat },
+    // Backwards-compatible references for existing tests
+    crystalMat: cactusBodyMat,
+    capMat: mycenaCapMat
   };
 }
