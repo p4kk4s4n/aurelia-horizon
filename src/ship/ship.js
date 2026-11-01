@@ -1212,8 +1212,8 @@ export class Ship {
         let flameScale = 1.0;
         let flameWidth = 1.0;
         if (this.isBoosting) {
-          flameScale = 2.45 + Math.sin(tNow * 0.055 + i * 1.9) * 0.42 + Math.cos(tNow * 0.09) * 0.18;
-          flameWidth = 1.35 + Math.sin(tNow * 0.04 + i) * 0.18;
+          flameScale = Math.max(2.1, 2.65 + Math.sin(tNow * 0.055 + i * 1.9) * 0.42 + Math.cos(tNow * 0.09) * 0.18);
+          flameWidth = Math.max(1.15, 1.45 + Math.sin(tNow * 0.04 + i) * 0.18);
         } else {
           flameScale = 1.0 + Math.sin(tNow * 0.035 + i * 1.8) * 0.18;
           flameWidth = 1.0;

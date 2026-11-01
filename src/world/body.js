@@ -3,7 +3,15 @@ import { SeededNoise } from './noise.js';
 import { createCubeSphereMesh } from './cubeSphere.js';
 import { populatePlanetDecor } from './decor.js';
 import { createDeepOceanMesh } from './ocean.js';
-import { createBasaltNormalMap, createNoiseRoughnessMap } from './procTextures.js';
+import {
+  createBasaltNormalMap,
+  createNoiseRoughnessMap,
+  createGrassTexture,
+  createGrassNormalMap,
+  createRockTexture,
+  createRockNormalMap,
+  createTerrainRoughnessMap
+} from './procTextures.js';
 
 export class CelestialBody {
   constructor(config) {
@@ -88,19 +96,46 @@ export class CelestialBody {
     return theme.high;
   }
 
+  sampleGrassWeight(nx, ny, nz, r) {
+    if (this.isMoon) return 0.0;
+    const h = r - this.seaLevelRadius;
+    // Green biomes: Temperate Steppe (h: 2.5 to 14.0) & Conifer Forest (h: 14.0 to 26.0)
+    // Smooth transition at beach edge (2.0 to 3.5) and highland granite boundary (24.0 to 28.0)
+    if (h < 2.0 || h > 28.0) return 0.0;
+    let w = 1.0;
+    if (h < 3.5) {
+      w = (h - 2.0) / 1.5;
+    } else if (h > 24.0) {
+      w = 1.0 - (h - 24.0) / 4.0;
+    }
+    return Math.max(0.0, Math.min(1.0, w));
+  }
+
   _buildMesh() {
     const normalMap = createBasaltNormalMap(256);
     normalMap.repeat.set(this.isMoon ? 32 : 48, this.isMoon ? 32 : 48);
-    const roughnessMap = createNoiseRoughnessMap(128);
+    const roughnessMap = createTerrainRoughnessMap(256) || createNoiseRoughnessMap(128);
     roughnessMap.repeat.set(16, 16);
+
+    const grassMap = createGrassTexture(256);
+    const grassNormalMap = createGrassNormalMap(256);
+    const rockMap = createRockTexture(256);
+    const rockNormalMap = createRockNormalMap(256);
 
     this.terrainMesh = createCubeSphereMesh({
       segments: this.segments,
       heightSampler: (nx, ny, nz) => this.getSurfaceRadiusAtDir(nx, ny, nz),
       colorSampler: (nx, ny, nz, r) => this.sampleBiomeColor(nx, ny, nz, r),
+      grassSampler: (nx, ny, nz, r) => this.sampleGrassWeight(nx, ny, nz, r),
       flatShading: false,
       normalMap,
       roughnessMap,
+      grassMap,
+      grassNormalMap,
+      rockMap,
+      rockNormalMap,
+      triplanarScale: this.isMoon ? 0.35 : 0.45,
+      blendSharpness: 4.0,
       normalScale: new THREE.Vector2(0.95, 0.95)
     });
     this.group.add(this.terrainMesh);
@@ -198,16 +233,28 @@ export class CelestialBody {
     }
     const normalMap = createBasaltNormalMap(256);
     normalMap.repeat.set(this.isMoon ? 32 : 48, this.isMoon ? 32 : 48);
-    const roughnessMap = createNoiseRoughnessMap(128);
+    const roughnessMap = createTerrainRoughnessMap(256) || createNoiseRoughnessMap(128);
     roughnessMap.repeat.set(16, 16);
+
+    const grassMap = createGrassTexture(256);
+    const grassNormalMap = createGrassNormalMap(256);
+    const rockMap = createRockTexture(256);
+    const rockNormalMap = createRockNormalMap(256);
 
     this.terrainMesh = createCubeSphereMesh({
       segments: this.segments,
       heightSampler: (nx, ny, nz) => this.getSurfaceRadiusAtDir(nx, ny, nz),
       colorSampler: (nx, ny, nz, r) => this.sampleBiomeColor(nx, ny, nz, r),
+      grassSampler: (nx, ny, nz, r) => this.sampleGrassWeight(nx, ny, nz, r),
       flatShading: false,
       normalMap,
       roughnessMap,
+      grassMap,
+      grassNormalMap,
+      rockMap,
+      rockNormalMap,
+      triplanarScale: this.isMoon ? 0.35 : 0.45,
+      blendSharpness: 4.0,
       normalScale: new THREE.Vector2(0.95, 0.95)
     });
     this.group.add(this.terrainMesh);

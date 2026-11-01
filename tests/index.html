@@ -33,7 +33,7 @@
 
   <script type="module">
     import { SeededNoise } from '../src/world/noise.js';
-    import { cubeToSphere, buildCubeSphereData } from '../src/world/cubeSphere.js';
+    import { cubeToSphere, buildCubeSphereData, createCubeSphereMesh } from '../src/world/cubeSphere.js';
     import { evaluateGravity } from '../src/world/gravity.js';
     import { ShipRepairSystem, SHIP_PART_DEFS } from '../src/ship/repair.js';
     import { UI_COLOR_SCHEMES, SettingsManager, APP_VERSION, compareSemver, extractVersionFromCommitMessage } from '../src/ui/settings.js';
@@ -55,7 +55,18 @@
     import { StoryDialogSystem } from '../src/ui/storyDialog.js';
     import { CompletionModal } from '../src/ui/completionModal.js';
     import { HUD } from '../src/ui/hud.js';
-    import { createBasaltNormalMap, createCarbonFiberNormalMap, createMetalPanelsNormalMap, createWaterNormalMap, createNoiseRoughnessMap } from '../src/world/procTextures.js';
+    import {
+      createBasaltNormalMap,
+      createCarbonFiberNormalMap,
+      createMetalPanelsNormalMap,
+      createWaterNormalMap,
+      createNoiseRoughnessMap,
+      createGrassTexture,
+      createGrassNormalMap,
+      createRockTexture,
+      createRockNormalMap,
+      createTerrainRoughnessMap
+    } from '../src/world/procTextures.js';
     import { PostProcessingManager } from '../src/world/postprocessing.js';
     import { createSkyAndSpaceTargets } from '../src/world/sky.js';
     import * as THREE from 'three';
@@ -1315,10 +1326,10 @@
 
     // 24. v1.18.0 Hard-Surface Space Sim Realism & GitHub Version Manager
     // 24A: Version Resolution & Semantic Versioning Utilities
-    assert(APP_VERSION === '1.19.0', 'APP_VERSION constant is updated to 1.19.0');
-    assert(compareSemver('1.19.0', '1.13.0') === 1, 'compareSemver detects 1.19.0 is newer than 1.13.0');
-    assert(compareSemver('1.13.0', '1.19.0') === -1, 'compareSemver detects 1.13.0 is older than 1.19.0');
-    assert(compareSemver('1.19.0', '1.19.0') === 0, 'compareSemver detects identical versions');
+    assert(APP_VERSION === '1.20.0', 'APP_VERSION constant is updated to 1.20.0');
+    assert(compareSemver('1.20.0', '1.13.0') === 1, 'compareSemver detects 1.20.0 is newer than 1.13.0');
+    assert(compareSemver('1.13.0', '1.20.0') === -1, 'compareSemver detects 1.13.0 is older than 1.20.0');
+    assert(compareSemver('1.20.0', '1.20.0') === 0, 'compareSemver detects identical versions');
     assert(extractVersionFromCommitMessage('feat: v1.18.0 Hard-Surface Realism') === '1.18.0', 'extractVersionFromCommitMessage extracts semver from commit title');
     assert(extractVersionFromCommitMessage('Release 1.17.2 bugfixes') === '1.17.2', 'extractVersionFromCommitMessage extracts version without leading v');
     assert(extractVersionFromCommitMessage('routine maintenance patch') === null, 'extractVersionFromCommitMessage returns null for version-less commits');
@@ -1432,6 +1443,81 @@
 
     settingsMgr.applyVitalsPosition('top-center');
     assert(hudVitals.parentNode === zoneTop, 'applyVitalsPosition(top-center) dynamically reparents vitals into #zone-top-center');
+
+    // 26. Grassy & Rocky Procedural PBR Terrain Textures with Triplanar Splatting (v1.20.0)
+    // 26A: Procedural Canvas Texture Generators
+    const grassTex = createGrassTexture(128);
+    const grassNorm = createGrassNormalMap(128);
+    const rockTex = createRockTexture(128);
+    const rockNorm = createRockNormalMap(128);
+    const terrainRough = createTerrainRoughnessMap(128);
+
+    assert(grassTex && grassTex.isTexture && grassTex.image.width === 128, 'createGrassTexture generates CanvasTexture with target dimensions');
+    assert(grassTex.wrapS === THREE.RepeatWrapping && grassTex.wrapT === THREE.RepeatWrapping, 'Grass diffuse texture has RepeatWrapping enabled');
+    assert(grassNorm && grassNorm.isTexture && grassNorm.image.height === 128, 'createGrassNormalMap generates CanvasTexture normal map');
+    assert(grassNorm.wrapS === THREE.RepeatWrapping && grassNorm.wrapT === THREE.RepeatWrapping, 'Grass normal map has RepeatWrapping enabled');
+    assert(rockTex && rockTex.isTexture && rockTex.image.width === 128, 'createRockTexture generates CanvasTexture with rock strata');
+    assert(rockNorm && rockNorm.isTexture && rockNorm.image.height === 128, 'createRockNormalMap generates normal map for rocky terrain');
+    assert(terrainRough && terrainRough.isTexture, 'createTerrainRoughnessMap generates high-fidelity roughness map');
+
+    // 26B: CubeSphere Geometry Vertex Splatting Attributes
+    const testCubeData = buildCubeSphereData({
+      segments: 4,
+      heightSampler: () => 360,
+      colorSampler: () => [0.2, 0.8, 0.5],
+      grassSampler: (nx, ny, nz, r) => (ny > 0 ? 1.0 : 0.0)
+    });
+    assert(testCubeData.grassWeights instanceof Float32Array, 'buildCubeSphereData produces Float32Array grassWeights');
+    assert(testCubeData.grassWeights.length === testCubeData.totalVerts, 'grassWeights has length equal to vertex count');
+    assert(testCubeData.uvs instanceof Float32Array && testCubeData.uvs.length === testCubeData.totalVerts * 2, 'buildCubeSphereData produces UVs buffer');
+
+    const testCubeMesh = createCubeSphereMesh({
+      segments: 4,
+      heightSampler: () => 360,
+      colorSampler: () => [0.2, 0.8, 0.5],
+      grassSampler: (nx, ny, nz, r) => 0.75,
+      grassMap: grassTex,
+      rockMap: rockTex
+    });
+    assert(testCubeMesh.geometry.attributes.aGrassWeight !== undefined, 'createCubeSphereMesh attaches aGrassWeight attribute to BufferGeometry');
+    assert(testCubeMesh.geometry.attributes.aGrassWeight.itemSize === 1, 'aGrassWeight has itemSize of 1');
+    assert(testCubeMesh.geometry.attributes.uv !== undefined && testCubeMesh.geometry.attributes.uv.itemSize === 2, 'createCubeSphereMesh attaches uv attribute to BufferGeometry');
+
+    // 26C: Planetary Biome Grass Splatting vs Moon Rocky Surface
+    assert(typeof system.planet.sampleGrassWeight === 'function', 'CelestialBody provides sampleGrassWeight method');
+    const grassSteppeWeight = system.planet.sampleGrassWeight(0, 1, 0, system.planet.seaLevelRadius + 8.0);
+    const grassForestWeight = system.planet.sampleGrassWeight(0, 1, 0, system.planet.seaLevelRadius + 18.0);
+    const graniteRockWeight = system.planet.sampleGrassWeight(0, 1, 0, system.planet.seaLevelRadius + 32.0);
+    const beachRockWeight = system.planet.sampleGrassWeight(0, 1, 0, system.planet.seaLevelRadius + 1.0);
+    const seabedRockWeight = system.planet.sampleGrassWeight(0, 1, 0, system.planet.seaLevelRadius - 20.0);
+
+    assert(grassSteppeWeight === 1.0, 'Steppe green plains receive 1.0 grass weight');
+    assert(grassForestWeight === 1.0, 'Forest green canopy receives 1.0 grass weight');
+    assert(graniteRockWeight === 0.0, 'Granite mountain peaks receive 0.0 grass weight (100% rocky)');
+    assert(beachRockWeight === 0.0, 'Beach dunes receive 0.0 grass weight (100% rocky / sandy)');
+    assert(seabedRockWeight === 0.0, 'Deep sea beds receive 0.0 grass weight (100% rocky / silt)');
+
+    // Moons check: all 3 moons are 100% rocky
+    for (const moon of system.moons) {
+      assert(moon.sampleGrassWeight(0, 1, 0, moon.radius) === 0.0, `${moon.name} returns 0.0 grass weight everywhere (100% rocky)`);
+      const weights = moon.terrainMesh.geometry.attributes.aGrassWeight.array;
+      let anyNonZero = false;
+      for (let i = 0; i < weights.length; i++) {
+        if (weights[i] > 0) { anyNonZero = true; break; }
+      }
+      assert(!anyNonZero, `${moon.name} vertex buffer contains all zero grass weights for rocky terrain`);
+    }
+
+    // 26D: Triplanar Shader Uniforms & Materials
+    const planetUniforms = system.planet.terrainMesh.material.userData.terrainUniforms;
+    assert(planetUniforms !== undefined, 'Planet terrainMesh registers terrainUniforms in material.userData');
+    assert(planetUniforms.uGrassMap && planetUniforms.uGrassMap.value.isTexture, 'terrainUniforms provides uGrassMap texture');
+    assert(planetUniforms.uGrassNormalMap && planetUniforms.uGrassNormalMap.value.isTexture, 'terrainUniforms provides uGrassNormalMap texture');
+    assert(planetUniforms.uRockMap && planetUniforms.uRockMap.value.isTexture, 'terrainUniforms provides uRockMap texture');
+    assert(planetUniforms.uRockNormalMap && planetUniforms.uRockNormalMap.value.isTexture, 'terrainUniforms provides uRockNormalMap texture');
+    assert(planetUniforms.uGrassScale && planetUniforms.uGrassScale.value > 0, 'terrainUniforms provides positive uGrassScale');
+    assert(planetUniforms.uRockScale && planetUniforms.uRockScale.value > 0, 'terrainUniforms provides positive uRockScale');
+    assert(planetUniforms.uBlendSharpness && planetUniforms.uBlendSharpness.value >= 1.0, 'terrainUniforms provides blend sharpness >= 1.0');
 
     const summary = `SUMMARY: ${passed} passed, ${failed} failed`;
     logs.push('', summary);

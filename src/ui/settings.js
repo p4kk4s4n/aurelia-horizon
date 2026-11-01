@@ -68,7 +68,7 @@ const STORAGE_DIALOG_POS_KEY = 'aurelia_dialog_position';
 const GITHUB_REPO = 'p4kk4s4n/aurelia-horizon';
 const GITHUB_BRANCH = 'main';
 
-export const APP_VERSION = '1.19.0';
+export const APP_VERSION = '1.20.0';
 
 export function compareSemver(vA, vB) {
   if (!vA || !vB) return 0;
